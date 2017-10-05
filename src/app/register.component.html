@@ -1,0 +1,84 @@
+<div class="container">
+    <h1>Register</h1>
+    <div [hidden]="regResultMsg === ''" 
+        class="alert" 
+        [class.alert-danger]="regHasError"
+        [class.alert-success]="!regHasError">
+        {{regResultMsg}}
+    </div>
+    <form (ngSubmit)="register()" #regForm="ngForm">
+        <h2>I prefer to be contacted by:</h2>
+        <div class="radio">
+            <label class="radio-inline" for="email-pref">
+                <input type="radio" id="email-pref"
+                required checked name="contactPref" value="email" 
+                (change)="emailPreferred = $event.target.checked">
+                Email
+            </label>
+
+            <label class="radio-inline" for="phone-pref">
+                <input type="radio" id="phone-pref"
+                required name="contactPref" value="phone"
+                (change)="emailPreferred = !$event.target.checked">
+                Phone
+            </label>
+        </div>
+        <div class="form-group">
+            <input type="text" class="form-control short left" id="given-name" 
+            required [(ngModel)]="user.givenName" name="givenName"
+            placeholder="First name" #givenName="ngModel">
+            <input type="text" class="form-control short" id="family-name"
+            required [(ngModel)]="user.familyName" name="familyName"
+            placeholder="Last name" #familyName="ngModel">
+        </div>
+        <div [hidden]="givenName.valid || givenName.pristine" class="alert alert-danger">
+            First name is required.
+        </div>
+
+        <div [hidden]="familyName.valid || familyName.pristine" class="alert alert-danger">
+            Last name is required.
+        </div>
+
+        <div *ngIf="emailPreferred; else phonePref" class="form-group">
+            <input type="text" class="form-control short left" id="email"
+            required [(ngModel)]="user.email" name="email"
+            placeholder="pat@example.com" #email="ngModel">
+            <!-- TODO: We have to have the alert div inside the ngIf so that it's hidden when the
+            ngIf is, but doing it that way means that when it show it's bumped right up
+            against the bottom of the email field, unlike the other alerts. -->
+            <div [hidden]="email.valid || email.pristine" class="alert alert-danger">
+                Email is required.
+            </div>
+        </div>
+
+        <ng-template #phonePref class="form-group">
+            <input type="text" class="form-control short left" id="phone"
+            required [(ngModel)]="user.phone" name="phone"
+            #phone="ngModel"
+            placeholder="+12135551212"
+            >
+            <div [hidden]="phone.valid || phone.pristine" class="alert alert-danger">
+                Phone is required.
+            </div>
+        </ng-template>
+
+        <div class="form-group">
+            <input type="password" class="form-control short" id="password" 
+            required [(ngModel)]="user.passwd" name="password" 
+            placeholder="Password" #thepass="ngModel">
+        </div>
+
+        <div class="form-group">
+            <label for="photoUrl">Photo (URL)</label>
+            <input type="text" class="form-control" id="photoUrl"
+            [(ngModel)]="user.fullPhotoUrl" name="photoUrl">
+        </div>
+
+        <div [hidden]="thepass.valid || thepass.pristine" class="alert alert-danger">
+            Password is required.
+        </div>
+        <button class="btn" 
+        [disabled]="!regForm.form.valid" 
+        type="submit">Register</button>
+    </form>
+</div>

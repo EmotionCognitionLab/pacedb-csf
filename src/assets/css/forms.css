@@ -1,0 +1,8 @@
+input.short {
+  max-width: 200px;
+}
+
+input.left {
+  float: left;
+  margin-right: 10px;
+}
