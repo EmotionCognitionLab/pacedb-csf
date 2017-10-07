@@ -7,4 +7,8 @@ export const environment = {
   production: false,
   userPoolId: 'us-east-2_tdDhiKHFD',
   userPoolClientId: '79ptkbhgglccunn9k406ao2db3',
+  awsAccessKeyId: 'your aws key',
+  awsSecretAccessKey: 'your aws secret key',
+  awsRegion: 'us-east-2',
+  dynamoEndpoint: 'http://localhost:8000'
 };
