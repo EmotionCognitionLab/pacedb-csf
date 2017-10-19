@@ -93,4 +93,23 @@ export class AuthService {
             })
         );
     }
+
+    verify(username: string, token: string): Promise<string> {
+        const userPool = new CognitoUserPool(AuthService.poolData);
+        const userData = {
+            Username: username,
+            Pool: userPool
+        };
+        const cognitoUser = new CognitoUser(userData);
+
+        return new Promise<string>((resolve, reject) =>
+            cognitoUser.confirmRegistration(token, false, function(err, result) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve('Account confirmed');
+                }
+            })
+        );
+    }
 }

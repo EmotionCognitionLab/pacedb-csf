@@ -1,0 +1,21 @@
+<div class="container">
+    <h1>Verify your account</h1>
+    <div [hidden]="statusMsg === ''" class="alert" [class.alert-danger]="hasError" [class.alert-success]="!hasError">
+        {{statusMsg}}
+    </div>
+    <form (ngSubmit)="verify()" #verifyForm="ngForm">
+        <div class="form-group">
+            <input type="text" class="form-control short left" id="username" required [(ngModel)]="username"
+                name="username" placeholder="Email or phone" #usernameFld="ngModel">
+            <input type="text" class="form-control short" id="token" required [(ngModel)]="token" name="token" placeholder="Verification code"
+                #tokenFld="ngModel">
+        </div>
+        <div [hidden]="username !== '' || usernameFld.valid || usernameFld.pristine" class="alert alert-danger">
+            Email or phone number is required.
+        </div>
+        <div [hidden]="tokenFld.valid || tokenFld.pristine" class="alert alert-danger">
+            Verification code is required.
+        </div>
+        <button class="btn" [disabled]="!verifyForm.form.valid" type="submit">Verify account</button>
+    </form>
+</div>

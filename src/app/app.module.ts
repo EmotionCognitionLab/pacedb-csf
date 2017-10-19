@@ -7,6 +7,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { GroupsComponent } from './groups.component';
 import { LoginComponent } from './login.component';
 import { RegisterComponent } from './register.component';
+import { VerifyComponent } from './verify.component';
 
 import { AuthService } from './auth.service';
 
@@ -15,7 +16,8 @@ import { AuthService } from './auth.service';
     AppComponent,
     GroupsComponent,
     LoginComponent,
-    RegisterComponent
+    RegisterComponent,
+    VerifyComponent
   ],
   imports: [
     BrowserModule,

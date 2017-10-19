@@ -4,12 +4,14 @@ import { RouterModule, Routes } from '@angular/router';
 import { GroupsComponent } from './groups.component';
 import { LoginComponent } from './login.component';
 import { RegisterComponent } from './register.component';
+import { VerifyComponent } from './verify.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/register', pathMatch: 'full' },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
-  { path: 'groups', component: GroupsComponent }
+  { path: 'groups', component: GroupsComponent },
+  { path: 'verify', component: VerifyComponent }
 ];
 
 @NgModule({
