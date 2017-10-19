@@ -14,7 +14,7 @@ import {environment} from '../environments/environment';
 
 @Injectable()
 export class AuthService {
-    poolData = {
+    static poolData = {
         UserPoolId: environment.userPoolId,
         ClientId: environment.userPoolClientId,
         Paranoia: 8
@@ -28,7 +28,7 @@ export class AuthService {
 
         const authDetails = new AuthenticationDetails(authData);
 
-        const userPool = new CognitoUserPool(this.poolData);
+        const userPool = new CognitoUserPool(AuthService.poolData);
         const userData = {
             Username: username,
             Pool: userPool
@@ -50,7 +50,7 @@ export class AuthService {
 
     register(newuser: User): Promise<string> {
 
-        const userPool = new CognitoUserPool(this.poolData);
+        const userPool = new CognitoUserPool(AuthService.poolData);
 
         const attributeList = [];
         const dataEmail = {
