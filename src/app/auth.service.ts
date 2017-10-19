@@ -47,7 +47,7 @@ export class AuthService {
         [dataEmail, dataPhone, dataGivenName, dataFamilyName, dataPicture].forEach((item) =>
             attributeList.push(new CognitoUserAttribute(item)));
 
-        const username = newuser.email === '' ? newuser.phone : newuser.email;
+        const username = newuser.username();
 
         return new Promise<string>((resolve, reject) =>
             userPool.signUp(username, newuser.passwd, attributeList, null, function(err, result) {

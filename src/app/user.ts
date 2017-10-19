@@ -23,4 +23,8 @@ export class User {
             this.phone = phoneNum;
             this.passwd = password;
         }
+
+    username(): string {
+        return this.email === '' ? this.phone : this.email;
+    }
 }
