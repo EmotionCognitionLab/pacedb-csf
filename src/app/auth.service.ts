@@ -1,6 +1,12 @@
 import {Injectable} from '@angular/core';
 
-import { CognitoUserPool, CognitoUserAttribute, CognitoUser } from 'amazon-cognito-identity-js';
+import {
+    AuthenticationDetails,
+    CognitoUser,
+    CognitoUserAttribute,
+    CognitoUserPool,
+    CognitoUserSession
+} from 'amazon-cognito-identity-js';
 import 'rxjs/add/operator/toPromise';
 
 import {User} from './user';
@@ -8,15 +14,43 @@ import {environment} from '../environments/environment';
 
 @Injectable()
 export class AuthService {
+    poolData = {
+        UserPoolId: environment.userPoolId,
+        ClientId: environment.userPoolClientId,
+        Paranoia: 8
+    };
 
-    register(newuser: User): Promise<string> {
-        const poolData = {
-            UserPoolId: environment.userPoolId,
-            ClientId: environment.userPoolClientId,
-            Paranoia: 8
+    authenticate(username: string, password: string): Promise<string> {
+        const authData = {
+            Username: username,
+            Password: password
         };
 
-        const userPool = new CognitoUserPool(poolData);
+        const authDetails = new AuthenticationDetails(authData);
+
+        const userPool = new CognitoUserPool(this.poolData);
+        const userData = {
+            Username: username,
+            Pool: userPool
+        };
+
+        const cognitoUser = new CognitoUser(userData);
+
+        return new Promise<string>((resolve, reject) =>
+            cognitoUser.authenticateUser(authDetails, {
+                onSuccess: function(session: CognitoUserSession, userConfirmationNecessary?: boolean) {
+                    resolve('Successfully authenticated ' + username);
+                },
+                onFailure: function(err) {
+                    reject(err);
+                }
+            })
+        );
+    }
+
+    register(newuser: User): Promise<string> {
+
+        const userPool = new CognitoUserPool(this.poolData);
 
         const attributeList = [];
         const dataEmail = {

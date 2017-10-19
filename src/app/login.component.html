@@ -1,0 +1,26 @@
+<div class="container">
+    <h1>Login</h1>
+    <div [hidden]="loginResultMsg === ''" 
+        class="alert" 
+        [class.alert-danger]="loginHasError"
+        [class.alert-success]="!loginHasError">
+        {{loginResultMsg}}
+    </div>
+    <form (ngSubmit)="login()" #loginForm="ngForm">
+        <div class="form-group">
+            <input type="text" class="form-control short left" id="username" required [(ngModel)]="username" name="username" placeholder="Email or phone"
+                #usernameFld="ngModel">
+            <input type="password" class="form-control short" id="password" required [(ngModel)]="password" name="password" placeholder="Password"
+                #passwordFld="ngModel">
+        </div>
+        <div [hidden]="usernameFld.valid || usernameFld.pristine" class="alert alert-danger">
+            Email or phone number is required.
+        </div>
+        <div [hidden]="passwordFld.valid || passwordFld.pristine" class="alert alert-danger">
+            Password is required.
+        </div>
+        <button class="btn" 
+        [disabled]="!loginForm.form.valid" 
+        type="submit">Login</button>
+    </form>
+</div>
