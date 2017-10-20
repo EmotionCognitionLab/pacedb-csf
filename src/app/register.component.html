@@ -1,10 +1,8 @@
 <div class="container">
     <h1>Register</h1>
-    <div [hidden]="regResultMsg === ''" 
-        class="alert" 
-        [class.alert-danger]="regHasError"
-        [class.alert-success]="!regHasError">
-        {{regResultMsg}}
+    <div [hidden]="errMsg === ''" 
+        class="alert alert-danger">
+        {{errMsg}}
     </div>
     <form (ngSubmit)="register()" #regForm="ngForm">
         <h2>I prefer to be contacted by:</h2>

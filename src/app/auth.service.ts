@@ -39,6 +39,7 @@ export class AuthService {
         return new Promise<string>((resolve, reject) =>
             cognitoUser.authenticateUser(authDetails, {
                 onSuccess: function(session: CognitoUserSession, userConfirmationNecessary?: boolean) {
+                    // console.log('access token + ' + session.getIdToken().getJwtToken());
                     resolve('Successfully authenticated ' + username);
                 },
                 onFailure: function(err) {
