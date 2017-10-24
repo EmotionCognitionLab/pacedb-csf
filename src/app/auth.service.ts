@@ -49,6 +49,21 @@ export class AuthService {
         );
     }
 
+    logout(): boolean {
+        try {
+            const userPool = new CognitoUserPool(AuthService.poolData);
+            const cognitoUser = userPool.getCurrentUser();
+            if (cognitoUser != null) {
+                cognitoUser.signOut();
+            }
+            // if the user was null, return true anyway - they're effectively already logged out
+            return true;
+        } catch (e) {
+            console.log(e);
+            return false;
+        }
+    }
+
     register(newuser: User): Promise<string> {
 
         const userPool = new CognitoUserPool(AuthService.poolData);

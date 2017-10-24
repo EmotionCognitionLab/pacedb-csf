@@ -28,4 +28,14 @@ export class LoginComponent implements OnInit {
             this.loginHasError = true;
         });
     }
+
+    logout(): void {
+        if (this.authService.logout()) {
+            this.loginResultMsg = 'Logout successful.';
+            this.loginHasError = false;
+        } else {
+            this.loginResultMsg = 'Logout failed.';
+            this.loginHasError = true;
+        }
+    }
 }
