@@ -5,8 +5,8 @@
 
 export const environment = {
   production: false,
-  userPoolId: 'us-east-2_tdDhiKHFD',
-  userPoolClientId: '79ptkbhgglccunn9k406ao2db3',
+  userPoolId: 'your user pool id',
+  userPoolClientId: 'your user pool app client id',
   awsAccessKeyId: 'your aws key',
   awsSecretAccessKey: 'your aws secret key',
   awsRegion: 'us-east-2',
