@@ -23,17 +23,17 @@
         </div>
         <div class="form-group">
             <input type="text" class="form-control short left" id="given-name" 
-            required [(ngModel)]="user.givenName" name="givenName"
-            placeholder="First name" #givenName="ngModel">
+            required [(ngModel)]="user.firstName" name="firstName"
+            placeholder="First name" #firstName="ngModel">
             <input type="text" class="form-control short" id="family-name"
-            required [(ngModel)]="user.familyName" name="familyName"
-            placeholder="Last name" #familyName="ngModel">
+            required [(ngModel)]="user.lastName" name="lastName"
+            placeholder="Last name" #lastName="ngModel">
         </div>
-        <div [hidden]="givenName.valid || givenName.pristine" class="alert alert-danger">
+        <div [hidden]="firstName.valid || firstName.pristine" class="alert alert-danger">
             First name is required.
         </div>
 
-        <div [hidden]="familyName.valid || familyName.pristine" class="alert alert-danger">
+        <div [hidden]="lastName.valid || lastName.pristine" class="alert alert-danger">
             Last name is required.
         </div>
 
@@ -62,14 +62,14 @@
 
         <div class="form-group">
             <input type="password" class="form-control short" id="password" 
-            required [(ngModel)]="user.passwd" name="password" 
+            required [(ngModel)]="user.password" name="password" 
             placeholder="Password" #thepass="ngModel">
         </div>
 
         <div class="form-group">
             <label for="photoUrl">Photo (URL)</label>
             <input type="text" class="form-control" id="photoUrl"
-            [(ngModel)]="user.fullPhotoUrl" name="photoUrl">
+            [(ngModel)]="user.photoUrl" name="photoUrl">
         </div>
 
         <div [hidden]="thepass.valid || thepass.pristine" class="alert alert-danger">

@@ -79,28 +79,28 @@ export class AuthService {
             Value: newuser.phone
         };
 
-        const dataGivenName = {
+        const datafirstName = {
             Name: 'given_name',
-            Value: newuser.givenName
+            Value: newuser.firstName
         };
 
-        const dataFamilyName = {
+        const datalastName = {
             Name: 'family_name',
-            Value: newuser.familyName
+            Value: newuser.lastName
         };
 
         const dataPicture = {
             Name: 'picture',
-            Value: newuser.fullPhotoUrl
+            Value: newuser.photoUrl
         };
 
-        [dataEmail, dataPhone, dataGivenName, dataFamilyName, dataPicture].forEach((item) =>
+        [dataEmail, dataPhone, datafirstName, datalastName, dataPicture].forEach((item) =>
             attributeList.push(new CognitoUserAttribute(item)));
 
         const username = newuser.username();
 
         return new Promise<string>((resolve, reject) =>
-            userPool.signUp(username, newuser.passwd, attributeList, null, function(err, result) {
+            userPool.signUp(username, newuser.password, attributeList, null, function(err, result) {
                 if (err) {
                     reject(err);
                 } else {
