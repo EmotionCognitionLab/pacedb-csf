@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-
 import { Router } from '@angular/router';
+import { NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 
 import { AuthService } from './auth.service';
 import { User } from './user';
@@ -11,11 +11,13 @@ import { User } from './user';
 })
 
 export class RegisterComponent implements OnInit {
+    private earliestExpiration = new Date();
     user = new User('', '',
     'https://scontent-lax3-2.xx.fbcdn.net/v/t1.0-1/c0.18.144.144/1959924_10152245270295149_894823673_n.jpg?oh=62bd96d9ceacdba3940f448e1fe27479&oe=5A4E6CA3',
-     '', '');
-     emailPreferred = true;
-     errMsg = '';
+     '', this.earliestExpiration);
+    emailPreferred = true;
+    errMsg = '';
+    selectedExpirationDate: NgbDateStruct;
 
     constructor(
         private authService: AuthService,
@@ -28,7 +30,20 @@ export class RegisterComponent implements OnInit {
         this.emailPreferred = someval;
     }
 
+    // Used (only partially successfully) by the ngDatePicker to mark dates prior
+    // to today invalid.
+    invalidExpirationDate(date: NgbDateStruct, current: {year: number, month: number}): boolean {
+        const now = new Date();
+        const selectedDate = new Date(date.year, date.month, date.day);
+        return selectedDate.valueOf() < now.valueOf();
+    }
+
     register(): void {
+        this.user.expirationDate = new Date(
+            this.selectedExpirationDate.year,
+            this.selectedExpirationDate.month - 1,
+            this.selectedExpirationDate.day
+        );
         this.authService.register(this.user)
         .then((res) => {
             this.router.navigate(['/verify', {'username': this.user.username()}]);

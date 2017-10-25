@@ -8,6 +8,7 @@ export class User {
         public lastName: string,
         public photoUrl: string,
         public password: string,
+        public expirationDate: Date,
         public email?: string,
         public phone?: string
         ) {}
