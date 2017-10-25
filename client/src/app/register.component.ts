@@ -28,6 +28,14 @@ export class RegisterComponent implements OnInit {
 
     changeContactPref(someval: boolean) {
         this.emailPreferred = someval;
+        // Unset the field that isn't preferred just in case
+        // the user entered something in it before changing her
+        // preference
+        if (someval) {
+            this.user.phone = '';
+        } else {
+            this.user.email = '';
+        }
     }
 
     // Used (only partially successfully) by the ngDatePicker to mark dates prior

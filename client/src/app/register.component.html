@@ -10,14 +10,14 @@
             <label class="radio-inline" for="email-pref">
                 <input type="radio" id="email-pref"
                 required checked name="contactPref" value="email" 
-                (change)="emailPreferred = $event.target.checked">
+                (change)="changeContactPref($event.target.checked)">
                 Email
             </label>
 
             <label class="radio-inline" for="phone-pref">
                 <input type="radio" id="phone-pref"
                 required name="contactPref" value="phone"
-                (change)="emailPreferred = !$event.target.checked">
+                (change)="changeContactPref(!$event.target.checked)">
                 Phone
             </label>
         </div>
