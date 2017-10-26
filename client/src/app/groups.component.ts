@@ -27,6 +27,12 @@ export class GroupsComponent implements OnInit {
         });
     }
 
+    onGroupAdded(group: Group): void {
+        // have to re-assign groups to trigger view change detection
+        this.groups = [group].concat(this.groups);
+        this.sortGroupsByName();
+    }
+
     private sortGroupsByName(): void {
         this.groups.sort((a: Group, b: Group) => {
             const uA = a.name.toUpperCase();

@@ -1,9 +1,6 @@
 <div class="container">
     <h1>Add Group</h1>
-    <div [hidden]="errMsg === ''" 
-        class="alert alert-danger">
-        {{errMsg}}
-    </div>
+    <ngb-alert [type]="alertType" *ngIf="!statusMsgClosed" (close)="statusMsgClosed = true">{{statusMsg}}</ngb-alert>
     <form (ngSubmit)="addGroup()" #groupForm="ngForm">
         <div class="form-group">
             <input type="text" class="form-control short left" id="groupName"

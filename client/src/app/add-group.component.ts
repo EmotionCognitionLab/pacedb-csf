@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, EventEmitter, Output } from '@angular/core';
 import { NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 
 import { Group } from './group';
@@ -11,7 +11,10 @@ import { GroupService } from './group.service';
 
 export class AddGroupComponent implements OnInit {
     group = new Group('', 0, 0);
-    errMsg = '';
+    @Output() groupAdded = new EventEmitter<Group>();
+    statusMsg = '';
+    statusMsgClosed = true;
+    alertType = 'success';
 
     earliestDate = new Date();
     selectedStartDate: NgbDateStruct;
@@ -25,9 +28,19 @@ export class AddGroupComponent implements OnInit {
         this.group.start_date = this.NgbDateToYYYYMMDDNum(this.selectedStartDate);
         this.group.end_date = this.NgbDateToYYYYMMDDNum(this.selectedEndDate);
         this.groupService.addGroup(this.group)
+        .then((result) => {
+            this.groupAdded.emit(this.group);
+            this.statusMsg = result;
+            this.alertType = 'success';
+        })
         .catch((err) => {
-            this.errMsg = err.message;
+            this.statusMsg = err.message;
+            this.alertType = 'warning';
         });
+        this.statusMsgClosed = false;
+        if (this.alertType === 'success') {
+            setTimeout(() => this.statusMsgClosed = true, 20000);
+        }
     }
 
     // Used (only partially successfully) by the ngDatePicker to mark dates prior
