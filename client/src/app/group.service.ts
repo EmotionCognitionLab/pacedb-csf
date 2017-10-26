@@ -36,7 +36,7 @@ export class GroupService extends DynamoService {
             if (item.Item === undefined) {
                 throw new Error('Group id ' + id + ' not found.');
             }
-            return new Group(item.Item.id, item.Item.name);
+            return new Group(item.Item.name);
         });
     }
 
@@ -58,7 +58,7 @@ export class GroupService extends DynamoService {
                 throw new Error('No groups found.');
             }
             item.Items.forEach(i => {
-                result.push(new Group(i.id, i.name));
+                result.push(new Group(i.name));
             });
             if (item.LastEvaluatedKey !== undefined) {
                 params['ExclusiveStartKey'] = item.LastEvaluatedKey;

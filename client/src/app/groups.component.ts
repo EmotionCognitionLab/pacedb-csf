@@ -8,7 +8,7 @@ import { GroupService } from './group.service';
     template: `
     <ul>
         <li *ngFor="let g of groups">
-            {{g.id}}: {{g.name}}
+            {{g.name}}
         </li>
     </ul>
     {{errorMsg}}
@@ -17,7 +17,7 @@ import { GroupService } from './group.service';
 })
 
 export class GroupsComponent implements OnInit {
-    group = new Group('', '');
+    group = new Group('');
     groups: Group[];
     errorMsg = '';
     constructor(private groupService: GroupService) { }
