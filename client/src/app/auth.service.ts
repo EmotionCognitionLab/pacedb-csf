@@ -89,12 +89,17 @@ export class AuthService {
             Value: newuser.lastName
         };
 
+        const dataGroup = {
+            Name: 'custom:group',
+            Value: newuser.group
+        };
+
         const dataPicture = {
             Name: 'picture',
             Value: newuser.photoUrl
         };
 
-        [dataEmail, dataPhone, datafirstName, datalastName, dataPicture].forEach((item) =>
+        [dataEmail, dataPhone, datafirstName, datalastName, dataGroup, dataPicture].forEach((item) =>
             attributeList.push(new CognitoUserAttribute(item)));
 
         const username = newuser.username();

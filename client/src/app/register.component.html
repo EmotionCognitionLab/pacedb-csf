@@ -67,6 +67,12 @@
         </div>
 
         <div class="form-group">
+            <input type="text" class="form-control short" id="group" 
+            required [(ngModel)]="user.group" name="group" placeholder="Group"
+            [ngbTypeahead]="groupSearch" />
+        </div>    
+
+        <div class="form-group">
             <label for="photoUrl">Photo (URL)</label>
             <input type="text" class="form-control" id="photoUrl"
             required [(ngModel)]="user.photoUrl" name="photoUrl">

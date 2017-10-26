@@ -1,6 +1,6 @@
 export class User {
     id: string;
-    groupId: string;
+    group: string;
     isAdmin = false;
     dateCreated: Date;
 
