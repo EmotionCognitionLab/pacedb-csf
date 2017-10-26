@@ -1,0 +1,19 @@
+<div class="container">
+    <h1>All Groups</h1>
+    <table class="table table-fixed">
+        <thead>
+            <tr>
+                <th class="col-xs-3">Group Name</th>
+                <th class="col-xs-3">Start Date</th>
+                <th class="col-xs-6">End Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let g of groups">
+                <td class="col-xs-3">{{g.name}}</td>
+                <td class="col-xs-3">{{formattedDate(g.start_date)}}</td>
+                <td class="col-xs-6">{{formattedDate(g.end_date)}}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

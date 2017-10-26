@@ -6,13 +6,11 @@ import { GroupService } from './group.service';
 
 @Component({
     selector: 'app-add-group',
-    templateUrl: 'add-group.component.html',
-    providers: [GroupService]
+    templateUrl: 'add-group.component.html'
 })
 
 export class AddGroupComponent implements OnInit {
     group = new Group('', 0, 0);
-    groups: Group[];
     errMsg = '';
 
     earliestDate = new Date();
@@ -21,19 +19,12 @@ export class AddGroupComponent implements OnInit {
 
     constructor(private groupService: GroupService) { }
 
-    ngOnInit() {
-        this.groupService.getAllGroups()
-        .then((allGroups) => { this.groups = allGroups; })
-        .catch((err) => {
-            this.errMsg = err.message;
-        });
-    }
+    ngOnInit() { }
 
     addGroup() {
         this.group.start_date = this.NgbDateToYYYYMMDDNum(this.selectedStartDate);
         this.group.end_date = this.NgbDateToYYYYMMDDNum(this.selectedEndDate);
         this.groupService.addGroup(this.group)
-        .then((msg) => this.groups.push(this.group))
         .catch((err) => {
             this.errMsg = err.message;
         });
