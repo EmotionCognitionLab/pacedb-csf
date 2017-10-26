@@ -94,16 +94,7 @@ export class AuthService {
             Value: newuser.photoUrl
         };
 
-        const ed = newuser.expirationDate;
-        const year = ed.getFullYear();
-        const month = (ed.getMonth() + 1).toString().padStart(2, '0');
-        const day = ed.getDate().toString().padStart(2, '0');
-        const dataExpirationDate = {
-            Name: 'custom:expiration_date',
-            Value: `${year}${month}${day}`
-        };
-
-        [dataEmail, dataPhone, datafirstName, datalastName, dataPicture, dataExpirationDate].forEach((item) =>
+        [dataEmail, dataPhone, datafirstName, datalastName, dataPicture].forEach((item) =>
             attributeList.push(new CognitoUserAttribute(item)));
 
         const username = newuser.username();

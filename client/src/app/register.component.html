@@ -72,24 +72,6 @@
             required [(ngModel)]="user.photoUrl" name="photoUrl">
         </div>
 
-        <div class="form-group">
-            <div class="input-group">
-              <input type="text" class="form-control short" placeholder="Expiration date"
-                     name="dp" [(ngModel)]="selectedExpirationDate" ngbDatepicker 
-                     required 
-                     validDateRange earliestDate="{{earliestExpiration.toDateString()}}" latestDate="2019/12/31" 
-                     [(markDisabled)]="invalidExpirationDate"
-                     #d="ngbDatepicker" #expiration="ngModel">
-              <button class="input-group-addon" (click)="d.toggle()" type="button">
-                <img src="/assets/img/calendar-icon.svg" style="width: 1.2rem; height: 1rem; cursor: pointer;"/>
-              </button>
-            </div>
-        </div>
-
-        <div [hidden]="expiration.valid || expiration.pristine" class="alert alert-danger">
-            The expiration date may not be in the past and must be in YYYY-MM-DD format.
-        </div>
-
         <div [hidden]="thepass.valid || thepass.pristine" class="alert alert-danger">
             Password is required.
         </div>
