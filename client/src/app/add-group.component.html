@@ -1,0 +1,58 @@
+<div class="container">
+    <h1>Add Group</h1>
+    <div [hidden]="errMsg === ''" 
+        class="alert alert-danger">
+        {{errMsg}}
+    </div>
+    <form (ngSubmit)="addGroup()" #groupForm="ngForm">
+        <div class="form-group">
+            <input type="text" class="form-control short left" id="groupName"
+            required [(ngModel)]="group.name" minlength="3" maxlength="100" name="groupName"
+            placeholder="Name" #groupName="ngModel" (focus)="de.close(); ds.close()">
+
+            <input type="text" class="form-control short" placeholder="Start date"
+            name="dp-s" [(ngModel)]="selectedStartDate" ngbDatepicker 
+            required 
+            validDateRange earliestDate="{{earliestDate.toDateString()}}" latestDate="2019/10/31" 
+            [(markDisabled)]="invalidDateOption" (focus)="ds.open(); de.close()"
+            #ds="ngbDatepicker" #start="ngModel" style="float: left;">
+            <button class="input-group-addon left" (click)="ds.toggle()" type="button">
+                <img src="/assets/img/calendar-icon.svg" class="calendar-icon"/>
+            </button>
+
+            <input type="text" class="form-control short" placeholder="End date"
+            name="dp-e" [(ngModel)]="selectedEndDate" ngbDatepicker 
+            required 
+            validDateRange earliestDate="{{earliestDate.toDateString()}}" latestDate="2019/12/31" 
+            [(markDisabled)]="invalidDateOption" (focus)="de.open(); ds.close()"
+            #de="ngbDatepicker" #end="ngModel" style="float: left;">
+            <button class="input-group-addon left" (click)="de.toggle()" type="button">
+                <img src="/assets/img/calendar-icon.svg" class="calendar-icon" />
+            </button>
+
+            <button class="btn" [disabled]="!groupForm.form.valid" type="submit" (focus)="ds.close(); de.close()">Add</button>
+        </div>
+
+        <div *ngIf="groupName.invalid && !groupName.pristine" class="alert alert-danger">
+            <div *ngIf="groupName.errors.required">
+                Group name is required.
+            </div>
+            <div *ngIf="groupName.errors.minlength">
+                Group name must be at least 3 characters long.
+            </div>
+            <div *ngIf="groupName.errors.maxlength">
+                Group name must be no more than 100 characters long.
+            </div>
+        </div>
+
+        <div [hidden]="start.valid || start.pristine" class="alert alert-danger">
+            The start date may not be in the past and must be in YYYY-MM-DD format.
+        </div>
+
+        <div [hidden]="end.valid || end.pristine" class="alert alert-danger">
+                The end date may not be in the past and must be in YYYY-MM-DD format.
+        </div>
+
+    </form>
+
+</div>
