@@ -292,16 +292,25 @@ definitions:
     properties:
       id:
         type: string
-      name:
+      group:
         type: string
-      score:
-        type: integer
+      first_name:
+        type: string
+      last_name:
+        type: string
+      email:
+        type: string
+        description: "If this is empty or not provided, phone must be set."
+      phone:
+        type: string
+        description: "If this is empty or not provided, email must be set."
       photoUrl:
         type: string
     required:
       - id
-      - name
-      - score
+      - group
+      - first_name
+      - last_name
       - photoUrl
   UserList:
     type: array
