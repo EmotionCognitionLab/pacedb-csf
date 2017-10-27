@@ -1,12 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 
-import { Group } from './group';
-import { GroupService } from './group.service';
+import { Group } from '../group';
+import { GroupService } from '../group.service';
 
 @Component({
     selector: 'app-groups',
     templateUrl: 'groups.component.html',
-    styleUrls: ['../assets/css/groups.css']
+    styleUrls: ['../../assets/css/groups.css']
 })
 
 export class GroupsComponent implements OnInit {

@@ -4,10 +4,10 @@ import { NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 
 import { Observable } from 'rxjs/Observable';
 
-import { AuthService } from './auth.service';
-import { Group } from './group';
-import { GroupService } from './group.service';
-import { User } from './user';
+import { AuthService } from '../auth.service';
+import { Group } from '../group';
+import { GroupService } from '../group.service';
+import { User } from '../user';
 
 @Component({
     selector: 'app-register-form',
@@ -56,7 +56,7 @@ export class RegisterComponent implements OnInit {
     register(): void {
         this.authService.register(this.user)
         .then((res) => {
-            this.router.navigate(['/verify', {'username': this.user.username()}]);
+            this.router.navigate(['/admin/verify', {'username': this.user.username()}]);
         })
         .catch((err) => {
             this.errMsg = err.message;
