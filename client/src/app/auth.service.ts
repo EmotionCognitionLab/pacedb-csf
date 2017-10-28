@@ -20,6 +20,12 @@ export class AuthService {
         Paranoia: 8
     };
 
+    private _dest = 'default-dest';
+
+    getDest(): string {
+        return this._dest;
+    }
+
     authenticate(username: string, password: string): Promise<string> {
         const authData = {
             Username: username,
@@ -45,6 +51,41 @@ export class AuthService {
                 onFailure: function(err) {
                     reject(err);
                 }
+            })
+        );
+    }
+
+    isAdmin(dest: string): Promise<boolean> {
+        this._dest = dest;
+       // TODO call /user/roles endpoint and check to see if they have admin role
+       return Promise.resolve(true);
+    }
+
+    isLoggedIn(dest: string): Promise<boolean> {
+        this._dest = dest;
+        return this.getUserSession()
+            .then((session) => {
+                return session.isValid();
+            })
+            .catch((err) => {
+                console.log(err.message);
+                return false;
+            });
+    }
+
+    private getUserSession(): Promise<CognitoUserSession> {
+        const userPool = new CognitoUserPool(AuthService.poolData);
+        const user = userPool.getCurrentUser();
+        if (user === null) {
+            return Promise.reject(new Error('User is not logged in'));
+        }
+        return new Promise<CognitoUserSession>((resolve, reject) =>
+            user.getSession(function(err, session) {
+                if (err) {
+                    console.log(err.message);
+                    reject(err);
+                }
+                resolve(session);
             })
         );
     }

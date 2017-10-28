@@ -10,6 +10,7 @@ import { LoginComponent } from './login.component';
 
 import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
+import { RouteGuardService } from './route-guard.service';
 
 @NgModule({
   declarations: [
@@ -23,7 +24,7 @@ import { GroupService } from './group.service';
     AdminModule,
     AppRoutingModule
   ],
-  providers: [AuthService, GroupService],
+  providers: [AuthService, GroupService, RouteGuardService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

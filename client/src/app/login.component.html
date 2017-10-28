@@ -1,10 +1,10 @@
 <div class="container">
     <h1>Login</h1>
-    <div [hidden]="loginResultMsg === ''" 
+    <div [hidden]="statusMsg === ''" 
         class="alert" 
         [class.alert-danger]="loginHasError"
         [class.alert-success]="!loginHasError">
-        {{loginResultMsg}}
+        {{statusMsg}}
     </div>
     <form (ngSubmit)="login()" #loginForm="ngForm">
         <div class="form-group">
