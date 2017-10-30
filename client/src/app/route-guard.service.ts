@@ -23,11 +23,18 @@ export class RouteGuardService implements CanActivate, CanActivateChild {
             if (!wasLoggedIn) {
                 return false;
             }
-            // TODO needs to be more configurable if we ever have more than admin/logged in
+            // TODO needs to be more configurable if we ever have more than admin/logged in states
             const tempDest = dest.startsWith('/') ? dest.toLowerCase().slice(1) : dest.toLowerCase();
-            if (tempDest.startsWith('admin')) {
-                return this.isAdmin(dest);
+            if (!tempDest.startsWith('admin')) {
+                return true;
             }
+            return this.isAdmin(dest).then((isAdmin) => {
+                if (!isAdmin) {
+                    this.router.navigate(['/forbidden']);
+                    return false;
+                }
+                return true;
+            });
         })
         .catch((err) => {
             console.log(err.message);
@@ -40,7 +47,7 @@ export class RouteGuardService implements CanActivate, CanActivateChild {
     }
 
     protected isAdmin(dest: string): Promise<boolean> {
-        return this.authService.isAdmin(dest);
+        return this.authService.isAdminInsecure(dest);
     }
 
     protected isLoggedIn(dest: string): Promise<boolean> {

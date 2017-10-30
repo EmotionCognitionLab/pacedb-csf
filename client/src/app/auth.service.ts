@@ -7,6 +7,7 @@ import {
     CognitoUserPool,
     CognitoUserSession
 } from 'amazon-cognito-identity-js';
+import * as JWT from 'jwt-decode';
 import 'rxjs/add/operator/toPromise';
 
 import {User} from './user';
@@ -55,22 +56,44 @@ export class AuthService {
         );
     }
 
-    isAdmin(dest: string): Promise<boolean> {
+    // DO NOT USE this method for anything that requires
+    // strong protection. It does not verify the JWT token
+    // signature, meaning someone can replace the JWT
+    // token payload with their own information. This is
+    // fine for protecting something so that an unwitting
+    // user doesn't stumble across it, but not for protecting
+    // something against an actual attack.
+    isAdminInsecure(dest: string): Promise<boolean> {
         this._dest = dest;
-       // TODO call /user/roles endpoint and check to see if they have admin role
-       return Promise.resolve(true);
+        return this.getUserSession()
+        .then((session) => {
+            if (!session.isValid()) {
+                return false;
+            }
+            const token = JWT(session.getIdToken().getJwtToken());
+            if (!token['cognito:groups']) {
+                return false;
+            }
+            const adminGroups = environment.groupsWithAdminPerms;
+            const isAdmin = adminGroups.find((item) => token['cognito:groups'].indexOf(item) !== -1);
+            return isAdmin !== undefined;
+        })
+        .catch((err) => {
+            console.log(err.message);
+            return false;
+        });
     }
 
     isLoggedIn(dest: string): Promise<boolean> {
         this._dest = dest;
         return this.getUserSession()
-            .then((session) => {
-                return session.isValid();
-            })
-            .catch((err) => {
-                console.log(err.message);
-                return false;
-            });
+        .then((session) => {
+            return session.isValid();
+        })
+        .catch((err) => {
+            console.log(err.message);
+            return false;
+        });
     }
 
     private getUserSession(): Promise<CognitoUserSession> {

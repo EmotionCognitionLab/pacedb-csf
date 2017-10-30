@@ -10,5 +10,7 @@ export const environment = {
   awsAccessKeyId: 'your aws key',
   awsSecretAccessKey: 'your aws secret key',
   awsRegion: 'us-east-2',
-  dynamoEndpoint: 'http://localhost:8000'
+  dynamoEndpoint: 'http://localhost:8000',
+  groupsTable: 'hrv-users',
+  groupsWithAdminPerms: ['staff']
 };

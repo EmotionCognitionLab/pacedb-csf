@@ -6,6 +6,7 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { AdminModule } from './admin/admin.module';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
+import { ForbiddenComponent } from './forbidden.component';
 import { LoginComponent } from './login.component';
 
 import { AuthService } from './auth.service';
@@ -15,6 +16,7 @@ import { RouteGuardService } from './route-guard.service';
 @NgModule({
   declarations: [
     AppComponent,
+    ForbiddenComponent,
     LoginComponent
   ],
   imports: [
