@@ -24,7 +24,6 @@ export class AwsConfigService {
                     region: environment.awsRegion
                 });
                 credentials.refresh((error) => {
-                    console.log(new Error('refreshing creds'));
                     if (error) {
                         throw error;
                     }
