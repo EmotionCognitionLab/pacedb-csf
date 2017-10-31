@@ -10,6 +10,8 @@ import { ForbiddenComponent } from './forbidden.component';
 import { LoginComponent } from './login.component';
 
 import { AuthService } from './auth.service';
+import { AwsConfigService } from './aws-config.service';
+import { DynamoService } from './dynamo.service';
 import { GroupService } from './group.service';
 import { RouteGuardService } from './route-guard.service';
 
@@ -26,7 +28,7 @@ import { RouteGuardService } from './route-guard.service';
     AdminModule,
     AppRoutingModule
   ],
-  providers: [AuthService, GroupService, RouteGuardService],
+  providers: [AuthService, AwsConfigService, GroupService, DynamoService, RouteGuardService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

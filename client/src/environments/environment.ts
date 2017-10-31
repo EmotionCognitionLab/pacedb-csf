@@ -5,10 +5,9 @@
 
 export const environment = {
   production: false,
+  identityPoolId: '',
   userPoolId: 'your user pool id',
   userPoolClientId: 'your user pool app client id',
-  awsAccessKeyId: 'your aws key',
-  awsSecretAccessKey: 'your aws secret key',
   awsRegion: 'us-east-2',
   dynamoEndpoint: 'http://localhost:8000',
   groupsTable: 'hrv-users',
