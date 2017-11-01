@@ -1,0 +1,8 @@
+{
+    "Template": {
+      "TemplateName": "ReminderEmail_DEV",
+      "SubjectPart": "Don't forget to practice!",
+      "HtmlPart": "{{name}} - just wanted to remind you to do your practice and to <a href=\"http://localhost:4200/scores/new\">record your time</a> so that your team can get its bonus!",
+      "TextPart": "{{name}} - just wanted to remind you to do your practice and to go to http://localhost:4200/scores/new to record your time</a> so that your team can get its bonus!"
+    }
+  }
