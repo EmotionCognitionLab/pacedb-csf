@@ -25,9 +25,15 @@ paths:
     get:
       tags:
         - groups
-      summary: Get all of the members of the group the caller belongs to
+      summary: Get all of the members of the group the caller belongs to. (Or, for admins, any group.)
       description: ''
       operationId: getGroupMembers
+      parameters:
+        - in: query
+          name: group_name
+          type: string
+          required: false
+          description: Name of the group whose members you want. If the caller is neither an admin nor a member of the group the response will be 401 Unauthorized.
       responses:
         '200':
           description: Expected response
@@ -35,6 +41,10 @@ paths:
             $ref: '#/definitions/UserList'
         '400':
           description: Bad request error
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Unauthorized
           schema:
             $ref: '#/definitions/Error'
         '500':
@@ -58,9 +68,15 @@ paths:
     get:
       tags:
         - groups
-      summary: Get all of the messages for the group the caller belongs to
+      summary: Get all of the messages for the group the caller belongs to. (Or, for admins, any group.)
       description: ''
       operationId: getGroupMessages
+      parameters:
+        - in: query
+          name: group_name
+          type: string
+          required: false
+          description: Name of the group whose messages you want. If the caller is neither an admin nor a member of the group the response will be 401 Unauthorized.
       responses:
         '200':
           description: Expected response
@@ -68,6 +84,10 @@ paths:
             $ref: '#/definitions/GroupMessageList'
         '400':
           description: Bad request error
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Unauthorized
           schema:
             $ref: '#/definitions/Error'
         '500':
@@ -90,7 +110,7 @@ paths:
     post:
       tags:
         - groups
-      summary: Create a new message for the group the caller belongs to
+      summary: Create a new message for the group the caller belongs to. (Of, for admins, any group.)
       description: ''
       operationId: createGroupMessage
       parameters:
@@ -99,6 +119,11 @@ paths:
           description: The message to send to the group
           schema:
             $ref: '#/definitions/GroupMessage'
+        - in: query
+          name: group_name
+          type: string
+          required: false
+          description: The name of the group you wish to post a message to. Only admins may post to groups they are not a member of - anyone else will receive a 401 Unauthorized response.
       responses:
         '201':
           description: Created successfully
@@ -106,6 +131,10 @@ paths:
             $ref: '#/definitions/GroupMessage'
         '400':
           description: Bad request error
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Unauthorized
           schema:
             $ref: '#/definitions/Error'
         '500':
