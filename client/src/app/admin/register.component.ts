@@ -4,10 +4,10 @@ import { NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 
 import { Observable } from 'rxjs/Observable';
 
-import { AuthService } from '../auth.service';
-import { Group } from '../group';
-import { GroupService } from '../group.service';
-import { User } from '../user';
+import { AuthService } from '../service/auth.service';
+import { Group } from '../model/group';
+import { GroupService } from '../service/group.service';
+import { User } from '../model/user';
 
 @Component({
     selector: 'app-register-form',

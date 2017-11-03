@@ -12,11 +12,11 @@ import { LoginComponent } from './login.component';
 import { UserComponent } from './user.component';
 import { UserPageComponent } from './user-page.component';
 
-import { AuthService } from './auth.service';
-import { AwsConfigService } from './aws-config.service';
-import { DynamoService } from './dynamo.service';
-import { GroupService } from './group.service';
-import { RouteGuardService } from './route-guard.service';
+import { AuthService } from './service/auth.service';
+import { AwsConfigService } from './service/aws-config.service';
+import { DynamoService } from './service/dynamo.service';
+import { GroupService } from './service/group.service';
+import { RouteGuardService } from './service/route-guard.service';
 
 @NgModule({
   declarations: [

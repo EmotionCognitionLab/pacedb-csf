@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 
-import { CognitoIdentityCredentials, Config } from '../../node_modules/aws-sdk';
+import { CognitoIdentityCredentials, Config } from '../../../node_modules/aws-sdk';
 
 import { AuthService } from './auth.service';
-import {environment} from '../environments/environment';
+import {environment} from '../../environments/environment';
 
 @Injectable()
 export class AwsConfigService {

@@ -1,10 +1,10 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { NgIf } from '@angular/common';
 
-import { EmojiFeedback } from './emoji-feedback';
-import { User } from './user';
+import { EmojiFeedback } from './model/emoji-feedback';
+import { User } from './model/user';
 
-import { AuthService } from './auth.service';
+import { AuthService } from './service/auth.service';
 
 @Component({
     selector: 'app-user',

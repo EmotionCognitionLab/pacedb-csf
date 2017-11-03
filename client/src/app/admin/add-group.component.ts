@@ -1,8 +1,8 @@
 import { Component, OnInit, EventEmitter, Output } from '@angular/core';
 import { NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 
-import { Group } from '../group';
-import { GroupService } from '../group.service';
+import { Group } from '../model/group';
+import { GroupService } from '../service/group.service';
 
 @Component({
     selector: 'app-add-group',

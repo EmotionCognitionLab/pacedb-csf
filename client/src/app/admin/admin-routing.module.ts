@@ -6,7 +6,7 @@ import { GroupsComponent } from './groups.component';
 import { RegisterComponent } from './register.component';
 import { VerifyComponent } from './verify.component';
 
-import { RouteGuardService } from '../route-guard.service';
+import { RouteGuardService } from '../service/route-guard.service';
 
 const adminRoutes: Routes = [
     {

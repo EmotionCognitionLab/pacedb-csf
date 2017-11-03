@@ -1,7 +1,7 @@
 import { Component, OnInit, Input } from '@angular/core';
 
-import { EmojiFeedback } from './emoji-feedback';
-import { User } from './user';
+import { EmojiFeedback } from './model/emoji-feedback';
+import { User } from './model/user';
 
 @Component({
     selector: 'app-user-page',

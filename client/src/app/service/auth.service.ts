@@ -10,8 +10,8 @@ import {
 import * as JWT from 'jwt-decode';
 import 'rxjs/add/operator/toPromise';
 
-import {User} from './user';
-import {environment} from '../environments/environment';
+import {User} from '../model/user';
+import {environment} from '../../environments/environment';
 
 @Injectable()
 export class AuthService {

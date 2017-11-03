@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 
 // import AWS = require('aws-sdk');
-import { DynamoDB } from '../../node_modules/aws-sdk/';
-import { Config, CognitoIdentityCredentials } from '../../node_modules/aws-sdk';
+import { DynamoDB } from '../../../node_modules/aws-sdk/';
+import { Config, CognitoIdentityCredentials } from '../../../node_modules/aws-sdk';
 
 import { AwsConfigService } from './aws-config.service';
-import {environment} from '../environments/environment';
+import {environment} from '../../environments/environment';
 
 @Injectable()
 export class DynamoService {

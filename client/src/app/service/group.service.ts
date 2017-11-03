@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 
-import { DynamoDB } from '../../node_modules/aws-sdk/';
+import { DynamoDB } from '../../../node_modules/aws-sdk/';
 
 import { DynamoService } from './dynamo.service';
-import { Group } from './group';
+import { Group } from '../model/group';
 
 
 @Injectable()
