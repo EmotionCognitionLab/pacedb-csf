@@ -10,3 +10,7 @@ input.short {
   float: left;
   margin-right: 10px;
 }
+/* fix for https://github.com/twbs/bootstrap/pull/24126 */
+.btn {
+  border: 1px solid;
+}
