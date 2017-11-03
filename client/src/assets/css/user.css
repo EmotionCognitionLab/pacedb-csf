@@ -1,0 +1,77 @@
+.user {
+    height: 100px;
+}
+.user img {
+    display: block;
+    float: left;
+    max-width: 70px;
+    max-height: 70px;
+    width: auto;
+    height: auto;
+    margin-right: 7px;
+}
+
+.staff-label {
+    font-size: 0.5em;
+}
+
+#progress-container {
+    text-align: left;
+    float: left;
+    margin: 10px 10px 0px 10px;
+}
+
+.progress {
+    background-color: rgb(119, 118, 118);
+    width: 150px;
+    height: 12px;
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    float: left;
+}
+
+.progress, .status {
+    border-radius: 10px;
+}
+
+.status {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    box-shadow: inset 0 0 1em gold;
+    background-color: rgb(124, 123, 123);
+    z-index: 2;
+    -webkit-transition: all 1.2s linear;
+    -moz-transition: all 1.2s linear;
+    -o-transition: all 1.2s linear;
+    transition: all 1.2s linear;
+}
+
+.none .status { width: 0%; }
+.ten .status,  { width: 10%; }
+.twenty .status { width: 20%; }
+.thirty .status { width: 30%; }
+.forty .status { width: 40%; }
+.fifty .status { width: 50%; }
+.sixty .status { width: 60%; }
+.seventy .status { width: 70%; }
+.eighty .status { width: 80%; }
+.ninety .status { width: 90%; }
+.one-hundred .status{ width: 100%; }
+
+.ten .status, .twenty .status, .thirty .status, .forty .status {
+    box-shadow: inset 0 0 1em rgb(124, 47, 47);
+    background-color: #F00;
+}
+
+.fifty .status, .sixty .status, .seventy .status, .eighty .status {
+    box-shadow: inset 0 0 1em #757351;
+    background-color: #f9e703;
+}
+
+.ninety .status, .one-hundred .status {
+    box-shadow: inset 0 0 1em #4C6600;
+    background-color: #8AE62E;
+}

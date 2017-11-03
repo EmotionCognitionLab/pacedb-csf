@@ -83,6 +83,27 @@ export class AuthService {
         });
     }
 
+    // This method does NOT verify the JWT token signature,
+    // meaning that someone can supply their own information
+    // in the JWT payload. Do not rely on this for anything where
+    // accurately knowing the user identity is critical.
+    currentUserInsecure(): Promise<User> {
+        return this.getUserSession()
+        .then((session) => {
+            if (!session.isValid()) {
+                return null;
+            }
+            const token = JWT(session.getIdToken().getJwtToken());
+            const u = new User(token['given_name'], token['family_name'], token['picture'], '');
+            u.id = token['sub'];
+            return u;
+        })
+        .catch((e) => {
+            console.log(e);
+            return null;
+        });
+    }
+
     isLoggedIn(dest: string): Promise<boolean> {
         this._dest = dest;
         return this.getUserSession()

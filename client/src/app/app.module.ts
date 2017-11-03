@@ -6,8 +6,11 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { AdminModule } from './admin/admin.module';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
+import { EmojiPickerComponent } from './emoji-picker.component';
 import { ForbiddenComponent } from './forbidden.component';
 import { LoginComponent } from './login.component';
+import { UserComponent } from './user.component';
+import { UserPageComponent } from './user-page.component';
 
 import { AuthService } from './auth.service';
 import { AwsConfigService } from './aws-config.service';
@@ -18,8 +21,11 @@ import { RouteGuardService } from './route-guard.service';
 @NgModule({
   declarations: [
     AppComponent,
+    EmojiPickerComponent,
     ForbiddenComponent,
-    LoginComponent
+    LoginComponent,
+    UserComponent,
+    UserPageComponent
   ],
   imports: [
     NgbModule.forRoot(),
