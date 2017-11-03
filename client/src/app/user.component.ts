@@ -16,7 +16,7 @@ import { AuthService } from './auth.service';
                 <div>
                     <div *ngIf="user.isAdmin" class="staff-label">STAFF</div>
                 </div>
-                <span *ngFor="let fb of user.emojis" title="{{fb.from}}">{{fb.emoji}}&nbsp;</span>
+                <span *ngFor="let fb of user.emojis" class='emoji-feedback' title="{{fb.from}}">{{fb.emoji}}&nbsp;</span>
                 <br />
                 <div class='progress {{doneClass()}}'>
                     <span class='status'></span>
