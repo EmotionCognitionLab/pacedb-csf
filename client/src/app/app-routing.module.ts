@@ -3,7 +3,6 @@ import { RouterModule, Routes } from '@angular/router';
 
 import { ForbiddenComponent } from './forbidden.component';
 import { LoginComponent } from './login.component';
-import { UserPageComponent } from './user-page.component';
 import { GroupPageComponent } from './group-page.component';
 
 import { GroupResolverService } from './service/group-resolver.service';
