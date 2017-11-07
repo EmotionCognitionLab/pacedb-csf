@@ -42,6 +42,9 @@ function getGroupMembers(event) {
         } else {
             requestedGroupName = callerGroup;
         }
+        if (requestedGroupName === undefined) {
+            return errorResult(404, 'User id ' + callerId + ' not found');
+        }
         const params = {
             TableName: usersTable,
             FilterExpression: '#G = :theGroup',

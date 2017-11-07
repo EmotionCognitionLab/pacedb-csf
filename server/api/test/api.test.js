@@ -66,6 +66,19 @@ const unknownGroupCallerIsAdmin = {
     "queryStringParameters": { group_name: 'does-not-exist' }
 }
 
+const callerDoesNotExist = {
+    "requestContext": { 
+        "authorizer": {
+            "claims": {
+                "sub": 'nobody-by-that-name',
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/group/members"
+    },
+    "queryStringParameters": null
+}
+
 function clearUsersTable() {
     const params = {
         TableName: usersTable
@@ -187,4 +200,20 @@ describe('Group members request', function() {
             })
         });
     })
+    describe('with nonexistent caller', function() {
+        it('should return a 404', function() {
+            return lambdaLocal.execute({
+                event: callerDoesNotExist,
+                lambdaPath: 'api.js',
+                envfile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 404);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+    });
 });
