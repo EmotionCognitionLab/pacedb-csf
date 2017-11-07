@@ -5,6 +5,7 @@
 
 export const environment = {
   production: false,
+  apiBasePath: 'https://n9ixkogqs4.execute-api.us-east-2.amazonaws.com/Test',
   identityPoolId: '',
   userPoolId: 'your user pool id',
   userPoolClientId: 'your user pool app client id',

@@ -1,5 +1,6 @@
 export const environment = {
   production: true,
+  apiBasePath: 'https://n9ixkogqs4.execute-api.us-east-2.amazonaws.com/Prod',
   identityPoolId: '',
   userPoolId: '',
   userPoolClientId: '',

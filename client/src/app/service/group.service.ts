@@ -1,16 +1,25 @@
 import { Injectable } from '@angular/core';
+import { Http, Headers, URLSearchParams } from '@angular/http';
+import { RequestMethod, RequestOptions, RequestOptionsArgs } from '@angular/http';
+import { Response, ResponseContentType } from '@angular/http';
+
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/operator/map';
 
 import { DynamoDB } from '../../../node_modules/aws-sdk/';
 
+import { AuthService } from './auth.service';
 import { DynamoService } from './dynamo.service';
 import { Group } from '../model/group';
-
+import { User } from '../model/user';
+import { environment } from '../../environments/environment';
 
 @Injectable()
 export class GroupService {
     static tableName = 'hrv-groups';
+    basePath = environment.apiBasePath;
 
-    constructor(private dyno: DynamoService) {}
+    constructor(private dyno: DynamoService, private authService: AuthService, protected http: Http) {}
 
     addGroup(newGroup: Group): Promise<string> {
         return this.dyno.docClient
@@ -84,6 +93,70 @@ export class GroupService {
             console.log(err);
             return result;
         });
+    }
+
+     /**
+     * 
+     * @summary Get all of the members of the group the caller belongs to. (Or, for admins, any group.)
+     * @param groupName Name of the group whose members you want. If the caller is neither an admin nor a member of the group the response will be 401 Unauthorized.
+     */
+    public getGroupMembers(groupName?: string, extraHttpRequestParams?: any): Observable<User[]> {
+        return this.getGroupMembersWithHttpInfo(groupName, extraHttpRequestParams)
+            .map((response: Response) => {
+                if (response.status === 204) {
+                    return undefined;
+                } else {
+                    const memberArr = response.json() || [];
+                    const result = [];
+                    memberArr.forEach(member => {
+                        result.push(User.fromJsonObj(member));
+                    });
+                    return result;
+                }
+            });
+    }
+
+     /**
+     * Get all of the members of the group the caller belongs to. (Or, for admins, any group.)
+     * 
+     * @param groupName Name of the group whose members you want. If the caller is neither an admin nor a member of the group the response will be 401 Unauthorized.
+     */
+    public getGroupMembersWithHttpInfo(groupName?: string, extraHttpRequestParams?: any): Observable<Response> {
+        const path = this.basePath + '/group/members';
+
+        const queryParameters = new URLSearchParams();
+        // const headers = new Headers(this.defaultHeaders.toJSON()); // https://github.com/angular/angular/issues/6845
+        if (groupName !== undefined) {
+            queryParameters.set('group_name', <any>groupName);
+        }
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+
+        // to determine the Accept header
+        const produces: string[] = [
+            'application/json'
+        ];
+
+        // authentication (basic-user) required
+        const headers = new Headers();
+        const at = this.authService.getAccessToken();
+        headers.set('Authorization', at);
+
+        let requestOptions: RequestOptionsArgs = new RequestOptions({
+            method: RequestMethod.Get,
+            headers: headers,
+            search: queryParameters,
+            withCredentials: false
+        });
+        // https://github.com/swagger-api/swagger-codegen/issues/4037
+        if (extraHttpRequestParams) {
+            requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
+        }
+
+        return this.http.request(path, requestOptions);
     }
 
 }
