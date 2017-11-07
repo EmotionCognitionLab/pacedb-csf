@@ -1,0 +1,28 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "description": "API for hrv-social, implemented as AWS lambda function",
+  "main": "api.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EmotionCognitionLab/hrv-social.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/EmotionCognitionLab/hrv-social/issues"
+  },
+  "homepage": "https://github.com/EmotionCognitionLab/hrv-social#readme",
+  "devDependencies": {
+    "assert": "^1.4.1",
+    "dotenv": "^4.0.0",
+    "lambda-local": "^1.4.4",
+    "mocha": "^4.0.1"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.145.0"
+  }
+}
