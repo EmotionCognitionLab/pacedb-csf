@@ -7,6 +7,21 @@ export class User {
     dateCreated: Date;
     emojis: EmojiFeedback[] = [];
 
+    static fromJsonString(json: string): User {
+        const jsObj = JSON.parse(json);
+        return User.fromJsonObj(jsObj);
+    }
+
+    static fromJsonObj(jsObj): User {
+        const result = new User('', '', '', '');
+        for (const prop in jsObj) {
+            if (result.hasOwnProperty(prop)) {
+                result[prop] = jsObj[prop];
+            }
+        }
+        return result;
+    }
+
     constructor(public firstName: string,
         public lastName: string,
         public photoUrl: string,
@@ -20,6 +35,6 @@ export class User {
     }
 
     name(): string {
-        return this.firstName + ' ' + this.lastName.slice(0,1) + '.';
+        return this.firstName + ' ' + this.lastName.slice(0, 1) + '.';
     }
 }
