@@ -22,6 +22,17 @@ export class AuthService {
     };
 
     private _dest = 'default-dest';
+    private _accessToken: string;
+
+    constructor() {
+        this.getUserSession()
+        .then((session) => this._accessToken = session.getIdToken().getJwtToken())
+        .catch((err) => this._accessToken = null); // ignore it; user may not be logged in
+    }
+
+    getAccessToken(): string {
+        return this._accessToken;
+    }
 
     getDest(): string {
         return this._dest;
@@ -46,6 +57,7 @@ export class AuthService {
         return new Promise<string>((resolve, reject) =>
             cognitoUser.authenticateUser(authDetails, {
                 onSuccess: function(session: CognitoUserSession, userConfirmationNecessary?: boolean) {
+                    this.accessToken = session.getIdToken().getJwtToken();
                     resolve('Successfully authenticated ' + username);
                 },
                 onFailure: function(err) {
@@ -140,6 +152,7 @@ export class AuthService {
             if (cognitoUser != null) {
                 cognitoUser.signOut();
             }
+            this._accessToken = '';
             // if the user was null, return true anyway - they're effectively already logged out
             return true;
         } catch (e) {
