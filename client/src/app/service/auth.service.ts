@@ -22,16 +22,20 @@ export class AuthService {
     };
 
     private _dest = 'default-dest';
-    private _accessToken: string;
+    private _session: CognitoUserSession;
 
-    constructor() {
-        this.getUserSession()
-        .then((session) => this._accessToken = session.getIdToken().getJwtToken())
-        .catch((err) => this._accessToken = null); // ignore it; user may not be logged in
-    }
+    constructor() {}
 
-    getAccessToken(): string {
-        return this._accessToken;
+    getAccessToken(): Promise<string> {
+        if (this._session === undefined || !this._session.isValid()) {
+            return this.getUserSession() // renews the session
+            .then((session) => {
+                this._session = session;
+                return this._session.getIdToken().getJwtToken();
+            });
+        } else {
+            return Promise.resolve(this._session.getIdToken().getJwtToken());
+        }
     }
 
     getDest(): string {
@@ -129,6 +133,10 @@ export class AuthService {
     }
 
     getUserSession(): Promise<CognitoUserSession> {
+        if (this._session !== undefined && this._session.isValid()) {
+            return Promise.resolve(this._session);
+        }
+        // refresh the session
         const userPool = new CognitoUserPool(AuthService.poolData);
         const user = userPool.getCurrentUser();
         if (user === null) {
@@ -152,7 +160,7 @@ export class AuthService {
             if (cognitoUser != null) {
                 cognitoUser.signOut();
             }
-            this._accessToken = '';
+            this._session = undefined;
             // if the user was null, return true anyway - they're effectively already logged out
             return true;
         } catch (e) {

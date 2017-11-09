@@ -137,16 +137,11 @@ export class GroupService {
             'application/json'
         ];
 
-        // authentication (basic-user) required
         const headers = new Headers();
-        const at = this.authService.getAccessToken();
-        headers.set('Authorization', at);
-
         headers.set('Content-Type', 'application/json');
 
         let requestOptions: RequestOptionsArgs = new RequestOptions({
             method: RequestMethod.Post,
-            headers: headers,
             body: message == null ? '' : JSON.stringify(message), // https://github.com/angular/angular/issues/10612
             search: queryParameters,
             withCredentials: false
@@ -155,7 +150,14 @@ export class GroupService {
         if (extraHttpRequestParams) {
             requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
         }
-        return this.http.request(path, requestOptions);
+
+         // authentication (basic-user) required
+        const tokenPromise = this.authService.getAccessToken();
+        return Observable.fromPromise(tokenPromise).flatMap((accessToken) => {
+            headers.set('Authorization', accessToken);
+            requestOptions.headers = headers;
+            return this.http.request(path, requestOptions);
+        });
     }
 
      /**
@@ -204,22 +206,24 @@ export class GroupService {
         ];
 
         // authentication (basic-user) required
-        const headers = new Headers();
-        const at = this.authService.getAccessToken();
-        headers.set('Authorization', at);
+        const tokenPromise = this.authService.getAccessToken();
+        return Observable.fromPromise(tokenPromise).flatMap((accessToken) => {
+            const headers = new Headers();
+            headers.set('Authorization', accessToken);
 
-        let requestOptions: RequestOptionsArgs = new RequestOptions({
-            method: RequestMethod.Get,
-            headers: headers,
-            search: queryParameters,
-            withCredentials: false
+            let requestOptions: RequestOptionsArgs = new RequestOptions({
+                method: RequestMethod.Get,
+                headers: headers,
+                search: queryParameters,
+                withCredentials: false
+            });
+            // https://github.com/swagger-api/swagger-codegen/issues/4037
+            if (extraHttpRequestParams) {
+                requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
+            }
+
+            return this.http.request(path, requestOptions);
         });
-        // https://github.com/swagger-api/swagger-codegen/issues/4037
-        if (extraHttpRequestParams) {
-            requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
-        }
-
-        return this.http.request(path, requestOptions);
     }
 
 }
