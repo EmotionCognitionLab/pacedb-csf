@@ -27,6 +27,7 @@ export class AddGroupComponent implements OnInit {
     addGroup() {
         this.group.start_date = this.NgbDateToYYYYMMDDNum(this.selectedStartDate);
         this.group.end_date = this.NgbDateToYYYYMMDDNum(this.selectedEndDate);
+        this.group.name = this.group.name.trim();
         this.groupService.addGroup(this.group)
         .then((result) => {
             this.groupAdded.emit(this.group);
