@@ -14,3 +14,10 @@ input.short {
 .btn {
   border: 1px solid;
 }
+.group-msg-txt {
+  resize: none;
+  padding: 12px 12px;
+}
+.msg-text-btn {
+  margin: 2.3em .5em;
+}
