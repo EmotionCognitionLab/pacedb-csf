@@ -75,7 +75,7 @@ function sendEmail(recip) {
     return ses.sendTemplatedEmail(params).promise();
 }
 
-// Returns a promise of a Map of user_id -> email || phone records
+// Returns a promise of a Map of user id -> email || phone records
 // for users who need to be reminded to do their training today
 function getUsersToBeReminded() {
     const groups = [];
@@ -90,7 +90,7 @@ function getUsersToBeReminded() {
         return getUsersInGroups(groups);
     })
     .then((usersResult) => {
-        usersResult.Items.forEach((i) => userMap.set(i.user_id, 
+        usersResult.Items.forEach((i) => userMap.set(i.id, 
             { contact: i.email || i.phone,
             first_name: i.first_name
             }
@@ -101,7 +101,7 @@ function getUsersToBeReminded() {
         return getUsersWhoCompletedTraining();
     })
     .then((finishedUsers) => {
-        finishedUsers.Items.forEach((i) => userMap.delete(i.user_id));
+        finishedUsers.Items.forEach((i) => userMap.delete(i.id));
         return userMap;
     })
     .catch((err) => {
@@ -145,7 +145,7 @@ function getUsersInGroups(groups) {
         },
         ExpressionAttributeValues: attrVals,
         FilterExpression: groupConstraint,
-        ProjectionExpression: 'user_id, email, phone, first_name'
+        ProjectionExpression: 'id, email, phone, first_name'
     }
     return dynamo.scan(params).promise();
 }
@@ -166,7 +166,7 @@ function getUsersWhoCompletedTraining() {
             ':te': todayEnd
         },
         FilterExpression: '#DT >= :ts AND #DT <= :te AND attribute_exists(done)',
-        ProjectionExpression: 'user_id'
+        ProjectionExpression: 'id'
     }
     return dynamo.scan(params).promise();
 }

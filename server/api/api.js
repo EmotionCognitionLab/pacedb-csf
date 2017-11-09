@@ -111,13 +111,13 @@ function callerIsAdmin(callerCognitoGroups) {
 function callersGroup(callerId) {
     var params = {
         TableName: usersTable,
-        FilterExpression: 'user_id = :callerId',
+        FilterExpression: 'id = :callerId',
         ExpressionAttributeValues: { ':callerId': callerId }
     }
     return dynamo.scan(params).promise()
     .then((data) => {
         if (data.Items.length === 0) return undefined
-        if (data.Items.length > 1) throw new Error('Found more than 1 user with user_id ' + callerId);
+        if (data.Items.length > 1) throw new Error('Found more than 1 user with id ' + callerId);
         return data.Items[0].group
     })
     .catch((err) => {
