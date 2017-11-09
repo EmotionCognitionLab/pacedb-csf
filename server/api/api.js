@@ -6,6 +6,7 @@ const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
 const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
 
 const usersTable = process.env.USERS_TABLE;
+const groupMessageTable = process.env.GROUP_MESSAGE_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
 exports.handler = (event, context, callback) => {
@@ -15,56 +16,90 @@ exports.handler = (event, context, callback) => {
             .then((result) => callback(null, result))
             .catch((err) => {
                 console.log(err);
-                return callback(null, errorResult(500, err.message));
+                return callback(null, errorResult(err.message));
             })
+            break;
+        case ('/group/messages'):
+            switch(event.httpMethod) {
+                case ('GET'):
+                    getGroupMessages(event)
+                    .then((result) => callback(null, result))
+                    .catch((err) => {
+                        console.log(err);
+                        return callback(null, errorResult(err.message))
+                    });
+                    break;
+                case ('POST'):
+                    writeGroupMessage(event)
+                    .then((result) => callback(null, result))
+                    .catch((err) => {
+                        console.log(err);
+                        return callback(null, errorResult(err.message))
+                    });
+                    break;
+                default:
+                    console.log('Unknown httpMethod ' + event.httpMethod + ' on /group/messages');
+                    callback(null, errorResult('404:Unknown operation'));
+            }
             break;
         default:
             console.log("Unknown resource: " + event.requestContext.resourcePath);
-            callback(null, errorResult(404, "Unknown operation"));
+            callback(null, errorResult("404:Unknown operation"));
     }
 }
 
-function getGroupMembers(event) {
-    let requestedGroupName = undefined;
-    if (event.queryStringParameters !== null) {
-        requestedGroupName = event.queryStringParameters["group_name"];
-    }
-    const callerId = event.requestContext.authorizer.claims.sub;
+function requestedGroupName(event) {
+    return event.queryStringParameters === null ? undefined : event.queryStringParameters['group_name'];
+}
 
+/**
+ * If a specific group was requested by name, checks to see if the caller is authorized to
+ * access that group and, if so, returns the group name and if not throws an error. If no
+ * group name was requested, returns the name of the group the caller belongs to. Throws an
+ * error if the caller is not found.
+ * @param {object} event The event object provided by AWS Lambda
+ */
+function groupForRequest(event) {
+    let result = '';
+    let groupName = requestedGroupName(event);
+    const callerId = event.requestContext.authorizer.claims.sub;
     return callersGroup(callerId)
     .then((callerGroup) => {
-        if (requestedGroupName !== undefined) {
-            // check to see if the caller is allowed to request members from this group
+        if (groupName !== undefined) {
+            // check to see if the caller is allowed access to this group
             const cognitoGroups = event.requestContext.authorizer.claims["cognito:groups"];
-            if (!callerIsAdmin(cognitoGroups) && requestedGroupName !== callerGroup) {
-                return errorResult(401, "You do not have permission to complete this operation")
+            if (!callerIsAdmin(cognitoGroups) && groupName !== callerGroup) {
+                throw new Error('401:You do not have permission to complete this operation');
             }
+            result = groupName;
         } else {
-            requestedGroupName = callerGroup;
+            result = callerGroup;
         }
-        if (requestedGroupName === undefined) {
-            return errorResult(404, 'User id ' + callerId + ' not found');
+        if (result === undefined) {
+            throw new Error('404:No group found for callerId ' + callerId);
         }
+        return result;
+    });
+}
+
+function getGroupMembers(event) {
+    return groupForRequest(event)
+    .then((groupName) => {
         const params = {
             TableName: usersTable,
             FilterExpression: '#G = :theGroup',
             ExpressionAttributeNames: { '#G': 'group' },
-            ExpressionAttributeValues: { ':theGroup': requestedGroupName }
+            ExpressionAttributeValues: { ':theGroup': groupName }
         }
         return dynamo.scan(params).promise();
     })
     .then((memberQueryResult) => {
-        if (memberQueryResult.statusCode !== undefined) {
-            // then it's an error result - just return it
-            return memberQueryResult
-        }
-        // it's data from our query - wrap it in a result object
         return normalResult(memberQueryResult.Items)
     })
     .catch((err) => {
         console.log(err);
-        return errorResult(500, err.message);
-    })
+        return errorResult(err.message);
+    });
 }
 
 // callerCognitoGroups is a comma-separated list of cognito group names the caller belongs to
@@ -91,11 +126,51 @@ function callersGroup(callerId) {
     })
 }
 
-function errorResult(code, message) {
+function writeGroupMessage(event) {
+    let msg = {};
+    return groupForRequest(event)
+    .then((groupName) => {
+        const msgObj = JSON.parse(event.body);
+        const msgBody = msgObj.body;
+        const senderId = event.requestContext.authorizer.claims.sub;
+        const date = new Date().valueOf();
+        msg = {
+            group: groupName,
+            fromId: senderId,
+            date: date,
+            body: msgBody
+        }
+        const params = {
+            TableName: groupMessageTable,
+            Item: msg
+        };
+        return dynamo.put(params).promise();
+    })
+    .then((data) => {
+        return normalResult(msg);
+    })
+    .catch((err) => {
+        console.log(err);
+        return errorResult(err.message);
+    });
+}
+
+/**
+ * Returns a lambda-proxy response object. If the string begins with three characters followed by a 
+ * colon (:), those characters are assumed to be a 3-digit HTTP response code. Otherwise the
+ * response code defaults to 500.
+ * @param {string} message 
+ */
+function errorResult(message) {
+    let codeAndMessage = [500, message];
+    // TOOO find a better way of passing codes in Errors
+    if (message.indexOf(':') === 3) {
+        codeAndMessage = message.split(':');
+    }
     return {
-        statusCode: code,
+        statusCode: +codeAndMessage[0],
         headers:{'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token', 'Access-Control-Allow-Methods':'GET'},
-        body: JSON.stringify({'message': message})
+        body: JSON.stringify({'message': codeAndMessage[1]})
     }
 }
 

@@ -5,10 +5,12 @@ require('dotenv').config({path: './test/env.sh'})
 const lambdaLocal = require('lambda-local');
 const AWS = require('aws-sdk');
 const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
-const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: 'us-east-2'});
+const dynDocClient = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: 'us-east-2'});
+const dynClient = new AWS.DynamoDB({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: 'us-east-2'});
 const assert = require('assert');
 
 const usersTable = process.env.USERS_TABLE;
+const groupMessageTable = process.env.GROUP_MESSAGE_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
 // test data
@@ -79,12 +81,114 @@ const callerDoesNotExist = {
     "queryStringParameters": null
 }
 
+const groupMsgToCallerGroup = {
+    "httpMethod": "POST",
+    "requestContext": { 
+        "authorizer": {
+            "claims": {
+                "sub": users[0],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/group/messages"
+    },
+    "queryStringParameters": null,
+    "body": '{ "body": "This is a group message" }'
+}
+
+const fullGroupMessage = {
+    fromId: '123456789',
+    date: 12345948489,
+    body: 'Ok to use this',
+    group: 'no-such-group'
+}
+
+const groupMsgWithFullMsg = {
+    "httpMethod": "POST",
+    "requestContext": { 
+        "authorizer": {
+            "claims": {
+                "sub": users[0],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/group/messages"
+    },
+    "queryStringParameters": null,
+    "body": JSON.stringify(fullGroupMessage)
+}
+
+const groupMsgFromAdmin = {
+    "httpMethod": "POST",
+    "requestContext": { 
+        "authorizer": {
+            "claims": {
+                "sub": users[0],
+                "cognito:groups": adminGroupName
+            }
+        },
+        "resourcePath": "/group/messages"
+    },
+    "queryStringParameters": { group_name: 'group2' },
+    "body": '{"body": "Hi, this is your admin speaking"}'
+}
+
+const groupMsgWithWrongGroupNameCallerNotAdmin = {
+    "httpMethod": "POST",
+    "requestContext": { 
+        "authorizer": {
+            "claims": {
+                "sub": users[0],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/group/messages"
+    },
+    "queryStringParameters": { group_name: 'group2' },
+    "body": '{"body": "This message should not be in this group!"}'
+}
+
+function dropGroupMessagesTable() {
+    return dynClient.deleteTable({TableName: groupMessageTable}).promise();
+}
+
+function createGroupMessagesTable() {
+    const params = {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "group",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "date",
+                "AttributeType": "N"
+            }
+        ],
+        "TableName": "hrv-group-messages",
+        "KeySchema": [
+            {
+                "AttributeName": "group",
+                "KeyType": "HASH"
+            },
+            {
+                "AttributeName": "date",
+                "KeyType": "RANGE"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 1
+        }
+    };
+    return dynClient.createTable(params).promise();
+}
+
 function clearUsersTable() {
     const params = {
         TableName: usersTable
     }
     const existingUsers = [];
-    return dynamo.scan(params).promise()
+    return dynDocClient.scan(params).promise()
     .then((data) => {
         data.Items.forEach((u) => existingUsers.push(u));
     })
@@ -97,7 +201,7 @@ function clearUsersTable() {
             });
             const delCmd = {};
             delCmd[usersTable] = toDelete;
-            return dynamo.batchWrite({RequestItems: delCmd}).promise();
+            return dynDocClient.batchWrite({RequestItems: delCmd}).promise();
         } else {
             return Promise.resolve();
         }
@@ -118,8 +222,95 @@ function writeTestUsers() {
     });
     const pushCmd = {};
     pushCmd[usersTable] = testUsers;
-    return dynamo.batchWrite({RequestItems: pushCmd}).promise();
+    return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
 }
+
+describe('Group message request', function() {
+    before(function() {
+        return dropGroupMessagesTable()
+        .then(function() {
+            return createGroupMessagesTable();
+        })
+        .then(function() {
+            return writeTestUsers();
+        });
+    });
+    describe('with no group_name provided', function() {
+        it('should return the full message that was written to the table', function() {
+            return lambdaLocal.execute({
+                event: groupMsgToCallerGroup,
+                lambdaPath: 'api.js',
+                envfile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 200);
+                const body = JSON.parse(done.body);
+                assert.equal(body.group, groups[0]);
+                assert.equal(body.fromId, groupMsgToCallerGroup.requestContext.authorizer.claims.sub);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+    });
+    describe('with a full group message object provided', function() {
+        it('should ignore all of the fields except the body', function() {
+            return lambdaLocal.execute({
+                event: groupMsgWithFullMsg,
+                lambdaPath: 'api.js',
+                envfile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 200);
+                const body = JSON.parse(done.body);
+                assert.equal(body.group, groups[0]);
+                assert.equal(body.fromId, groupMsgWithFullMsg.requestContext.authorizer.claims.sub);
+                assert.equal(body.body, fullGroupMessage.body);
+                assert.notEqual(body.date, fullGroupMessage.date);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+    });
+    describe('from an admin', function() {
+        it('should be written to the requested group', function() {
+            return lambdaLocal.execute({
+                event: groupMsgFromAdmin,
+                lambdaPath: 'api.js',
+                envfile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 200);
+                const body = JSON.parse(done.body);
+                assert.equal(body.group, groupMsgFromAdmin.queryStringParameters.group_name);
+                assert.equal(body.fromId, groupMsgFromAdmin.requestContext.authorizer.claims.sub);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+    });
+    describe('with group name provided by a caller who is not a member and not an admin', function() {
+        it('should be rejected', function() {
+            return lambdaLocal.execute({
+                event: groupMsgWithWrongGroupNameCallerNotAdmin,
+                lambdaPath: 'api.js',
+                envfile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 401);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+    });
+});
 
 describe('Group members request', function() {
     before(function() {

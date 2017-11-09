@@ -11,6 +11,7 @@ import { DynamoDB } from '../../../node_modules/aws-sdk/';
 import { AuthService } from './auth.service';
 import { DynamoService } from './dynamo.service';
 import { Group } from '../model/group';
+import { GroupMessage } from '../model/group-message';
 import { User } from '../model/user';
 import { environment } from '../../environments/environment';
 
@@ -93,6 +94,68 @@ export class GroupService {
             console.log(err);
             return result;
         });
+    }
+
+    /**
+     *
+     * @summary Create a new message for the group the caller belongs to. (Of, for admins, any group.)
+     * @param message The message to send to the group
+     * @param groupName The name of the group you wish to post a message to. Only admins may post to groups they are not a member of - anyone else will receive a 401 Unauthorized response.
+     */
+    public createGroupMessage(message?: GroupMessage, groupName?: string, extraHttpRequestParams?: any): Observable<GroupMessage> {
+        return this.createGroupMessageWithHttpInfo(message, groupName, extraHttpRequestParams)
+            .map((response: Response) => {
+                if (response.status === 204) {
+                    return undefined;
+                } else {
+                    return response.json() || {};
+                }
+            });
+    }
+
+    /**
+     * Create a new message for the group the caller belongs to. (Of, for admins, any group.)
+     *
+     * @param message The message to send to the group
+     * @param groupName The name of the group you wish to post a message to. Only admins may post to groups they are not a member of - anyone else will receive a 401 Unauthorized response.
+     */
+    public createGroupMessageWithHttpInfo(message?: GroupMessage, groupName?: string, extraHttpRequestParams?: any): Observable<Response> {
+        const path = this.basePath + '/group/messages';
+
+        const queryParameters = new URLSearchParams();
+        if (groupName !== undefined && groupName !== null) {
+            queryParameters.set('group_name', <any>groupName);
+        }
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+
+        // to determine the Accept header
+        const produces: string[] = [
+            'application/json'
+        ];
+
+        // authentication (basic-user) required
+        const headers = new Headers();
+        const at = this.authService.getAccessToken();
+        headers.set('Authorization', at);
+
+        headers.set('Content-Type', 'application/json');
+
+        let requestOptions: RequestOptionsArgs = new RequestOptions({
+            method: RequestMethod.Post,
+            headers: headers,
+            body: message == null ? '' : JSON.stringify(message), // https://github.com/angular/angular/issues/10612
+            search: queryParameters,
+            withCredentials: false
+        });
+        // https://github.com/swagger-api/swagger-codegen/issues/4037
+        if (extraHttpRequestParams) {
+            requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
+        }
+        return this.http.request(path, requestOptions);
     }
 
      /**
