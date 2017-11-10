@@ -102,6 +102,25 @@ function getGroupMembers(event) {
     });
 }
 
+function getGroupMessages(event) {
+    return groupForRequest(event)
+    .then((groupName) => {
+        const params = {
+            TableName: groupMessageTable,
+            KeyConditionExpression: '#G = :theGroup and #D > :zero',
+            ExpressionAttributeNames: { '#G': 'group', '#D': 'date' },
+            ExpressionAttributeValues: { ':theGroup': groupName, ':zero': 0 },
+            ScanIndexForward: false
+        };
+        return dynamo.query(params).promise();
+    })
+    .then((messageQueryResult) => normalResult(messageQueryResult.Items))
+    .catch((err) => {
+        console.log(err);
+        return errorResult(err.message);
+    });
+}
+
 // callerCognitoGroups is a comma-separated list of cognito group names the caller belongs to
 function callerIsAdmin(callerCognitoGroups) {
     const groupList = callerCognitoGroups.split(',');

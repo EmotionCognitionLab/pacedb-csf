@@ -6,6 +6,7 @@ import { LoginComponent } from './login.component';
 import { GroupPageComponent } from './group-page.component';
 
 import { GroupResolverService } from './service/group-resolver.service';
+import { GroupMessageResolverService } from './service/group-message-resolver.service';
 import { RouteGuardService } from './service/route-guard.service';
 
 const routes: Routes = [
@@ -15,7 +16,7 @@ const routes: Routes = [
   { path: 'group',
     component: GroupPageComponent,
     canActivate: [RouteGuardService],
-    resolve: { members: GroupResolverService }
+    resolve: { members: GroupResolverService, messages: GroupMessageResolverService }
   }
 ];
 
@@ -23,7 +24,7 @@ const routes: Routes = [
   imports: [ RouterModule.forRoot(routes) ],
   exports: [ RouterModule ],
   providers: [
-    GroupResolverService
+    GroupResolverService, GroupMessageResolverService
   ]
 })
 

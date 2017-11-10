@@ -226,4 +226,56 @@ export class GroupService {
         });
     }
 
+     /**
+     * 
+     * @summary Get all of the messages for the group the caller belongs to. (Or, for admins, any group.)
+     * @param groupName Name of the group whose messages you want. If the caller is neither an admin nor a member of the group the response will be 401 Unauthorized.
+     */
+    public getGroupMessages(groupName?: string, extraHttpRequestParams?: any): Observable<GroupMessage[]> {
+        return this.getGroupMessagesWithHttpInfo(groupName, extraHttpRequestParams)
+            .map((response: Response) => {
+                if (response.status === 204) {
+                    return undefined;
+                } else {
+                    return response.json() || {};
+                }
+            });
+    }
+
+
+    /**
+     * Get all of the messages for the group the caller belongs to. (Or, for admins, any group.)
+     * 
+     * @param groupName Name of the group whose messages you want. If the caller is neither an admin nor a member of the group the response will be 401 Unauthorized.
+     */
+    public getGroupMessagesWithHttpInfo(groupName?: string, extraHttpRequestParams?: any): Observable<Response> {
+        const path = this.basePath + '/group/messages';
+
+        const queryParameters = new URLSearchParams();
+        if (groupName !== undefined) {
+            queryParameters.set('group_name', <any>groupName);
+        }
+
+        // authentication (basic-user) required
+        const tokenPromise = this.authService.getAccessToken();
+        return Observable.fromPromise(tokenPromise).flatMap((accessToken) => {
+            const headers = new Headers();
+            headers.set('Authorization', accessToken);
+
+            let requestOptions: RequestOptionsArgs = new RequestOptions({
+                method: RequestMethod.Get,
+                headers: headers,
+                search: queryParameters,
+                withCredentials: false
+            });
+            // https://github.com/swagger-api/swagger-codegen/issues/4037
+            if (extraHttpRequestParams) {
+                requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
+            }
+
+            return this.http.request(path, requestOptions);
+        });
+    }
+
+
 }

@@ -41,8 +41,9 @@ export class GroupPageComponent implements OnInit {
 
     ngOnInit() {
         this.route.data
-        .subscribe((data: { members: User[] }) => {
+        .subscribe((data: { members: User[], messages: GroupMessage[] }) => {
             this.members = data.members;
+            this.messages = data.messages;
         });
         this.name = this.route.snapshot.paramMap.get('name');
     }
