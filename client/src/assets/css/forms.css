@@ -14,10 +14,36 @@ input.short {
 .btn {
   border: 1px solid;
 }
+.container-narrow {
+  max-width: 750px;
+  margin-left: 6em;
+}
 .group-msg-txt {
+  border-radius: 0px 0px 3px 3px;
   resize: none;
-  padding: 12px 12px;
+  padding: .4em;
 }
 .msg-text-btn {
-  margin: 2.3em .5em;
+  margin: 6.0em 0em 0em .5em;
+}
+.textarea-container {
+  margin-left: 3.7em;
+  float: left;
+  border: 1px solid black;
+  border-radius: 3px;
+}
+.textarea-container textarea {
+  border: none;
+}
+.textarea-container textarea:focus {
+  outline:none;
+}
+.title {
+  background-color: rgb(232, 232, 232);
+  border-bottom: 1px solid black;
+  border-radius: 3px 3px 0px 0px;
+  padding: .7em;
+  font-size: 90%;
+  font-weight: 600;
+  color: rgb(100, 100, 100);
 }
