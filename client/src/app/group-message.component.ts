@@ -2,12 +2,14 @@ import { Component, Input, OnInit } from '@angular/core';
 
 import { GroupMessage } from './model/group-message';
 
+import * as moment from 'moment';
+
 @Component({
     selector: 'group-message',
     template: `
         <img class="small-img" height="45" width="45" src="{{photoFn(msg.fromId)}}"/>
         <div class="msg-container">
-            <div class="title">{{nameFn(msg.fromId)}} {{displayDate(msg.date)}}</div>
+            <div class="title">{{nameFn(msg.fromId)}} <span class="ago-date">{{displayDate(msg.date)}}</span></div>
             <div class="msg-text" [innerHTML]="textParagraphs()"></div>
         </div>
     `,
@@ -29,8 +31,7 @@ export class GroupMessageComponent implements OnInit {
     }
 
     displayDate(date: number): string {
-        const d = new Date(date);
-        return d.toLocaleDateString();
+        return moment(date).fromNow();
     }
 
     private textParagraphs(): string {
