@@ -21,7 +21,7 @@ export class AuthService {
         Paranoia: 8
     };
 
-    private _dest = 'default-dest';
+    private _dest = '/group';
     private _session: CognitoUserSession;
 
     constructor() {}
