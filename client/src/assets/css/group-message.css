@@ -1,0 +1,23 @@
+.msg-container {
+    border: 1px solid black;
+    border-radius: 3px;
+    margin: 0em 0em 2em 3.5em;
+}
+.msg-text {
+    padding: .7em;
+}
+.small-img {
+    border-radius: 3px;
+    display: block;
+    float: left;
+    margin-top: .5em;
+}
+.title {
+    background-color: rgb(232, 232, 232);
+    border-bottom: 1px solid black;
+    border-radius: 3px 3px 0px 0px;
+    padding: .7em;
+    font-size: 90%;
+    font-weight: 600;
+    color: rgb(100, 100, 100);
+}

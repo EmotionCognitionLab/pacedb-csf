@@ -26,11 +26,7 @@ import { GroupService } from './service/group.service';
                 <button class="btn msg-text-btn" [disabled]="!msgForm.form.valid" type="submit">Submit</button>
             </form>
         </div>
-        <div *ngFor="let msg of messages">
-            {{msg.date}} <br/>
-            {{userNameForId(msg.fromId)}}<br/>
-            {{msg.body}}
-        </div>
+        <group-message *ngFor="let msg of messages" [msg]=msg [nameFn]=nameFinder(this) [photoFn]=photoFinder(this)></group-message>
     </div>
     `
 })
@@ -52,14 +48,24 @@ export class GroupPageComponent implements OnInit {
     }
 
     sendGroupMsg() {
-        const msg = new GroupMessage(this.msgText.trim());
-        this.groupService.createGroupMessage(msg, this.name).subscribe(savedMsg => {
+        const message = new GroupMessage(this.msgText.trim());
+        this.groupService.createGroupMessage(message, this.name).subscribe(savedMsg => {
             this.messages.push(savedMsg);
         });
+        this.msgText = '';
     }
 
-    private userNameForId(userId: string): string | undefined {
-        const member = this.members.find((u) => u.id === userId);
-        return member === undefined ? undefined : member.name();
+    nameFinder(gpc: GroupPageComponent): (sting) => string | undefined {
+        return function(userId: string): string | undefined {
+            const member = gpc.members.find((u) => u.id === userId);
+            return member === undefined ? undefined : member.name();
+        };
+    }
+
+    photoFinder(gpc: GroupPageComponent): (string) => string | undefined {
+        return function(userId: string): string | undefined {
+            const member = gpc.members.find((u) => u.id === userId);
+            return member === undefined ? undefined : member.photoUrl;
+        };
     }
 }

@@ -14,6 +14,7 @@ export class User {
 
     static fromJsonObj(jsObj): User {
         const result = new User('', '', '', '');
+        result.id = ''; // so that it will be populated from jsObj, if it's there
         for (const prop in jsObj) {
             if (result.hasOwnProperty(prop)) {
                 result[prop] = jsObj[prop];

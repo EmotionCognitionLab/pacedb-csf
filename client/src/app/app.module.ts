@@ -9,6 +9,7 @@ import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { EmojiPickerComponent } from './emoji-picker.component';
 import { ForbiddenComponent } from './forbidden.component';
+import { GroupMessageComponent } from './group-message.component';
 import { LoginComponent } from './login.component';
 import { UserComponent } from './user.component';
 import { GroupPageComponent } from './group-page.component';
@@ -24,6 +25,7 @@ import { RouteGuardService } from './service/route-guard.service';
     AppComponent,
     EmojiPickerComponent,
     ForbiddenComponent,
+    GroupMessageComponent,
     LoginComponent,
     UserComponent,
     GroupPageComponent
