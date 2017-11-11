@@ -4,6 +4,9 @@
         class="alert alert-danger">
         {{errMsg}}
     </div>
+    <div [hidden]="statusMsg === ''" class="alert alert-info">
+        {{statusMsg}}
+    </div>
     <form (ngSubmit)="register()" #regForm="ngForm">
         <h2>I prefer to be contacted by:</h2>
         <div class="radio">
@@ -73,16 +76,18 @@
         </div>    
 
         <div class="form-group">
-            <label for="photoUrl">Photo (URL)</label>
-            <input type="text" class="form-control" id="photoUrl"
-            required [(ngModel)]="user.photoUrl" name="photoUrl">
+            <div class="file-upload">
+                <input required id="file-chooser" type="file" (change)="fileChangeListener($event)" />
+            </div>
+            <img-cropper #cropper [image]="imgData" [settings]="cropperSettings" (onCrop)="cropChanged($event)"></img-cropper><br/>
+            <img [src]="imgData.image" [hidden]="imgData.image === undefined" width="70" height="70">
         </div>
 
         <div [hidden]="thepass.valid || thepass.pristine" class="alert alert-danger">
             Password is required.
         </div>
         <button class="btn" 
-        [disabled]="!regForm.form.valid" 
+        [disabled]="!regForm.form.valid || imgData.image === undefined" 
         type="submit">Register</button>
     </form>
 </div>

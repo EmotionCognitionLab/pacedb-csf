@@ -12,5 +12,6 @@ export const environment = {
   awsRegion: 'us-east-2',
   dynamoEndpoint: 'http://localhost:8000',
   groupsTable: 'hrv-users',
-  groupsWithAdminPerms: ['staff']
+  groupsWithAdminPerms: ['staff'],
+  usrImgBucket: 'hrv-usr-imgs'
 };

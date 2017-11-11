@@ -5,6 +5,8 @@ import { NgModule } from '@angular/core';
 
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
+import {ImageCropperComponent } from 'ng2-img-cropper';
+
 import { AdminDashboardComponent } from './admin-dashboard.component';
 import { AddGroupComponent } from './add-group.component';
 import { DateInValidRangeDirective } from '../shared/date-in-valid-range.directive';
@@ -28,6 +30,7 @@ import { AdminRoutingModule } from './admin-routing.module';
         AddGroupComponent,
         DateInValidRangeDirective,
         GroupsComponent,
+        ImageCropperComponent,
         RegisterComponent,
         VerifyComponent
     ],
