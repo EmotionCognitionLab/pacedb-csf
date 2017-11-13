@@ -54,8 +54,8 @@ export class GroupPageComponent implements OnInit {
         const message = new GroupMessage(this.msgText.trim());
         this.groupService.createGroupMessage(message, this.name).subscribe(savedMsg => {
             this.messages.unshift(savedMsg);
+            this.msgText = '';
         });
-        this.msgText = '';
     }
 
     nameFinder(gpc: GroupPageComponent): (sting) => string | undefined {
