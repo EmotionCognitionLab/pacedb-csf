@@ -6,6 +6,7 @@ import { NgModule } from '@angular/core';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 import {ImageCropperComponent } from 'ng2-img-cropper';
+import { WebCamComponent } from 'ack-angular-webcam';
 
 import { AdminDashboardComponent } from './admin-dashboard.component';
 import { AddGroupComponent } from './add-group.component';
@@ -32,7 +33,8 @@ import { AdminRoutingModule } from './admin-routing.module';
         GroupsComponent,
         ImageCropperComponent,
         RegisterComponent,
-        VerifyComponent
+        VerifyComponent,
+        WebCamComponent
     ],
     providers: [],
 })

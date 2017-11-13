@@ -78,6 +78,11 @@
         <div class="form-group">
             <div class="file-upload">
                 <input required id="file-chooser" type="file" (change)="fileChangeListener($event)" />
+                OR <button class="btn" type="button" (click)="onUseCameraClick($event)">Use camera</button>
+                <div [hidden]="!useCamera" class="camera">
+                    <ack-webcam [(ref)]="webcam" [options]="camOptions" (onSuccess)="onCamSuccess($event)" (onError)="onCamError($event)"></ack-webcam>
+                    <button type="button" (click)="camCapture()">Capture</button>
+                </div>
             </div>
             <img-cropper #cropper [image]="imgData" [settings]="cropperSettings" (onCrop)="cropChanged($event)"></img-cropper><br/>
             <img [src]="imgData.image" [hidden]="imgData.image === undefined" width="70" height="70">

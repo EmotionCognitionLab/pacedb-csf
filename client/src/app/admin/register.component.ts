@@ -31,6 +31,10 @@ export class RegisterComponent implements OnInit {
     file: File;
     cropperSettings: CropperSettings;
     @ViewChild('cropper', undefined) cropper: ImageCropperComponent;
+    useCamera = false;
+    webcam;
+    camOptions: {};
+
     private _s3: S3;
     private _cropLRTB: string;
 
@@ -48,10 +52,21 @@ export class RegisterComponent implements OnInit {
         this.cropperSettings.croppedWidth = 70;
         this.cropperSettings.croppedHeight = 70;
         this.cropperSettings.keepAspect = true;
-        this.cropperSettings.canvasWidth = 500;
-        this.cropperSettings.canvasHeight = 300;
+        this.cropperSettings.canvasWidth = 640;
+        this.cropperSettings.canvasHeight = 480;
         this.cropperSettings.noFileInput = true;
         this.imgData = {};
+
+        this.camOptions = {
+            audio: false,
+            video: true,
+            width: 400,
+            height: 300,
+            fallbackQuality: 85,
+            fallbackMode: 'callback',
+            fallbackSrc: 'jscam_canvas_only.swf',
+            cameraType: 'front'
+        };
 
         this.awsConfigService.getConfig()
         .then((config) => {
@@ -94,6 +109,42 @@ export class RegisterComponent implements OnInit {
     // stores the bounds of the crop rectangle for eventual upload as S3 metadata
     cropChanged($e) {
         this._cropLRTB = `${$e.left},${$e.right},${$e.top},${$e.bottom}`;
+    }
+
+    camCapture() {
+        const video = <any>document.getElementsByTagName('video')[0];
+        const canvas = <any>document.getElementsByTagName('canvas')[0];
+        if (video) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const reader: FileReader = new FileReader();
+            const regComponent = this;
+            const image: any = new Image();
+            reader.onloadend = function(loadEvent: any) {
+                image.src = loadEvent.target.result;
+                regComponent.cropper.setImage(image);
+            };
+            canvas.toBlob(function(blob) {
+                reader.readAsDataURL(blob);
+            });
+        }
+    }
+
+    onCamSuccess() {}
+
+    onCamError(err) {
+        this.errMsg = err.message;
+        console.log(err);
+    }
+
+    onUseCameraClick($event) {
+        this.useCamera = !this.useCamera;
+        if (this.useCamera) {
+            $event.target.innerText = 'Hide camera';
+        } else {
+            $event.target.innerText = 'Use camera';
+        }
     }
 
     groupSearch = (text$: Observable<string>) =>

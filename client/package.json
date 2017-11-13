@@ -24,6 +24,7 @@
     "@ng-bootstrap/ng-bootstrap": "^1.0.0-beta.5",
     "@types/aws-sdk": "^2.7.0",
     "@types/jwt-decode": "^2.2.1",
+    "ack-angular-webcam": "^1.4.0",
     "amazon-cognito-identity-js": "^1.21.0",
     "aws-sdk": "^2.126.0",
     "bootstrap": "^4.0.0-beta.2",
