@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 
 import 'rxjs/add/operator/switchMap';
 import { Observable } from 'rxjs/Observable';
+import { Subscription } from 'rxjs/Subscription';
 
 import { EmojiFeedback } from './model/emoji-feedback';
 import { GroupMessage } from './model/group-message';
@@ -33,11 +34,13 @@ import { GroupService } from './service/group.service';
     `
 })
 
-export class GroupPageComponent implements OnInit {
+export class GroupPageComponent implements OnInit, OnDestroy {
     name: string;
     members: User[];
     messages: GroupMessage[] = [];
     msgText: string;
+    private _msgsLastFetched: number;
+    private _msgRefresher: Subscription;
 
     constructor(private groupService: GroupService, private route: ActivatedRoute, private router: Router) { }
 
@@ -47,7 +50,21 @@ export class GroupPageComponent implements OnInit {
             this.members = data.members;
             this.messages = data.messages;
         });
+        this._msgsLastFetched = new Date().valueOf();
         this.name = this.route.snapshot.paramMap.get('name');
+        this._msgRefresher = Observable.interval(5000)
+        .switchMap(() => {
+            return this.groupService.getGroupMessages(this._msgsLastFetched).map(messages => {
+                this._msgsLastFetched = new Date().valueOf();
+                if (messages.length > 0) {
+                    messages.reverse().forEach(m => this.messages.unshift(m));
+                }
+            });
+        }).subscribe();
+    }
+
+    ngOnDestroy() {
+        this._msgRefresher.unsubscribe();
     }
 
     sendGroupMsg() {
