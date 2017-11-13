@@ -105,11 +105,13 @@ function getGroupMembers(event) {
 function getGroupMessages(event) {
     return groupForRequest(event)
     .then((groupName) => {
+        const since = event.queryStringParameters !== undefined &&
+            event.queryStringParameters['since'] !== undefined ? +event.queryStringParameters['since'] : 0;
         const params = {
             TableName: groupMessageTable,
-            KeyConditionExpression: '#G = :theGroup and #D > :zero',
+            KeyConditionExpression: '#G = :theGroup and #D >= :since',
             ExpressionAttributeNames: { '#G': 'group', '#D': 'date' },
-            ExpressionAttributeValues: { ':theGroup': groupName, ':zero': 0 },
+            ExpressionAttributeValues: { ':theGroup': groupName, ':since': since },
             ScanIndexForward: false
         };
         return dynamo.query(params).promise();

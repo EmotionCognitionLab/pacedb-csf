@@ -231,8 +231,8 @@ export class GroupService {
      * @summary Get all of the messages for the group the caller belongs to. (Or, for admins, any group.)
      * @param groupName Name of the group whose messages you want. If the caller is neither an admin nor a member of the group the response will be 401 Unauthorized.
      */
-    public getGroupMessages(groupName?: string, extraHttpRequestParams?: any): Observable<GroupMessage[]> {
-        return this.getGroupMessagesWithHttpInfo(groupName, extraHttpRequestParams)
+    public getGroupMessages(since: number, groupName?: string, extraHttpRequestParams?: any): Observable<GroupMessage[]> {
+        return this.getGroupMessagesWithHttpInfo(since, groupName, extraHttpRequestParams)
             .map((response: Response) => {
                 if (response.status === 204) {
                     return undefined;
@@ -248,10 +248,11 @@ export class GroupService {
      * 
      * @param groupName Name of the group whose messages you want. If the caller is neither an admin nor a member of the group the response will be 401 Unauthorized.
      */
-    public getGroupMessagesWithHttpInfo(groupName?: string, extraHttpRequestParams?: any): Observable<Response> {
+    public getGroupMessagesWithHttpInfo(since: number, groupName?: string, extraHttpRequestParams?: any): Observable<Response> {
         const path = this.basePath + '/group/messages';
 
         const queryParameters = new URLSearchParams();
+        queryParameters.set('since', since.toString());
         if (groupName !== undefined) {
             queryParameters.set('group_name', <any>groupName);
         }

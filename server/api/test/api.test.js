@@ -99,7 +99,7 @@ const groupMsgToCallerGroup = {
         },
         "resourcePath": "/group/messages"
     },
-    "queryStringParameters": null,
+    "queryStringParameters": {since: 0 },
     "body": '{ "body": "This is a group message" }'
 }
 
@@ -166,7 +166,7 @@ const getMsgsForGroup = {
         },
         "resourcePath": "/group/messages"
     },
-    "queryStringParameters": null
+    "queryStringParameters": {since: 0}
 }
 
 const getMsgsAsAdmin = {
@@ -180,7 +180,7 @@ const getMsgsAsAdmin = {
         },
         "resourcePath": "/group/messages"
     },
-    "queryStringParameters": { group_name: groups[0] }
+    "queryStringParameters": { group_name: groups[0], since: 0 }
 }
 
 const getMsgsForGroupNotAdmin = {
@@ -194,7 +194,21 @@ const getMsgsForGroupNotAdmin = {
         },
         "resourcePath": "/group/messages"
     },
-    "queryStringParameters": { group_name: groups[0] }
+    "queryStringParameters": { group_name: groups[0], since: 0 }
+}
+
+const getMsgsSince = {
+    "httpMethod": "GET",
+    "requestContext": { 
+        "authorizer": {
+            "claims": {
+                "sub": users[0],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/group/messages"
+    },
+    "queryStringParameters": {since: messages[0].date}
 }
 
 function dropGroupMessagesTable() {
@@ -368,6 +382,21 @@ describe('Request to get messages for a group', function() {
             });
         });
     });
+    describe('created since a given time', function() {
+        it('should return only messages created at or after the requested time', function() {
+            return lambdaLocal.execute({
+                event: getMsgsSince,
+                lambdaPath: 'api.js',
+                envfile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 200);
+                const body = JSON.parse(done.body);
+                assert.equal(body.length, messages.filter(m => m.date >= messages[0].date).length);
+                body.forEach(m => assert(m.date >= messages[0].date, `${m.date} should be >= ${messages[0].date} but isn't`));
+            })
+        })
+    })
 });
 
 describe('Request to save a group message', function() {

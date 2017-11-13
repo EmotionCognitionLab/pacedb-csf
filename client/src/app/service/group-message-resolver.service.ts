@@ -15,7 +15,7 @@ export class GroupMessageResolverService implements Resolve<GroupMessage[]> {
 
     resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<GroupMessage[]> {
         const groupName = route.paramMap.get('group_name');
-        return this.groupService.getGroupMessages(groupName).take(1).map(messages => {
+        return this.groupService.getGroupMessages(0, groupName).take(1).map(messages => {
             if (messages) {
                 return messages;
             } else {
