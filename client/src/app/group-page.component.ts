@@ -10,6 +10,7 @@ import { GroupMessage } from './model/group-message';
 import { User } from './model/user';
 
 import { GroupService } from './service/group.service';
+import { UserService } from './service/user.service';
 
 @Component({
     selector: 'app-group-page',
@@ -29,7 +30,7 @@ import { GroupService } from './service/group.service';
             </form>
         </div>
         <div style="line-height: 0.5em;">&nbsp;</div>
-        <group-message *ngFor="let msg of messages" [msg]=msg [nameFn]=nameFinder(this) [photoFn]=photoFinder(this)></group-message>
+        <group-message *ngFor="let msg of messages" [msg]=msg></group-message>
     </div>
     `
 })
@@ -41,18 +42,25 @@ export class GroupPageComponent implements OnInit, OnDestroy {
     msgText: string;
     private _msgsLastFetched: number;
     private _msgRefresher: Subscription;
+    private _msgRefreshInterval = 10000; // milliseconds
 
-    constructor(private groupService: GroupService, private route: ActivatedRoute, private router: Router) { }
+    constructor(private groupService: GroupService,
+        private userService: UserService,
+        private route: ActivatedRoute,
+        private router: Router) { }
 
     ngOnInit() {
         this.route.data
         .subscribe((data: { members: User[], messages: GroupMessage[] }) => {
+            // push all the members into the user cache so we don't re-fetch them
+            // when displaying messages
+            data.members.forEach(m => this.userService.cacheSet(m.id, m));
             this.members = data.members;
             this.messages = data.messages;
         });
         this._msgsLastFetched = new Date().valueOf();
         this.name = this.route.snapshot.paramMap.get('name');
-        this._msgRefresher = Observable.interval(5000)
+        this._msgRefresher = Observable.interval(this._msgRefreshInterval)
         .switchMap(() => {
             return this.groupService.getGroupMessages(this._msgsLastFetched).map(messages => {
                 this._msgsLastFetched = new Date().valueOf();
@@ -73,19 +81,5 @@ export class GroupPageComponent implements OnInit, OnDestroy {
             this.messages.unshift(savedMsg);
             this.msgText = '';
         });
-    }
-
-    nameFinder(gpc: GroupPageComponent): (sting) => string | undefined {
-        return function(userId: string): string | undefined {
-            const member = gpc.members.find((u) => u.id === userId);
-            return member === undefined ? undefined : member.name();
-        };
-    }
-
-    photoFinder(gpc: GroupPageComponent): (string) => string | undefined {
-        return function(userId: string): string | undefined {
-            const member = gpc.members.find((u) => u.id === userId);
-            return member === undefined ? undefined : member.photoUrl;
-        };
     }
 }

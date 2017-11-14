@@ -2,6 +2,9 @@
     font-size: 90%;
     color: rgb(150, 150, 150);
 }
+.badge-container {
+    float: left;
+}
 .msg-container {
     border: 1px solid black;
     border-radius: 3px;
@@ -13,6 +16,5 @@
 .small-img {
     border-radius: 3px;
     display: block;
-    float: left;
     margin-top: .5em;
 }

@@ -19,6 +19,7 @@ import { AwsConfigService } from './service/aws-config.service';
 import { DynamoService } from './service/dynamo.service';
 import { GroupService } from './service/group.service';
 import { RouteGuardService } from './service/route-guard.service';
+import { UserService } from './service/user.service';
 
 @NgModule({
   declarations: [
@@ -38,7 +39,7 @@ import { RouteGuardService } from './service/route-guard.service';
     AdminModule,
     AppRoutingModule
   ],
-  providers: [AuthService, AwsConfigService, GroupService, DynamoService, RouteGuardService],
+  providers: [AuthService, AwsConfigService, GroupService, DynamoService, RouteGuardService, UserService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
