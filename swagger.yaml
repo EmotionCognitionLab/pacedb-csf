@@ -421,25 +421,15 @@ definitions:
   User:
     type: object
     properties:
-      id:
-        type: string
-      group:
-        type: string
       first_name:
         type: string
       last_name:
         type: string
-      email:
-        type: string
-        description: "If this is empty or not provided, phone must be set."
-      phone:
-        type: string
-        description: "If this is empty or not provided, email must be set."
       photoUrl:
         type: string
+      isAdmin:
+        type: boolean
     required:
-      - id
-      - group
       - first_name
       - last_name
       - photoUrl
