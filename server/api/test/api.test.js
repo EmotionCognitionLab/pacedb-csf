@@ -14,7 +14,7 @@ const groupMessageTable = process.env.GROUP_MESSAGE_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
 // test data
-const users = ['normal-user1A', 'normal-user1B', 'normal-user2A', 'admin-user'];
+const users = ['1a', '1b', '2b', 'ad9'];
 const groups = ['group1', 'group1', 'group2', 'special-group'];
 const messages = [
     {fromId: users[0], group: groups[0], date: 123456789, body: 'Howdy, folks!'},
@@ -209,6 +209,38 @@ const getMsgsSince = {
         "resourcePath": "/group/messages"
     },
     "queryStringParameters": {since: messages[0].date}
+}
+
+const getUser = {
+    "httpMethod": "GET",
+    "requestContext": { 
+        "authorizer": {
+            "claims": {
+                "sub": users[2],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/users/${user_id}"
+    },
+    "path": `/users/${users[0]}`,
+    "pathParameters": { "user_id": users[0] },
+    "queryStringParameters": null
+}
+
+const getNonExistentUser = {
+    "httpMethod": "GET",
+    "requestContext": { 
+        "authorizer": {
+            "claims": {
+                "sub": users[2],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/users/${user_id}"
+    },
+    "path": "/users/0000-ffff",
+    "pathParameters": { "user_id": "0000-ffff" },
+    "queryStringParameters": null
 }
 
 function dropGroupMessagesTable() {
@@ -569,6 +601,49 @@ describe('Group members request', function() {
         it('should return a 404', function() {
             return lambdaLocal.execute({
                 event: callerDoesNotExist,
+                lambdaPath: 'api.js',
+                envfile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 404);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+    });
+});
+
+describe('User request', function() {
+    before(function() {
+        return clearUsersTable()
+        .then(function() {
+            return writeTestUsers();
+        });
+    });
+    describe('for an existing user', function() {
+        it('should return the user', function() {
+            return lambdaLocal.execute({
+                event: getUser,
+                lambdaPath: 'api.js',
+                envfile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 200);
+                const body = JSON.parse(done.body);
+                assert.equal(body.id, users[0]);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            })
+        })
+    });
+    describe('for an non-existent user', function() {
+        it('should return 404', function () {
+            return lambdaLocal.execute({
+                event: getNonExistentUser,
                 lambdaPath: 'api.js',
                 envfile: './test/env.sh'
             })

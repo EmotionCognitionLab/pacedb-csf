@@ -10,41 +10,46 @@ const groupMessageTable = process.env.GROUP_MESSAGE_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
 exports.handler = (event, context, callback) => {
-    switch(event.requestContext.resourcePath) {
-        case ('/group/members'):
-            getGroupMembers(event)
-            .then((result) => callback(null, result))
-            .catch((err) => {
-                console.log(err);
-                return callback(null, errorResult(err.message));
-            })
-            break;
-        case ('/group/messages'):
-            switch(event.httpMethod) {
-                case ('GET'):
-                    getGroupMessages(event)
-                    .then((result) => callback(null, result))
-                    .catch((err) => {
-                        console.log(err);
-                        return callback(null, errorResult(err.message))
-                    });
-                    break;
-                case ('POST'):
-                    writeGroupMessage(event)
-                    .then((result) => callback(null, result))
-                    .catch((err) => {
-                        console.log(err);
-                        return callback(null, errorResult(err.message))
-                    });
-                    break;
-                default:
-                    console.log('Unknown httpMethod ' + event.httpMethod + ' on /group/messages');
-                    callback(null, errorResult('404:Unknown operation'));
-            }
-            break;
-        default:
-            console.log("Unknown resource: " + event.requestContext.resourcePath);
-            callback(null, errorResult("404:Unknown operation"));
+    const path = event.requestContext.resourcePath;
+    if (path === '/group/members') {
+        getGroupMembers(event)
+        .then((result) => callback(null, result))
+        .catch((err) => {
+            console.log(err);
+            return callback(null, errorResult(err.message));
+        })
+    } else if (path === '/group/messages') {
+        switch(event.httpMethod) {
+            case ('GET'):
+                getGroupMessages(event)
+                .then((result) => callback(null, result))
+                .catch((err) => {
+                    console.log(err);
+                    return callback(null, errorResult(err.message))
+                });
+                break;
+            case ('POST'):
+                writeGroupMessage(event)
+                .then((result) => callback(null, result))
+                .catch((err) => {
+                    console.log(err);
+                    return callback(null, errorResult(err.message))
+                });
+                break;
+            default:
+                console.log('Unknown httpMethod ' + event.httpMethod + ' on /group/messages');
+                callback(null, errorResult('404:Unknown operation'));
+        }
+    } else if (/\/users\/[a-z0-9-]+/.test(event.path)) {
+        getUser(event)
+        .then((result) => callback(null, result))
+        .catch((err) => {
+            console.log(err);
+            return callback(null, errorResult(err.message));
+        })
+    } else {
+        console.log("Unknown resource: " + event.requestContext.resourcePath);
+        callback(null, errorResult("404:Unknown operation"));
     }
 }
 
@@ -173,6 +178,32 @@ function writeGroupMessage(event) {
     .catch((err) => {
         console.log(err);
         return errorResult(err.message);
+    });
+}
+
+/**
+ * Given a user id (as a path parameter), returns the information for that user or 404 if no user is found.
+ * @param {object} event 
+ */
+function getUser(event) {
+    const userId = event.pathParameters.user_id;
+    if (userId === undefined || userId === null) {
+        return errorResult('400:No user_id provided')
+    }
+
+    const params = {
+        TableName: usersTable,
+        KeyConditionExpression: 'id = :userId',
+        ExpressionAttributeValues: { ':userId': userId },
+        ProjectionExpression: 'firstName, lastName, isAdmin, photoUrl'
+    };
+
+    return dynamo.query(params).promise()
+    .then((data) => {
+        if (data.Items.length === 0) {
+            return errorResult('404:No such user')
+        }
+        return normalResult(data.Items[0]);
     });
 }
 
