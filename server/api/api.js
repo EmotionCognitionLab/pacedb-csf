@@ -195,7 +195,7 @@ function getUser(event) {
         TableName: usersTable,
         KeyConditionExpression: 'id = :userId',
         ExpressionAttributeValues: { ':userId': userId },
-        ProjectionExpression: 'firstName, lastName, isAdmin, photoUrl'
+        ProjectionExpression: 'id, firstName, lastName, isAdmin, photoUrl'
     };
 
     return dynamo.query(params).promise()
