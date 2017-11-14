@@ -4,9 +4,12 @@ import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import 'rxjs/add/operator/switchMap';
 import { Observable } from 'rxjs/Observable';
 import { Subscription } from 'rxjs/Subscription';
+import * as moment from 'moment';
 
 import { EmojiFeedback } from './model/emoji-feedback';
+import { Group } from './model/group';
 import { GroupMessage } from './model/group-message';
+import { GroupPage } from './model/group-page';
 import { User } from './model/user';
 
 import { GroupService } from './service/group.service';
@@ -17,7 +20,7 @@ import { UserService } from './service/user.service';
     template: `
     <div class="container-narrow">
         <h2>Teammates</h2>
-        <app-user *ngFor="let user of members" [user]=user [doneRatio]=85></app-user>
+        <app-user *ngFor="let user of members" [user]=user [doneRatio]=85 [dayOfWeek]=weekDay></app-user>
         <hr />
         <h2>Messages</h2>
         <div class="form-group">
@@ -36,10 +39,12 @@ import { UserService } from './service/user.service';
 })
 
 export class GroupPageComponent implements OnInit, OnDestroy {
-    name: string;
     members: User[];
     messages: GroupMessage[] = [];
+    group: Group;
     msgText: string;
+    // The day of the week that this group is on. The weekday the group started on is day 0.
+    weekDay: number;
     private _msgsLastFetched: number;
     private _msgRefresher: Subscription;
     private _msgRefreshInterval = 10000; // milliseconds
@@ -51,15 +56,16 @@ export class GroupPageComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
         this.route.data
-        .subscribe((data: { members: User[], messages: GroupMessage[] }) => {
+        .subscribe((data: { groupInfo: GroupPage }) => {
             // push all the members into the user cache so we don't re-fetch them
             // when displaying messages
-            data.members.forEach(m => this.userService.cacheSet(m.id, m));
-            this.members = data.members;
-            this.messages = data.messages;
+            data.groupInfo.members.forEach(m => this.userService.cacheSet(m.id, m));
+            this.members = data.groupInfo.members;
+            this.messages = data.groupInfo.messages;
+            this.group = data.groupInfo.group;
         });
+
         this._msgsLastFetched = new Date().valueOf();
-        this.name = this.route.snapshot.paramMap.get('name');
         this._msgRefresher = Observable.interval(this._msgRefreshInterval)
         .switchMap(() => {
             return this.groupService.getGroupMessages(this._msgsLastFetched).map(messages => {
@@ -69,6 +75,8 @@ export class GroupPageComponent implements OnInit, OnDestroy {
                 }
             });
         }).subscribe();
+
+        this.weekDay = this.getDayOfWeek();
     }
 
     ngOnDestroy() {
@@ -77,9 +85,23 @@ export class GroupPageComponent implements OnInit, OnDestroy {
 
     sendGroupMsg() {
         const message = new GroupMessage(this.msgText.trim());
-        this.groupService.createGroupMessage(message, this.name).subscribe(savedMsg => {
+        this.groupService.createGroupMessage(message, this.group.name).subscribe(savedMsg => {
             this.messages.unshift(savedMsg);
             this.msgText = '';
         });
+    }
+
+    /**
+     * Returns the current day of the week (0-6), where day 0 is the day
+     * of the week the group started on (group.start_date).
+     */
+    private getDayOfWeek(): number {
+        const start = moment(this.group.start_date.toString());
+        const today = moment();
+        if (today.day() > start.day()) {
+            return today.day() - start.day();
+        } else {
+            return 7 - (start.day() - today.day());
+        }
     }
 }

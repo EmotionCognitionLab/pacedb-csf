@@ -18,7 +18,7 @@ import { AuthService } from './service/auth.service';
                 </div>
                 <span *ngFor="let fb of user.emojis" class='emoji-feedback' title="{{fb.from}}">{{fb.emoji}}&nbsp;</span>
                 <br />
-                <div class='progress {{doneClass()}}'>
+                <div class='progress {{doneClass()}} {{weekDay}}'>
                     <span class='status'></span>
                 </div>
                 <emoji-picker *ngIf="currentUser.id !== user.id" (onSelected)="emojiChosen($event)"></emoji-picker>
@@ -31,6 +31,10 @@ import { AuthService } from './service/auth.service';
 export class UserComponent implements OnInit {
     @Input() user: User;
     @Input() doneRatio: number;
+    // the day of the week that the user's group is currently on - used for rendering progress indicator
+    @Input() dayOfWeek: number;
+    // css styling class based on dayOfWeek
+    weekDay: string;
     currentUser: User;
 
     constructor(private authService: AuthService) {
@@ -41,7 +45,9 @@ export class UserComponent implements OnInit {
         });
      }
 
-    ngOnInit() {}
+    ngOnInit() {
+        this.weekDay = 'day' + this.dayOfWeek.toString();
+    }
 
     emojiChosen(emoji: string) {
         this.user.emojis.push(new EmojiFeedback(emoji, Date.now(), this.currentUser.name()));
