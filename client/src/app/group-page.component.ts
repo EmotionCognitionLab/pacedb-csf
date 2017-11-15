@@ -108,7 +108,7 @@ export class GroupPageComponent implements OnInit, OnDestroy {
     private getDayOfWeek(): number {
         const start = moment(this.group.start_date.toString());
         const today = moment();
-        if (today.day() > start.day()) {
+        if (today.day() >= start.day()) {
             return today.day() - start.day();
         } else {
             return 7 - (start.day() - today.day());

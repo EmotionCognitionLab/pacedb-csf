@@ -48,7 +48,7 @@
 }
 
 .none .status { width: 0%; }
-.day0 .status,  { width: 14%; }
+.day0 .status  { width: 14%; }
 .day1 .status { width: 29%; }
 .day2 .status { width: 43%; }
 .day3 .status { width: 58%; }
