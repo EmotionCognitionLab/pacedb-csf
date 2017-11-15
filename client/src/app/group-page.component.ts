@@ -4,6 +4,8 @@ import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import 'rxjs/add/operator/switchMap';
 import { Observable } from 'rxjs/Observable';
 import { Subscription } from 'rxjs/Subscription';
+import { Subject } from 'rxjs/Subject';
+import { debounceTime } from 'rxjs/operator/debounceTime';
 import * as moment from 'moment';
 
 import { EmojiFeedback } from './model/emoji-feedback';
@@ -19,6 +21,7 @@ import { UserService } from './service/user.service';
     selector: 'app-group-page',
     template: `
     <div class="container-narrow">
+       <ngb-alert *ngIf="statusMsg" type="success" (close)="statusMsg = null">{{ statusMsg }}</ngb-alert>
         <h2>Teammates</h2>
         <app-user *ngFor="let user of members" [user]=user [doneRatio]=85 [dayOfWeek]=weekDay></app-user>
         <hr />
@@ -45,6 +48,8 @@ export class GroupPageComponent implements OnInit, OnDestroy {
     msgText: string;
     // The day of the week that this group is on. The weekday the group started on is day 0.
     weekDay: number;
+    statusMsg: string;
+    private _status = new Subject<string>();
     private _msgsLastFetched: number;
     private _msgRefresher: Subscription;
     private _msgRefreshInterval = 10000; // milliseconds
@@ -77,6 +82,11 @@ export class GroupPageComponent implements OnInit, OnDestroy {
         }).subscribe();
 
         this.weekDay = this.getDayOfWeek();
+
+        // hide any status messages after 10 seconds
+        debounceTime.call(this._status, 10000).subscribe(() => this.statusMsg = null);
+        // make sure any new status messages are displayed
+        this._status.subscribe(status => this.statusMsg = status);
     }
 
     ngOnDestroy() {
@@ -86,7 +96,7 @@ export class GroupPageComponent implements OnInit, OnDestroy {
     sendGroupMsg() {
         const message = new GroupMessage(this.msgText.trim());
         this.groupService.createGroupMessage(message, this.group.name).subscribe(savedMsg => {
-            this.messages.unshift(savedMsg);
+            this._status.next('Message sent.');
             this.msgText = '';
         });
     }
