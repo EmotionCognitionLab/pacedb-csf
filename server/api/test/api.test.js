@@ -28,7 +28,7 @@ const groupNameNotCallerNotAdmin = {
         "authorizer": {
             "claims": {
                 "sub": "57b8e036-f007-4e2f-b3c6-d7882525fae2",
-                "cognito:groups": ""
+                "cognito:groups": undefined
             }
         },
         "resourcePath": "/group/members"
@@ -41,7 +41,7 @@ const noGroupName = {
         "authorizer": {
             "claims": {
                 "sub": users[0],
-                "cognito:groups": ""
+                "cognito:groups": undefined
             }
         },
         "resourcePath": "/group/members"
@@ -80,7 +80,7 @@ const callerDoesNotExist = {
         "authorizer": {
             "claims": {
                 "sub": 'nobody-by-that-name',
-                "cognito:groups": ""
+                "cognito:groups": undefined
             }
         },
         "resourcePath": "/group/members"
@@ -94,7 +94,7 @@ const groupMsgToCallerGroup = {
         "authorizer": {
             "claims": {
                 "sub": users[0],
-                "cognito:groups": ""
+                "cognito:groups": undefined
             }
         },
         "resourcePath": "/group/messages"

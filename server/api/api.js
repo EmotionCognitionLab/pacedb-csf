@@ -130,6 +130,9 @@ function getGroupMessages(event) {
 
 // callerCognitoGroups is a comma-separated list of cognito group names the caller belongs to
 function callerIsAdmin(callerCognitoGroups) {
+    if (callerCognitoGroups === undefined || callerCognitoGroups === null) {
+        return false;
+    }
     const groupList = callerCognitoGroups.split(',');
     return groupList.indexOf(adminGroupName) !== -1;
 }
