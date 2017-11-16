@@ -6,12 +6,15 @@ const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
 const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
 const ses = new AWS.SES({apiVersion: '2010-12-01', region: 'us-east-1'});
 const sns = new AWS.SNS({apiVersion: '2010-03-31', region: 'us-east-1'});
+const moment = require('moment');
 
 const groupsTable = process.env.GROUPS_TABLE;
 const usersTable = process.env.USERS_TABLE;
-const trainingTable = process.env.TRAINING_TABLE;
+const userDataTable = process.env.USER_DATA_TABLE;
 const emailSender = 'uscemotioncognitionlab@gmail.com';
 const emailTemplate = process.env.EMAIL_TEMPLATE;
+const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
+const DEFAULT_TARGET_MINUTES = 20;
 
 exports.handler = (event, context, callback) => {
     const emailPromises = [];
@@ -57,7 +60,6 @@ function sendSMS(recip) {
             }
         }
     }
-    console.log(params);
     return sns.publish(params).promise();
 }
 
@@ -78,31 +80,28 @@ function sendEmail(recip) {
 // Returns a promise of a Map of user id -> email || phone records
 // for users who need to be reminded to do their training today
 function getUsersToBeReminded() {
-    const groups = [];
+    // map of group name -> group object
+    const groupMap = new Map();
+    // map of user id -> user object
     const userMap = new Map();
 
     return getActiveGroups()
     .then((result) => {
-        result.Items.forEach((i) => groups.push(i.name));
-        return groups;
+        result.Items.forEach((i) => groupMap.set(i.name, i));
+        return Array.from(groupMap.keys());
     })
-    .then((groups) => {
-        return getUsersInGroups(groups);
+    .then((groupNames) => {
+        return getUsersInGroups(groupNames)
     })
     .then((usersResult) => {
-        usersResult.Items.forEach((i) => userMap.set(i.id, 
-            { contact: i.email || i.phone,
-            first_name: i.first_name
-            }
-        ));
+        usersResult.Items.forEach((i) => {
+            i.contact = i.email || i.phone;
+            userMap.set(i.id, i);
+        });
         return userMap;
     })
     .then(() => {
-        return getUsersWhoCompletedTraining();
-    })
-    .then((finishedUsers) => {
-        finishedUsers.Items.forEach((i) => userMap.delete(i.id));
-        return userMap;
+        return getUsersWhoHaveNotCompletedTraining(userMap, groupMap);
     })
     .catch((err) => {
         console.log(err);
@@ -116,14 +115,10 @@ function getActiveGroups() {
     const today = todayDate();
     const params = {
         TableName: groupsTable,
-        ExpressionAttributeNames: {
-            '#N':'name'
-        },
         ExpressionAttributeValues: {
             ':td': today
         },
-        FilterExpression: "start_date <= :td AND end_date >= :td",
-        ProjectionExpression: "#N"
+        FilterExpression: "startDate <= :td AND endDate >= :td"
     }
     return dynamo.scan(params).promise();
 }
@@ -145,30 +140,58 @@ function getUsersInGroups(groups) {
         },
         ExpressionAttributeValues: attrVals,
         FilterExpression: groupConstraint,
-        ProjectionExpression: 'id, email, phone, first_name'
+        ProjectionExpression: 'id, email, #G, phone, firstName, lastName'
     }
     return dynamo.scan(params).promise();
 }
 
-// returns promise of scan output of id's of all users who have 
+
+/**
+ * Given a start date, returns the number of minutes that a user in a 
+ * group with that start date should have spent training today.
+ * @param {number} startDate 
+ */
+function getTargetMinutes(startDate) {
+    const today = moment();
+    const startMoment = moment(startDate.toString());
+    const weekNum = Math.floor(today.diff(startMoment, 'days') / 7);
+    if (weekNum < 0 || weekNum > targetMinutesByWeek.length - 1) {
+        return DEFAULT_TARGET_MINUTES;
+    }
+    return targetMinutesByWeek[weekNum];
+}
+
+// returns promise of map of id->user object for all users who have not
 // completed their training for today
-function getUsersWhoCompletedTraining() {
+function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
+    // pull training data for today
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).valueOf();
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).valueOf();
+    const today = moment().format('YYYYMMDD');
     const params = {
-        TableName: trainingTable,
+        TableName: userDataTable,
         ExpressionAttributeNames: {
-            '#DT': 'datetime'
+            '#D': 'date'
         },
         ExpressionAttributeValues: {
-            ':ts': todayStart,
-            ':te': todayEnd
+            ':today': +today
         },
-        FilterExpression: '#DT >= :ts AND #DT <= :te AND attribute_exists(done)',
-        ProjectionExpression: 'id'
+        FilterExpression: '#D = :today',
+        ProjectionExpression: 'id, minutes'
     }
-    return dynamo.scan(params).promise();
+
+    return dynamo.scan(params).promise()
+    .then(userData => {
+        userData.Items.forEach(ud => {
+            const activeUser = userMap.get(ud.id);
+            if (activeUser !== undefined) { // undefined means we have training data for them today but they're not in an active group, which shouldn't happen
+                const userGroup = activeUser.group;
+                if (ud.minutes >= getTargetMinutes(userGroup.startDate)) {
+                    userMap.delete(ud.id);
+                }
+            }
+        });
+        return userMap;
+    });
 }
 
 // Returns today's date as a YYYYMMDD *number*, not a string

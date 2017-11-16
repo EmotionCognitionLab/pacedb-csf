@@ -8,6 +8,7 @@ import { Subject } from 'rxjs/Subject';
 
 import { AuthService } from '../service/auth.service';
 import { User } from '../model/user';
+import { UserData } from '../model/user-data';
 import { environment } from '../../environments/environment';
 
 
@@ -102,6 +103,76 @@ export class UserService {
             return this.http.request(path, requestOptions);
         });
 
+    }
+
+     /**
+     *
+     * @summary Get the data (training minutes, emojis) for the given user and time period
+     * @param userId id of the user whose data we&#39;re fetching
+     * @param start start date (YYYYMMDD) of the range to fetch
+     * @param end end date (YYYYMMDD) of the range to fetch
+     */
+    public getUserData(userId: string, start: number, end: number, extraHttpRequestParams?: any): Observable<UserData[]> {
+        return this.getUserDataWithHttpInfo(userId, start, end, extraHttpRequestParams)
+            .map((response: Response) => {
+                if (response.status === 204) {
+                    return undefined;
+                } else {
+                    return response.json() || {};
+                }
+            });
+    }
+
+    /**
+     * Get the data (training minutes, emojis) for the given user and time period
+     *
+     * @param userId id of the user whose data we&#39;re fetching
+     * @param start start date (YYYYMMDD) of the range to fetch
+     * @param end end date (YYYYMMDD) of the range to fetch
+     */
+    public getUserDataWithHttpInfo(userId: string, start: number, end: number, extraHttpRequestParams?: any): Observable<Response> {
+        const path = this.basePath + '/users/${user_id}/data'
+                    .replace('${' + 'user_id' + '}', String(userId));
+
+        const queryParameters = new URLSearchParams();
+        const headers = new Headers();
+        // verify required parameter 'userId' is not null or undefined
+        if (userId === null || userId === undefined) {
+            throw new Error('Required parameter userId was null or undefined when calling getUserData.');
+        }
+        // verify required parameter 'start' is not null or undefined
+        if (start === null || start === undefined) {
+            throw new Error('Required parameter start was null or undefined when calling getUserData.');
+        }
+        // verify required parameter 'end' is not null or undefined
+        if (end === null || end === undefined) {
+            throw new Error('Required parameter end was null or undefined when calling getUserData.');
+        }
+        if (start !== undefined) {
+            queryParameters.set('start', <any>start);
+        }
+
+        if (end !== undefined) {
+            queryParameters.set('end', <any>end);
+        }
+
+        let requestOptions: RequestOptionsArgs = new RequestOptions({
+            method: RequestMethod.Get,
+            search: queryParameters,
+            withCredentials: false
+        });
+
+        // https://github.com/swagger-api/swagger-codegen/issues/4037
+        if (extraHttpRequestParams) {
+            requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
+        }
+
+        const tokenPromise = this.authService.getAccessToken();
+        return Observable.fromPromise(tokenPromise).flatMap((accessToken) => {
+            headers.set('Authorization', accessToken);
+            requestOptions.headers = headers;
+            return this.http.request(path, requestOptions);
+        });
     }
 
     private cacheGet(userId: string): Observable<User> | Subject<any> | undefined {

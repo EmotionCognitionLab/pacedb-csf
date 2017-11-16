@@ -7,6 +7,7 @@ const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVer
 
 const usersTable = process.env.USERS_TABLE;
 const groupMessageTable = process.env.GROUP_MESSAGE_TABLE;
+const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
 exports.handler = (event, context, callback) => {
@@ -40,13 +41,20 @@ exports.handler = (event, context, callback) => {
                 console.log('Unknown httpMethod ' + event.httpMethod + ' on /group/messages');
                 callback(null, errorResult('404:Unknown operation'));
         }
-    } else if (/\/users\/[a-z0-9-]+/.test(event.path)) {
+    } else if (/^\/users\/[a-z0-9-]+$/.test(event.path)) {
         getUser(event)
         .then((result) => callback(null, result))
         .catch((err) => {
             console.log(err);
             return callback(null, errorResult(err.message));
         })
+    } else if (/^\/users\/[a-z0-9-]+\/data$/.test(event.path)) {
+        getUserData(event)
+        .then((result) => callback(null, result))
+        .catch((err) => {
+            console.log(err);
+            return callback(null, errorResult(err.message));
+        });
     } else {
         console.log("Unknown resource: " + event.requestContext.resourcePath);
         callback(null, errorResult("404:Unknown operation"));
@@ -208,6 +216,52 @@ function getUser(event) {
         }
         return normalResult(data.Items[0]);
     });
+}
+
+/**
+ * Returns the data associated with the given user for the given time range.
+ * @param {object} event 
+ */
+function getUserData(event) {
+    const userId = event.pathParameters.user_id;
+    const start = event.queryStringParameters.start;
+    const end = event.queryStringParameters.end;
+    const paramsOk = paramsPresent({'user_id': userId, 'start': start, 'end':end});
+    if (paramsOk.length > 0) {
+        return Promise.resolve(errorResult('400:'+paramsOk.join('\n')));
+    }
+    if (start > end) {
+        return Promise.resolve(errorResult('400:Start date must be less than or equal to end date.'))
+    }
+
+    const queryParams = {
+        TableName: userDataTable,
+        KeyConditionExpression: 'userId = :userId and #D between :start and :end',
+        ExpressionAttributeNames: { '#D': 'date' },
+        ExpressionAttributeValues: { ':userId': userId, ':start': +start, ':end': +end }
+    }
+    return dynamo.query(queryParams).promise()
+    .then((result) => normalResult(result.Items))
+    .catch((err) => {
+        console.log(err);
+        return errorResult(err.message);
+    })
+}
+
+/**
+ * Checks to see if the given params are defined and not null. If so, returns an empty array.
+ * If not, returns an array of error messages.
+ * @param {object} params {'paramName1': paramValue1, 'paramName2': paramValue2, ... }
+ */
+function paramsPresent(params) {
+    const result = [];
+    Object.keys(params).forEach((k,idx) => {
+        const v = params[k];
+        if (v === undefined || v === null) {
+            result.push(`No ${k} provided`);
+        }
+    });
+    return result;
 }
 
 /**

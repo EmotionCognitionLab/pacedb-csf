@@ -9,13 +9,16 @@ Parameters:
   EmailTemplate:
     Type: String
     Description: The template to use when sending email
+  TargetMinutesByWeek:
+    Type: String
+    Description: JSON array of numbers representing target minutes of training each week (array[0] == week1, etc.)
 
 Resources:
   GroupsTable:
     Type: "AWS::Serverless::SimpleTable"
   UsersTable:
     Type: "AWS::Serverless::SimpleTable"
-  TrainingHistoryTable:
+  UserDataTable:
     Type: "AWS::Serverless::SimpleTable"
   Remind:
     Type: AWS::Serverless::Function
@@ -29,5 +32,6 @@ Resources:
           DYNAMO_ENDPOINT: !Ref DynamoDBEndpoint
           GROUPS_TABLE: !Ref GroupsTable
           USERS_TABLE:  !Ref UsersTable
-          TRAINING_TABLE: !Ref TrainingHistoryTable
+          USER_DATA_TABLE: !Ref UserDataTable
           EMAIL_TEMPLATE: !Ref EmailTemplate
+          TARGET_MINUTES_BY_WEEK: !Ref TargetMinutesByWeek

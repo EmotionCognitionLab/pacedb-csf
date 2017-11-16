@@ -11,6 +11,7 @@ const assert = require('assert');
 
 const usersTable = process.env.USERS_TABLE;
 const groupMessageTable = process.env.GROUP_MESSAGE_TABLE;
+const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
 // test data
@@ -21,6 +22,11 @@ const messages = [
     {fromId: users[0], group: groups[0], date: 123456900, body: 'Howdy, folks!'},
     {fromId: users[0], group: groups[0], date: 123456100, body: 'Howdy, folks!'},
     {fromId: users[2], group: groups[2], date: 123456100, body: 'Howdy, folks!'}
+]
+const userData = [
+    {userId: users[0], datetime: 20171122, minutes: 10},
+    {userId: users[0], datetime: 20171123, emoji: [{from: 'John D.', emoji: '💩'}]},
+    {userId: users[1], datetime: 20170419, minutes: 7}
 ]
 
 const groupNameNotCallerNotAdmin = {
@@ -241,6 +247,156 @@ const getNonExistentUser = {
     "path": "/users/0000-ffff",
     "pathParameters": { "user_id": "0000-ffff" },
     "queryStringParameters": null
+}
+
+const getOwnUserData = {
+    "httpMethod": "GET",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": users[0],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/users/${user_id}/data"
+    },
+    "path": `/users/${users[0]}/data`,
+    "pathParameters": { "user_id": users[0] },
+    "queryStringParameters": {start: "20170101", end: "20171231"}
+}
+
+const getOtherUserData = {
+    "httpMethod": "GET",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": users[1],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/users/${user_id}/data"
+    },
+    "path": `/users/${users[0]}/data`,
+    "pathParameters": { "user_id": users[0] },
+    "queryStringParameters": {start: "20171122", end: "20171122"}
+}
+
+const getUserDataMissingStartParam = {
+    "httpMethod": "GET",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": users[1],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/users/${user_id}/data"
+    },
+    "path": `/users/${users[0]}/data`,
+    "pathParameters": { "user_id": users[0] },
+    "queryStringParameters": {end: "20171122"}
+}
+
+const getUserDataNonexistentUser = {
+    "httpMethod": "GET",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": users[0],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/users/${user_id}/data"
+    },
+    "path": `/users/faa-baa-1/data`,
+    "pathParameters": { "user_id": "faa-baa-1" },
+    "queryStringParameters": {start: "20171122", end: "20171122"}
+}
+
+const getUserDataEmptyTimeRange = {
+    "httpMethod": "GET",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": users[0],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/users/${user_id}/data"
+    },
+    "path": `/users/${users[1]}/data`,
+    "pathParameters": { "user_id": users[1] },
+    "queryStringParameters": {start: "19590101", end: "19590101"}
+}
+
+const getUserDataBadTimeRange = {
+    "httpMethod": "GET",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": users[0],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/users/${user_id}/data"
+    },
+    "path": `/users/${users[1]}/data`,
+    "pathParameters": { "user_id": users[1] },
+    "queryStringParameters": {start: "19590301", end: "19590101"}
+}
+
+function dropUserDataTable() {
+    return dynClient.deleteTable({TableName: userDataTable}).promise();
+}
+
+function createUserDataTable() {
+    const params = {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "userId",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "date",
+                "AttributeType": "N"
+            }
+        ],
+        "TableName": userDataTable,
+        "KeySchema": [
+            {
+                "AttributeName": "userId",
+                "KeyType": "HASH"
+            },
+            {
+                "AttributeName": "date",
+                "KeyType": "RANGE"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 1
+        }
+    };
+    return dynClient.createTable(params).promise();
+}
+
+function writeTestUserData() {
+    const items = [];
+    userData.forEach(d => {
+        items.push({
+            PutRequest: {
+                Item: {
+                    'userId': d.userId,
+                    'date': d.datetime,
+                    'minutes': d.minutes,
+                    'emoji': d.emoji
+                }
+            }
+        });
+    });
+    const pushCmd = {};
+    pushCmd[userDataTable] = items;
+    return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
 }
 
 function dropGroupMessagesTable() {
@@ -620,6 +776,15 @@ describe('User request', function() {
         return clearUsersTable()
         .then(function() {
             return writeTestUsers();
+        })
+        .then(function() {
+            return dropUserDataTable();
+        })
+        .then(function() {
+            return createUserDataTable();
+        })
+        .then(function() {
+            return writeTestUserData();
         });
     });
     describe('for an existing user', function() {
@@ -649,6 +814,110 @@ describe('User request', function() {
             })
             .then(function(done) {
                 assert.equal(done.statusCode, 404);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+    });
+    describe('for user data', function() {
+        it('should return all of the data for the given user and date range', function() {
+            return lambdaLocal.execute({
+                event: getOwnUserData,
+                lambdaPath: 'api.js',
+                envfile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 200);
+                const body = JSON.parse(done.body);
+                body.forEach(item => {
+                    assert.equal(item.userId, getOwnUserData.pathParameters.user_id);
+                    assert(item.date >= getOwnUserData.queryStringParameters.start, `${item.date} should be >= ${getOwnUserData.queryStringParameters.start}`);
+                    assert(item.date <= getOwnUserData.queryStringParameters.end, `${item.date} should be <= ${getOwnUserData.queryStringParameters.end}`);
+                });
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err)
+            });
+        });
+        it('should return the data for a user other than the logged-in user', function() {
+            return lambdaLocal.execute({
+                event: getOtherUserData,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 200);
+                const body = JSON.parse(done.body);
+                body.forEach(item => {
+                    assert.equal(item.userId, getOtherUserData.pathParameters.user_id);
+                    assert(item.date >= getOtherUserData.queryStringParameters.start, `${item.date} should be >= ${getOtherUserData.queryStringParameters.start}`);
+                    assert(item.date <= getOtherUserData.queryStringParameters.end, `${item.date} should be <= ${getOtherUserData.queryStringParameters.end}`);
+                });
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should return a 400 if a required param is missing', function() {
+            return lambdaLocal.execute({
+                event: getUserDataMissingStartParam,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should return an empty array if there is no data for that user', function() {
+            return lambdaLocal.execute({
+                event: getUserDataNonexistentUser,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 200);
+                const body = JSON.parse(done.body);
+                assert(body instanceof Array, 'Expected response to be an array');
+                assert.equal(body.length, 0);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should return an empty array if there is no data for that time range', function() {
+            return lambdaLocal.execute({
+                event: getUserDataEmptyTimeRange,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 200);
+                const body = JSON.parse(done.body);
+                assert(body instanceof Array, 'Expected response to be an array');
+                assert.equal(body.length, 0);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should return 400 if the start date is greater than the end date', function() {
+            return lambdaLocal.execute({
+                event: getUserDataBadTimeRange,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
             })
             .catch(function(err) {
                 console.log(err);
