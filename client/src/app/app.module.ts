@@ -13,6 +13,7 @@ import { GroupMessageComponent } from './group-message.component';
 import { LoginComponent } from './login.component';
 import { UserComponent } from './user.component';
 import { GroupPageComponent } from './group-page.component';
+import { TrainingComponent } from './training.component';
 
 import { AuthService } from './service/auth.service';
 import { AwsConfigService } from './service/aws-config.service';
@@ -29,7 +30,8 @@ import { UserService } from './service/user.service';
     GroupMessageComponent,
     LoginComponent,
     UserComponent,
-    GroupPageComponent
+    GroupPageComponent,
+    TrainingComponent
   ],
   imports: [
     NgbModule.forRoot(),

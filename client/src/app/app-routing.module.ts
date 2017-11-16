@@ -4,6 +4,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { ForbiddenComponent } from './forbidden.component';
 import { LoginComponent } from './login.component';
 import { GroupPageComponent } from './group-page.component';
+import { TrainingComponent } from './training.component';
 
 import { GroupResolverService } from './service/group-resolver.service';
 import { RouteGuardService } from './service/route-guard.service';
@@ -16,6 +17,10 @@ const routes: Routes = [
     component: GroupPageComponent,
     canActivate: [RouteGuardService],
     resolve: { groupInfo: GroupResolverService }
+  },
+  { path: 'training',
+    component: TrainingComponent,
+    canActivate: [RouteGuardService]
   }
 ];
 
