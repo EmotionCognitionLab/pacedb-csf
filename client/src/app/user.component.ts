@@ -50,7 +50,7 @@ export class UserComponent implements OnInit {
     }
 
     emojiChosen(emoji: string) {
-        this.user.emojis.push(new EmojiFeedback(emoji, Date.now(), this.currentUser.name()));
+        this.user.emojis.push(new EmojiFeedback(emoji, this.currentUser.name()));
         // TODO persist new emoji
     }
 
