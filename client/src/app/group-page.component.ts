@@ -91,6 +91,7 @@ export class GroupPageComponent implements OnInit, OnDestroy {
 
     ngOnDestroy() {
         this._msgRefresher.unsubscribe();
+        this._status.unsubscribe();
     }
 
     sendGroupMsg() {
