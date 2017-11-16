@@ -345,6 +345,21 @@ const getUserDataBadTimeRange = {
     "queryStringParameters": {start: "19590301", end: "19590101"}
 }
 
+const putUserMinutes = {
+    "httpMethod": "PUT",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": users[0],
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/users/minutes"
+    },
+    "path": `/users/minutes`,
+    "queryStringParameters": {date: "20170419", minutes: "12"}
+}
+
 function dropUserDataTable() {
     return dynClient.deleteTable({TableName: userDataTable}).promise();
 }
@@ -923,6 +938,116 @@ describe('User request', function() {
                 console.log(err);
                 throw(err);
             });
+        });
+    });
+    describe('When storing user minutes', function() {
+        it('should store a properly formatted request', function() {
+            return lambdaLocal.execute({
+                event: putUserMinutes,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 204);
+            })
+            .then(() => {
+                const queryParams = {
+                    TableName: userDataTable,
+                    Key: {
+                        userId: putUserMinutes.requestContext.authorizer.claims.sub,
+                        date: +putUserMinutes.queryStringParameters.date
+                    }
+                }
+                return dynDocClient.get(queryParams).promise();
+            })
+            .then((result) => {
+                assert.equal(result.Item.minutes, +putUserMinutes.queryStringParameters.minutes);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should reject a request missing the date param', function() {
+            const missingDate = Object.assign({}, putUserMinutes);
+            delete missingDate.queryStringParameters.date;
+            return lambdaLocal.execute({
+                event: missingDate,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should reject a request with a data param with more than 8 characters', function() {
+            const longDate = Object.assign({}, putUserMinutes);
+            longDate.queryStringParameters.date = '201700701';
+            return lambdaLocal.execute({
+                event: longDate,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should reject a request with a date param with fewer than 8 characters', function() {
+            const shortDate = Object.assign({}, putUserMinutes);
+            shortDate.queryStringParameters.date = '2017701';
+            return lambdaLocal.execute({
+                event: shortDate,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        })
+        it('should reject a request missing the minutes param', function() {
+            const missingMin = Object.assign({}, putUserMinutes);
+            delete missingMin.queryStringParameters.minutes;
+            return lambdaLocal.execute({
+                event: missingMin,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should reject a request with a negative minutes param', function() {
+            const negMin = Object.assign({}, putUserMinutes);
+            negMin.queryStringParameters.minutes = -13;
+            return lambdaLocal.execute({
+                event: negMin,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+
         });
     });
 });

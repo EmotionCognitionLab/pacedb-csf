@@ -55,6 +55,13 @@ exports.handler = (event, context, callback) => {
             console.log(err);
             return callback(null, errorResult(err.message));
         });
+    } else if (path === '/users/minutes' && event.httpMethod === 'PUT') {
+        writeUserMinutes(event)
+        .then((result) => callback(null, result))
+        .catch((err) => {
+            console.log(err);
+            return callback(null, errorResult(err.message));
+        })
     } else {
         console.log("Unknown resource: " + event.requestContext.resourcePath);
         callback(null, errorResult("404:Unknown operation"));
@@ -248,6 +255,38 @@ function getUserData(event) {
     })
 }
 
+function writeUserMinutes(event) {
+    const userId = event.requestContext.authorizer.claims.sub;
+    let date = event.queryStringParameters.date;
+    let minutes = event.queryStringParameters.minutes;
+    const paramsOk = paramsPresent({'userId': userId, 'date': date, 'minutes': minutes});
+    if (paramsOk.length > 0) {
+        return Promise.resolve(errorResult('400:'+paramsOk.join('\n')));
+    }
+    minutes = +minutes;
+    if (minutes < 0) {
+        return Promise.resolve(errorResult('400:Minutes must be >= 0.'));
+    }
+    if (date.length !== 8) {
+        // TODO is it worth pulling their group and checking that date is in it's start/end range?
+        return Promise.resolve(errorResult('400:Date should be in YYYYMMDD format.'))
+    }
+    date = +date;
+
+    const updateParams = {
+        TableName: userDataTable,
+        Key: { 'userId': userId, 'date': date},
+        UpdateExpression: 'set minutes = :minutes',
+        ExpressionAttributeValues: {':minutes': minutes}
+    }
+    return dynamo.update(updateParams).promise()
+    .then(() => normalResult({}, 204))
+    .catch((err) => {
+        console.log(err);
+        return errorResult(err.message);
+    })
+}
+
 /**
  * Checks to see if the given params are defined and not null. If so, returns an empty array.
  * If not, returns an array of error messages.
@@ -283,9 +322,9 @@ function errorResult(message) {
     }
 }
 
-function normalResult(responseJsObj) {
+function normalResult(responseJsObj, statusCode = 200) {
     return {
-        statusCode: 200,
+        statusCode: statusCode,
         headers:{'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token', 'Access-Control-Allow-Methods':'GET'},
         body: JSON.stringify(responseJsObj)
     }

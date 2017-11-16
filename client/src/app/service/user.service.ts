@@ -175,6 +175,68 @@ export class UserService {
         });
     }
 
+    /**
+     *
+     * @summary Update the number of minutes the logged-in user has done for the given day
+     * @param date The date (YYYYMMDD) for the training minutes
+     * @param minutes The number of minutes of training done for the given day
+     */
+    public putUserMinutes(date: number, minutes: number, extraHttpRequestParams?: any): Observable<{}> {
+        return this.putUserMinutesWithHttpInfo(date, minutes, extraHttpRequestParams)
+            .map((response: Response) => {
+                if (response.status === 204) {
+                    return undefined;
+                } else {
+                    return response.json() || {};
+                }
+            });
+    }
+
+    /**
+     * Update the number of minutes the logged-in user has done for the given day
+     *
+     * @param date The date (YYYYMMDD) for the training minutes
+     * @param minutes The number of minutes of training done for the given day
+     */
+    public putUserMinutesWithHttpInfo(date: number, minutes: number, extraHttpRequestParams?: any): Observable<Response> {
+        const path = this.basePath + '/users/minutes';
+
+        const queryParameters = new URLSearchParams();
+        const headers = new Headers();
+        // verify required parameter 'date' is not null or undefined
+        if (date === null || date === undefined) {
+            throw new Error('Required parameter date was null or undefined when calling putUserMinutes.');
+        }
+        // verify required parameter 'minutes' is not null or undefined
+        if (minutes === null || minutes === undefined) {
+            throw new Error('Required parameter minutes was null or undefined when calling putUserMinutes.');
+        }
+        if (date !== undefined) {
+            queryParameters.set('date', <any>date);
+        }
+
+        if (minutes !== undefined) {
+            queryParameters.set('minutes', <any>minutes);
+        }
+
+        let requestOptions: RequestOptionsArgs = new RequestOptions({
+            method: RequestMethod.Put,
+            search: queryParameters,
+            withCredentials: false
+        });
+        // https://github.com/swagger-api/swagger-codegen/issues/4037
+        if (extraHttpRequestParams) {
+            requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
+        }
+
+        const tokenPromise = this.authService.getAccessToken();
+        return Observable.fromPromise(tokenPromise).flatMap((accessToken) => {
+            headers.set('Authorization', accessToken);
+            requestOptions.headers = headers;
+            return this.http.request(path, requestOptions);
+        });
+    }
+
     private cacheGet(userId: string): Observable<User> | Subject<any> | undefined {
         if (this._userCache.has(userId)) {
             if (this._userCache.get(userId).expiration > Date.now()) {
