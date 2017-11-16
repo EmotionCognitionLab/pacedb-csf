@@ -41,14 +41,14 @@ exports.handler = (event, context, callback) => {
                 console.log('Unknown httpMethod ' + event.httpMethod + ' on /group/messages');
                 callback(null, errorResult('404:Unknown operation'));
         }
-    } else if (/^\/users\/[a-z0-9-]+$/.test(event.path)) {
+    } else if (/^\/users\/[a-f0-9-]+$/.test(event.path)) {
         getUser(event)
         .then((result) => callback(null, result))
         .catch((err) => {
             console.log(err);
             return callback(null, errorResult(err.message));
         })
-    } else if (/^\/users\/[a-z0-9-]+\/data$/.test(event.path)) {
+    } else if (/^\/users\/[a-f0-9-]+\/data$/.test(event.path)) {
         getUserData(event)
         .then((result) => callback(null, result))
         .catch((err) => {
