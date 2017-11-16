@@ -20,7 +20,7 @@ export class EmojiPickerComponent implements OnInit {
 
     constructor() {
         this.toggleIcon = '😀';
-        this.availableEmojis = ['😀', '😎', '💩', '🙀', '😰'];
+        this.availableEmojis = ['😀', '😞', '👍', '👉', '⏳', '🏅'];
      }
 
     emojiPicked(event: any) {
