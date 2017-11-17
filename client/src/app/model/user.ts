@@ -1,11 +1,8 @@
-import { EmojiFeedback } from './emoji-feedback';
-
 export class User {
     id: string;
     group: string;
     isAdmin = false;
     dateCreated: Date;
-    emojis: EmojiFeedback[] = [];
 
     static fromJsonString(json: string): User {
         const jsObj = JSON.parse(json);

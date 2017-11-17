@@ -1,10 +1,17 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input } from '@angular/core';
 import { NgIf } from '@angular/common';
+
+import { Observable } from 'rxjs/Observable';
+import { Subscription } from 'rxjs/Subscription';
+import * as moment from 'moment';
 
 import { EmojiFeedback } from './model/emoji-feedback';
 import { User } from './model/user';
+import { UserData } from './model/user-data';
 
 import { AuthService } from './service/auth.service';
+import { GroupService } from './service/group.service';
+import { UserService } from './service/user.service';
 
 @Component({
     selector: 'app-user',
@@ -16,7 +23,7 @@ import { AuthService } from './service/auth.service';
                 <div>
                     <div *ngIf="user.isAdmin" class="staff-label">STAFF</div>
                 </div>
-                <span *ngFor="let fb of user.emojis" class='emoji-feedback' title="{{fb.from}}">{{fb.emoji}}&nbsp;</span>
+                <span *ngFor="let fb of emojis" class='emoji-feedback' title="{{fb.from}}">{{fb.emoji}}&nbsp;</span>
                 <br />
                 <div class='progress {{doneClass()}} {{weekDay}}'>
                     <span class='status'></span>
@@ -28,7 +35,7 @@ import { AuthService } from './service/auth.service';
     styleUrls: ['../assets/css/user.css']
 })
 
-export class UserComponent implements OnInit {
+export class UserComponent implements OnInit, OnDestroy {
     @Input() user: User;
     @Input() doneRatio: number;
     // the day of the week that the user's group is currently on - used for rendering progress indicator
@@ -36,22 +43,42 @@ export class UserComponent implements OnInit {
     // css styling class based on dayOfWeek
     weekDay: string;
     currentUser: User;
+    emojis: EmojiFeedback[] = [];
+    private _userData: UserData[];
+    private _userDataSubscription: Subscription;
 
-    constructor(private authService: AuthService) {
-        this.authService.currentUserInsecure()
-        .then((curUser) => this.currentUser = curUser)
-        .catch((e) => {
-            console.log(e);
-        });
-     }
+    constructor(private authService: AuthService,
+            private groupService: GroupService,
+            private userService: UserService) {
+                this.authService.currentUserInsecure()
+                .then(u => this.currentUser = u)
+                .catch(err => {
+                    console.log(err);
+                });
+            }
 
     ngOnInit() {
         this.weekDay = 'day' + this.dayOfWeek.toString();
+        this._userDataSubscription = Observable.fromPromise(this.groupService.getGroup(this.user.group))
+        .flatMap(group => {
+            return this.userService.getUserData(this.user.id, group.start_date, group.end_date);
+        }).subscribe(data => {
+            this._userData = data;
+            data.forEach(ud => {
+                if (ud.emoji !== undefined && ud.emoji.length > 0) {
+                    this.emojis.push(...ud.emoji);
+                }
+            });
+        });
+    }
+
+    ngOnDestroy() {
+        this._userDataSubscription.unsubscribe();
     }
 
     emojiChosen(emoji: string) {
-        this.user.emojis.push(new EmojiFeedback(emoji, this.currentUser.name()));
         // TODO persist new emoji
+        this.emojis.push(new EmojiFeedback(emoji, this.currentUser.name()));
     }
 
     // converts the doneRatio to a css class for styling purposes
