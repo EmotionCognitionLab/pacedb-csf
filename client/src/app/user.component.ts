@@ -61,7 +61,7 @@ export class UserComponent implements OnInit, OnDestroy {
         this.weekDay = 'day' + this.dayOfWeek.toString();
         this._userDataSubscription = Observable.fromPromise(this.groupService.getGroup(this.user.group))
         .flatMap(group => {
-            return this.userService.getUserData(this.user.id, group.start_date, group.end_date);
+            return this.userService.getUserData(this.user.id, group.startDate, group.endDate);
         }).subscribe(data => {
             this._userData = data;
             data.forEach(ud => {

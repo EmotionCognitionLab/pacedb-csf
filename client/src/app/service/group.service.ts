@@ -29,8 +29,8 @@ export class GroupService {
             TableName: GroupService.tableName,
             Item: {
                 'name': newGroup.name,
-                'start_date': newGroup.start_date,
-                'end_date': newGroup.end_date
+                'startDate': newGroup.startDate,
+                'endDate': newGroup.endDate
             }
         }).promise();
         })
@@ -53,7 +53,7 @@ export class GroupService {
             if (item.Item === undefined) {
                 return undefined;
             }
-            return new Group(item.Item.name, item.Item.start_date, item.Item.end_date);
+            return new Group(item.Item.name, item.Item.startDate, item.Item.endDate);
         })
         .catch((err) => {
             console.log(err);
@@ -83,7 +83,7 @@ export class GroupService {
                 throw new Error('No groups found.');
             }
             scanResult.Items.forEach(i => {
-                result.push(new Group(i.name, i.start_date, i.end_date));
+                result.push(new Group(i.name, i.startDate, i.endDate));
             });
             if (scanResult.LastEvaluatedKey !== undefined) {
                 return this._getAllGroups(result, scanResult.LastEvaluatedKey);

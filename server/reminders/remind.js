@@ -37,7 +37,7 @@ exports.handler = (event, context, callback) => {
      .catch((err) => console.log(err))
 }
 
-// Given a Set of objects with 'contact' and 'first_name' fields, uses SES to send reminders
+// Given a Set of objects with 'contact' and 'firstName' fields, uses SES to send reminders
 function sendReminderEmails(recipients) {
     const emailPromises = [];
     recipients.forEach((recip) => emailPromises.push(sendEmail(recip)));
@@ -47,9 +47,9 @@ function sendReminderEmails(recipients) {
     return Promise.all(emailPromises.map(p => p.catch(e => e)));
 }
 
-// recip arg is an object with 'contact' (phone number) and 'first_name' fields
+// recip arg is an object with 'contact' (phone number) and 'firstName' fields
 function sendSMS(recip) {
-    const message = `${recip.first_name} - just a quick reminder to train and report it at http://localhost:4200/scores/new when you're done!`;
+    const message = `${recip.firstName} - just a quick reminder to train and report it at http://localhost:4200/scores/new when you're done!`;
     const params = {
         Message: message,
         PhoneNumber: recip.contact,
@@ -63,9 +63,9 @@ function sendSMS(recip) {
     return sns.publish(params).promise();
 }
 
-// recip arg is an object with 'contact' (email address) and 'first_name' fields
+// recip arg is an object with 'contact' (email address) and 'firstName' fields
 function sendEmail(recip) {
-    const templateData = `{"name": "${recip.first_name}"}`;
+    const templateData = `{"name": "${recip.firstName}"}`;
     const params = {
         Destination: {
             ToAddresses: [recip.contact]
@@ -109,8 +109,8 @@ function getUsersToBeReminded() {
     })
 }
 
-// Returns a promise of scan output with names of groups whose start_date is on or before today
-// and whose end_date is on or after_today
+// Returns a promise of scan output with names of groups whose startDate is on or before today
+// and whose endDate is on or after_today
 function getActiveGroups() {
     const today = todayDate();
     const params = {

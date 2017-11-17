@@ -104,10 +104,10 @@ export class GroupPageComponent implements OnInit, OnDestroy {
 
     /**
      * Returns the current day of the week (0-6), where day 0 is the day
-     * of the week the group started on (group.start_date).
+     * of the week the group started on (group.startDate).
      */
     private getDayOfWeek(): number {
-        const start = moment(this.group.start_date.toString());
+        const start = moment(this.group.startDate.toString());
         const today = moment();
         if (today.day() >= start.day()) {
             return today.day() - start.day();

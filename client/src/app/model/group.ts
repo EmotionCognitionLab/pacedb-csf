@@ -1,4 +1,4 @@
 export class Group {
 
-    constructor(public name: string, public start_date: number, public end_date: number) { }
+    constructor(public name: string, public startDate: number, public endDate: number) { }
 }
