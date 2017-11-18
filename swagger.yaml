@@ -65,6 +65,8 @@ paths:
         contentHandling: CONVERT_TO_TEXT
         type: aws_proxy
     options:
+      tags:
+        - groups
       consumes:
       - application/json
       produces:
@@ -142,6 +144,8 @@ paths:
         contentHandling: CONVERT_TO_TEXT
         type: aws_proxy
     options:
+      tags:
+        - groups
       consumes:
       - application/json
       produces:
@@ -442,127 +446,6 @@ paths:
         requestTemplates:
           application/json: "{\"statusCode\": 200}"
         type: mock
-  '/users/messages/{user_id}':
-    get:
-      tags:
-        - users
-      summary: Get the messages between the user making the call and user_id
-      description: ''
-      operationId: getUserMessages
-      parameters:
-        - in: path
-          name: user_id
-          type: string
-          description: >-
-            The id of the user whose correspondence with the caller should be
-            fetched
-          required: true
-      responses:
-        '200':
-          description: Expected response
-          schema:
-            $ref: '#/definitions/UserMessageList'
-        '400':
-          description: Bad request error
-          schema:
-            $ref: '#/definitions/Error'
-        '500':
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/Error'
-      security:
-        - basic-user: []
-      x-amazon-apigateway-integration:
-        responses:
-          default:
-            statusCode: '200'
-        uri: >-
-          arn:aws:apigateway:<region>:lambda:path/2015-03-31/functions/arn:aws:lambda:<region>:<account_id>:function:<function_name>/invocations
-        credentials: 'arn:aws:iam::<account_id>:role/api-gateway-lambda-and-logs'
-        passthroughBehavior: when_no_match
-        httpMethod: POST
-        contentHandling: CONVERT_TO_TEXT
-        type: aws_proxy
-    post:
-      summary: Send a message from the user making the call to another user
-      tags:
-        - users
-      description: ''
-      operationId: createUserMessage
-      parameters:
-        - in: path
-          name: user_id
-          description: The id of the message recipient
-          type: string
-          required: true
-        - in: body
-          name: message
-          description: The message to send to the user
-          required: true
-          schema:
-            $ref: '#/definitions/UserMessage'
-      responses:
-        '201':
-          description: Created successfully
-          schema:
-            $ref: '#/definitions/GroupMessage'
-        '400':
-          description: Bad request error
-          schema:
-            $ref: '#/definitions/Error'
-        '500':
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/Error'
-      security:
-        - basic-user: []
-      x-amazon-apigateway-integration:
-        responses:
-          default:
-            statusCode: '201'
-        uri: >-
-          arn:aws:apigateway:<region>:lambda:path/2015-03-31/functions/arn:aws:lambda:<region>:<account_id>:function:<function_name>/invocations
-        credentials: 'arn:aws:iam::<account_id>:role/api-gateway-lambda-and-logs'
-        passthroughBehavior: when_no_match
-        httpMethod: POST
-        contentHandling: CONVERT_TO_TEXT
-        type: aws_proxy
-  '/users/roles':
-    get:
-      tags:
-        - users
-      summary: Returns a list of the security roles the calling user holds.
-      description: >-
-        The list may be empty if the user is not assigned any particular roles.
-        Note that these are not necessarily AWS IAM roles - they might be Cognito user pool groups or anything
-        else the implementation defines.
-      operationId: getUserRoles
-      responses:
-        '200':
-          description: Expected response
-          schema:
-            $ref: '#/definitions/UserRoleList'
-        '400':
-          description: Bad request error
-          schema:
-            $ref: '#/definitions/Error'
-        '500':
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/Error'
-      security:
-        - basic-user: []
-      x-amazon-apigateway-integration:
-        responses:
-          default:
-            statusCode: '200'
-        uri: >-
-          arn:aws:apigateway:<region>:lambda:path/2015-03-31/functions/arn:aws:lambda:<region>:<account_id>:function:<function_name>/invocations
-        credentials: 'arn:aws:iam::<account_id>:role/api-gateway-lambda-and-logs'
-        passthroughBehavior: when_no_match
-        httpMethod: POST
-        contentHandling: CONVERT_TO_TEXT
-        type: aws_proxy
 securityDefinitions:
   basic-user:
     type: apiKey
@@ -647,30 +530,3 @@ definitions:
     type: array
     items:
       $ref: '#/definitions/User'
-  UserMessage:
-    type: object
-    properties:
-      id:
-        type: string
-      to_id:
-        type: string
-        description: id of the message recipient
-      date:
-        type: string
-        format: date-time
-      from_id:
-        type: string
-        description: id of the user who sent the message
-      body:
-        type: string
-    required:
-      - to_id
-      - body
-  UserMessageList:
-    type: array
-    items:
-      $ref: '#/definitions/UserMessage'
-  UserRoleList:
-    type: array
-    items:
-      type: string
