@@ -6,6 +6,7 @@ import { Subscription } from 'rxjs/Subscription';
 import * as moment from 'moment';
 
 import { EmojiFeedback } from './model/emoji-feedback';
+import { Group } from './model/group';
 import { User } from './model/user';
 import { UserData } from './model/user-data';
 
@@ -25,7 +26,7 @@ import { UserService } from './service/user.service';
                 </div>
                 <span *ngFor="let fb of emojis" class='emoji-feedback' title="{{fb.from}}">{{fb.emoji}}&nbsp;</span>
                 <br />
-                <div class='progress {{doneClass()}} {{weekDay}}'>
+                <div class='progress {{progressClasses}}'>
                     <span class='status'></span>
                 </div>
                 <emoji-picker *ngIf="currentUser.id !== user.id" (onSelected)="emojiChosen($event)"></emoji-picker>
@@ -37,13 +38,10 @@ import { UserService } from './service/user.service';
 
 export class UserComponent implements OnInit, OnDestroy {
     @Input() user: User;
-    @Input() doneRatio: number;
-    // the day of the week that the user's group is currently on - used for rendering progress indicator
-    @Input() dayOfWeek: number;
-    // css styling class based on dayOfWeek
-    weekDay: string;
     currentUser: User;
     emojis: EmojiFeedback[] = [];
+    progressClasses: string;
+    private _userGroup: Group;
     private _userData: UserData[];
     private _userDataSubscription: Subscription;
 
@@ -58,17 +56,25 @@ export class UserComponent implements OnInit, OnDestroy {
             }
 
     ngOnInit() {
-        this.weekDay = 'day' + this.dayOfWeek.toString();
         this._userDataSubscription = Observable.fromPromise(this.groupService.getGroup(this.user.group))
         .flatMap(group => {
-            return this.userService.getUserData(this.user.id, group.startDate, group.endDate);
+            this._userGroup = group;
+            const weekBoundaries = this.weekBoundaries(group);
+            return this.userService.getUserData(this.user.id, weekBoundaries[0], weekBoundaries[1]);
         }).subscribe(data => {
             this._userData = data;
+            let weeklyMinutesTrained = 0;
             data.forEach(ud => {
                 if (ud.emoji !== undefined && ud.emoji.length > 0) {
                     this.emojis.push(...ud.emoji);
                 }
+                if (ud.minutes !== undefined) {
+                    weeklyMinutesTrained += ud.minutes;
+                }
             });
+            const weeklyMinutesTarget = this._userGroup.dailyMinutesTarget() * 7;
+            const trainingPercentDone = weeklyMinutesTrained / weeklyMinutesTarget;
+            this.progressClasses = this.percentToCSS(trainingPercentDone);
         });
     }
 
@@ -81,40 +87,44 @@ export class UserComponent implements OnInit, OnDestroy {
         this.emojis.push(new EmojiFeedback(emoji, this.currentUser.name()));
     }
 
-    // converts the doneRatio to a css class for styling purposes
-    doneClass(): string {
-        if (this.doneRatio < 5) {
-            return 'none';
+    /**
+     * Converts the trainingPercentDone into a string of css classes to style the progress bar.
+     * @param percentOfWeekDone percentage of the week's training goal the user has accomplished so far
+     */
+    private percentToCSS(percentOfWeekDone: number): string {
+        const numberWords = ['none', 'ten', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety', 'one-hundred'];
+        const roundedTrainingPercent = Math.min(Math.round(percentOfWeekDone  * 10), 10);
+        if (roundedTrainingPercent < 0 || roundedTrainingPercent > numberWords.length - 1) {
+            // should never happen
+            return 'none bad';
         }
-        if (5 <= this.doneRatio && this.doneRatio <= 14) {
-            return 'ten';
+
+        // behind > 1 day -> status == bad
+        // behind 1 day -> status == iffy
+        // not behind -> status == good
+        let status = 'bad';
+        const weekDay = this._userGroup.dayOfWeek() + 1;
+        const dailyTarget = this._userGroup.dailyMinutesTarget();
+        const targetToDate = dailyTarget * weekDay;
+        const trainingToDate = percentOfWeekDone * dailyTarget * 7;
+        if (trainingToDate >= targetToDate) {
+            status = 'good';
+        } else if (trainingToDate < targetToDate && trainingToDate >= (targetToDate - dailyTarget)) {
+            status = 'iffy';
+        } else {
+            status = 'bad';
         }
-        if (15 <= this.doneRatio && this.doneRatio <= 24) {
-            return 'twenty';
-        }
-        if (25 <= this.doneRatio && this.doneRatio <= 34) {
-            return 'thirty';
-        }
-        if (35 <= this.doneRatio && this.doneRatio <= 44) {
-            return 'forty';
-        }
-        if (45 <= this.doneRatio && this.doneRatio <= 54) {
-            return 'fifty';
-        }
-        if (55 <= this.doneRatio && this.doneRatio <= 64) {
-            return 'sixty';
-        }
-        if (65 <= this.doneRatio && this.doneRatio <= 74) {
-            return 'seventy';
-        }
-        if (75 <= this.doneRatio && this.doneRatio <= 84) {
-            return 'eighty';
-        }
-        if (85 <= this.doneRatio && this.doneRatio <= 94) {
-            return 'ninety';
-        }
-        if (this.doneRatio > 94) {
-            return 'one-hundred';
-        }
+        return `${numberWords[roundedTrainingPercent]} ${status}`;
+    }
+
+    /**
+     * Returns an array of two numbers representing the YYYYMMDD start and end dates of the current week for the given group.
+     * @param group
+     */
+    private weekBoundaries(group: Group) {
+        const weekDay = group.dayOfWeek();
+        const start = moment().subtract(weekDay, 'days');
+        const end = moment().add(6 - weekDay, 'days');
+        return [+(start.format('YYYYMMDD')), +(end.format('YYYYMMDD'))];
     }
 }

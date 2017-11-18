@@ -23,7 +23,7 @@ import { UserService } from './service/user.service';
     <div class="container-narrow">
        <ngb-alert *ngIf="statusMsg" type="success" (close)="statusMsg = null">{{ statusMsg }}</ngb-alert>
         <h2>Teammates</h2>
-        <app-user *ngFor="let user of members" [user]=user [doneRatio]=85 [dayOfWeek]=weekDay></app-user>
+        <app-user *ngFor="let user of members" [user]=user></app-user>
         <hr />
         <h2>Messages</h2>
         <div class="form-group">
