@@ -55,6 +55,13 @@ exports.handler = (event, context, callback) => {
             console.log(err);
             return callback(null, errorResult(err.message));
         });
+    } else if (/^\/users\/[a-f0-9-]+\/emoji$/.test(event.path) && event.httpMethod === 'POST') {
+        writeUserEmoji(event)
+        .then((result) => callback(null, result))
+        .catch((err) => {
+            console.log(err);
+            return callback(null, errorResult(err.message));
+        });
     } else if (path === '/users/minutes' && event.httpMethod === 'PUT') {
         writeUserMinutes(event)
         .then((result) => callback(null, result))
@@ -209,20 +216,23 @@ function getUser(event) {
         return errorResult('400:No user_id provided')
     }
 
-    const params = {
-        TableName: usersTable,
-        KeyConditionExpression: 'id = :userId',
-        ExpressionAttributeValues: { ':userId': userId },
-        ProjectionExpression: 'id, firstName, lastName, isAdmin, photoUrl'
-    };
-
-    return dynamo.query(params).promise()
+    return userFromDynamo(userId)
     .then((data) => {
         if (data.Items.length === 0) {
             return errorResult('404:No such user')
         }
         return normalResult(data.Items[0]);
     });
+}
+
+function userFromDynamo(userId) {
+    const params = {
+        TableName: usersTable,
+        KeyConditionExpression: 'id = :userId',
+        ExpressionAttributeValues: { ':userId': userId },
+        ProjectionExpression: 'id, firstName, lastName, isAdmin, photoUrl'
+    };
+    return dynamo.query(params).promise();
 }
 
 /**
@@ -240,7 +250,7 @@ function getUserData(event) {
     if (start > end) {
         return Promise.resolve(errorResult('400:Start date must be less than or equal to end date.'))
     }
-
+    // TODO prevent users from getting info about users in another group (unless they're an admin)
     const queryParams = {
         TableName: userDataTable,
         KeyConditionExpression: 'userId = :userId and #D between :start and :end',
@@ -285,6 +295,44 @@ function writeUserMinutes(event) {
         console.log(err);
         return errorResult(err.message);
     })
+}
+
+function writeUserEmoji(event) {
+    const senderId = event.requestContext.authorizer.claims.sub;
+    const emoji = event.queryStringParameters.e;
+    const recipId = event.pathParameters.user_id;
+    const paramsOk = paramsPresent({'user_id': recipId, 'e': emoji, 'senderId': senderId});
+    if (paramsOk.length > 0) {
+        return Promise.resolve(errorResult('400:'+paramsOk.join('\n')));
+    }
+    // if you change these, be sure to also change them in client/src/app/emoji-picker.component.ts
+    const availableEmojis = ['😀', '😞', '👍', '👉', '⏳', '🏅'];
+    if (availableEmojis.indexOf(emoji) === -1) {
+        return Promise.resolve(errorResult('400:Invalid emoji'));
+    }
+    if (senderId === recipId) {
+        return Promise.resolve(errorResult('400:You can\'t give yourself an emoji!'));
+    }
+    // TODO prevent users from giving emoji to users in another group (unless they're an admin)
+    const today = new Date();
+    const todayYMD = `${today.getFullYear()}${today.getMonth() + 1}${today.getDate()}`;
+    return userFromDynamo(senderId)
+    .then(senderResult => {
+        const sender = senderResult.Items.length === 1 ? senderResult.Items[0] : {firstName: 'Unknown', lastName: 'U'};
+        const senderName = `${sender.firstName} ${sender.lastName.slice(0,1)}.`; 
+        const writeParams = {
+            TableName: userDataTable,
+            Key: { 'userId': recipId, 'date': +todayYMD},
+            UpdateExpression: 'set emoji = list_append(if_not_exists(emoji, :emptyList), :newEmoji)',
+            ExpressionAttributeValues: { ':emptyList': [], ':newEmoji': [ {'emoji': emoji, 'from': senderName, 'fromId': senderId} ] }
+        };
+        return dynamo.update(writeParams).promise()
+    })
+    .then(() => normalResult({}, 201))
+    .catch((err) => {
+        console.log(err);
+        return errorResult(err.message);
+    });
 }
 
 /**

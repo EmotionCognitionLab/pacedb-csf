@@ -237,6 +237,67 @@ export class UserService {
         });
     }
 
+    /**
+     *
+     * @summary Give a user a new emoji
+     * @param userId id of the user we&#39;re giving an emoji to
+     * @param e The emoji character being given to the user
+     */
+    public createUserEmoji(userId: string, e: string, extraHttpRequestParams?: any): Observable<{}> {
+        return this.createUserEmojiWithHttpInfo(userId, e, extraHttpRequestParams)
+            .map((response: Response) => {
+                if (response.status === 204) {
+                    return undefined;
+                } else {
+                    return response.json() || {};
+                }
+            });
+    }
+
+    /**
+     * Give a user a new emoji
+     *
+     * @param userId id of the user we&#39;re giving an emoji to
+     * @param e The emoji character being given to the user
+     */
+    public createUserEmojiWithHttpInfo(userId: string, e: string, extraHttpRequestParams?: any): Observable<Response> {
+        const path = this.basePath + '/users/${user_id}/emoji'
+                    .replace('${' + 'user_id' + '}', String(userId));
+
+        const queryParameters = new URLSearchParams();
+        const headers = new Headers();
+        // verify required parameter 'userId' is not null or undefined
+        if (userId === null || userId === undefined) {
+            throw new Error('Required parameter userId was null or undefined when calling createUserEmoji.');
+        }
+        // verify required parameter 'e' is not null or undefined
+        if (e === null || e === undefined) {
+            throw new Error('Required parameter e was null or undefined when calling createUserEmoji.');
+        }
+        if (e !== undefined) {
+            queryParameters.set('e', <any>e);
+        }
+
+        let requestOptions: RequestOptionsArgs = new RequestOptions({
+            method: RequestMethod.Post,
+            headers: headers,
+            search: queryParameters,
+            withCredentials: false
+        });
+        // https://github.com/swagger-api/swagger-codegen/issues/4037
+        if (extraHttpRequestParams) {
+            requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
+        }
+
+        const tokenPromise = this.authService.getAccessToken();
+        return Observable.fromPromise(tokenPromise).flatMap((accessToken) => {
+            headers.set('Authorization', accessToken);
+            requestOptions.headers = headers;
+            return this.http.request(path, requestOptions);
+        });
+    }
+
+
     private cacheGet(userId: string): Observable<User> | Subject<any> | undefined {
         if (this._userCache.has(userId)) {
             if (this._userCache.get(userId).expiration > Date.now()) {

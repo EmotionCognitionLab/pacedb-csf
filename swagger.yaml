@@ -371,6 +371,81 @@ paths:
         requestTemplates:
           application/json: "{\"statusCode\": 200}"
         type: mock
+  '/users/{user_id}/emoji':
+    post:
+      tags:
+        - users
+      summary: Give a user a new emoji
+      description: ''
+      operationId: createUserEmoji
+      parameters:
+        - in: path
+          name: user_id
+          type: string
+          required: true
+          description: id of the user we're giving an emoji to
+        - in: query
+          name: e
+          description: The emoji character being given to the user
+          type: string
+          required: true
+      responses:
+        '201':
+          description: Expected response
+          schema:
+            $ref: '#/definitions/Empty'
+        '400':
+          description: Bad request error
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      security:
+        - basic-user: []
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        uri: >-
+          arn:aws:apigateway:<region>:lambda:path/2015-03-31/functions/arn:aws:lambda:<region>:<account_id>:function:<function_name>/invocations
+        credentials: 'arn:aws:iam::<account_id>:role/api-gateway-lambda-and-logs'
+        passthroughBehavior: when_no_match
+        httpMethod: POST
+        contentHandling: CONVERT_TO_TEXT
+        type: aws_proxy
+    options:
+      tags:
+        - users
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: "#/definitions/Empty"
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Methods:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: 200
+            responseParameters:
+              method.response.header.Access-Control-Allow-Methods: "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        passthroughBehavior: when_no_match
+        requestTemplates:
+          application/json: "{\"statusCode\": 200}"
+        type: mock
   '/users/minutes':
     put:
       tags:

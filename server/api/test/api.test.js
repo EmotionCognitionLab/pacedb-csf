@@ -15,18 +15,22 @@ const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
 // test data
-const users = ['1a', '1b', '2b', 'ad9'];
+const users = [ {id: '1a', firstName: 'One', lastName: 'Eh'},
+                {id: '1b', firstName: 'One', lastName: 'Bee'},
+                {id: '2b', firstName: 'Two', lastName: 'Bee'},
+                {id: 'ad9', firstName: 'Ad', lastName: 'Nine'}
+            ];
 const groups = ['group1', 'group1', 'group2', 'special-group'];
 const messages = [
-    {fromId: users[0], group: groups[0], date: 123456789, body: 'Howdy, folks!'},
-    {fromId: users[0], group: groups[0], date: 123456900, body: 'Howdy, folks!'},
-    {fromId: users[0], group: groups[0], date: 123456100, body: 'Howdy, folks!'},
-    {fromId: users[2], group: groups[2], date: 123456100, body: 'Howdy, folks!'}
+    {fromId: users[0].id, group: groups[0], date: 123456789, body: 'Howdy, folks!'},
+    {fromId: users[0].id, group: groups[0], date: 123456900, body: 'Howdy, folks!'},
+    {fromId: users[0].id, group: groups[0], date: 123456100, body: 'Howdy, folks!'},
+    {fromId: users[2].id, group: groups[2], date: 123456100, body: 'Howdy, folks!'}
 ]
 const userData = [
-    {userId: users[0], datetime: 20171122, minutes: 10},
-    {userId: users[0], datetime: 20171123, emoji: [{from: 'John D.', emoji: '💩'}]},
-    {userId: users[1], datetime: 20170419, minutes: 7}
+    {userId: users[0].id, datetime: 20171122, minutes: 10},
+    {userId: users[0].id, datetime: 20171123, emoji: [{from: 'Ad N.', fromId: 'ad9', emoji: '💩'}]},
+    {userId: users[1].id, datetime: 20170419, minutes: 7}
 ]
 
 const groupNameNotCallerNotAdmin = {
@@ -46,7 +50,7 @@ const noGroupName = {
     "requestContext": { 
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": undefined
             }
         },
@@ -99,7 +103,7 @@ const groupMsgToCallerGroup = {
     "requestContext": { 
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": undefined
             }
         },
@@ -121,7 +125,7 @@ const groupMsgWithFullMsg = {
     "requestContext": { 
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": ""
             }
         },
@@ -136,7 +140,7 @@ const groupMsgFromAdmin = {
     "requestContext": { 
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": adminGroupName
             }
         },
@@ -151,7 +155,7 @@ const groupMsgWithWrongGroupNameCallerNotAdmin = {
     "requestContext": { 
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": ""
             }
         },
@@ -166,7 +170,7 @@ const getMsgsForGroup = {
     "requestContext": { 
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": ""
             }
         },
@@ -194,7 +198,7 @@ const getMsgsForGroupNotAdmin = {
     "requestContext": { 
         "authorizer": {
             "claims": {
-                "sub": users[2],
+                "sub": users[2].id,
                 "cognito:groups": ""
             }
         },
@@ -208,7 +212,7 @@ const getMsgsSince = {
     "requestContext": { 
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": ""
             }
         },
@@ -222,14 +226,14 @@ const getUser = {
     "requestContext": { 
         "authorizer": {
             "claims": {
-                "sub": users[2],
+                "sub": users[2].id,
                 "cognito:groups": ""
             }
         },
         "resourcePath": "/users/${user_id}"
     },
-    "path": `/users/${users[0]}`,
-    "pathParameters": { "user_id": users[0] },
+    "path": `/users/${users[0].id}`,
+    "pathParameters": { "user_id": users[0].id },
     "queryStringParameters": null
 }
 
@@ -238,7 +242,7 @@ const getNonExistentUser = {
     "requestContext": { 
         "authorizer": {
             "claims": {
-                "sub": users[2],
+                "sub": users[2].id,
                 "cognito:groups": ""
             }
         },
@@ -254,14 +258,14 @@ const getOwnUserData = {
     "requestContext": {
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": ""
             }
         },
         "resourcePath": "/users/${user_id}/data"
     },
-    "path": `/users/${users[0]}/data`,
-    "pathParameters": { "user_id": users[0] },
+    "path": `/users/${users[0].id}/data`,
+    "pathParameters": { "user_id": users[0].id },
     "queryStringParameters": {start: "20170101", end: "20171231"}
 }
 
@@ -270,14 +274,14 @@ const getOtherUserData = {
     "requestContext": {
         "authorizer": {
             "claims": {
-                "sub": users[1],
+                "sub": users[1].id,
                 "cognito:groups": ""
             }
         },
         "resourcePath": "/users/${user_id}/data"
     },
-    "path": `/users/${users[0]}/data`,
-    "pathParameters": { "user_id": users[0] },
+    "path": `/users/${users[0].id}/data`,
+    "pathParameters": { "user_id": users[0].id },
     "queryStringParameters": {start: "20171122", end: "20171122"}
 }
 
@@ -286,14 +290,14 @@ const getUserDataMissingStartParam = {
     "requestContext": {
         "authorizer": {
             "claims": {
-                "sub": users[1],
+                "sub": users[1].id,
                 "cognito:groups": ""
             }
         },
         "resourcePath": "/users/${user_id}/data"
     },
-    "path": `/users/${users[0]}/data`,
-    "pathParameters": { "user_id": users[0] },
+    "path": `/users/${users[0].id}/data`,
+    "pathParameters": { "user_id": users[0].id },
     "queryStringParameters": {end: "20171122"}
 }
 
@@ -302,7 +306,7 @@ const getUserDataNonexistentUser = {
     "requestContext": {
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": ""
             }
         },
@@ -318,14 +322,14 @@ const getUserDataEmptyTimeRange = {
     "requestContext": {
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": ""
             }
         },
         "resourcePath": "/users/${user_id}/data"
     },
-    "path": `/users/${users[1]}/data`,
-    "pathParameters": { "user_id": users[1] },
+    "path": `/users/${users[1].id}/data`,
+    "pathParameters": { "user_id": users[1].id },
     "queryStringParameters": {start: "19590101", end: "19590101"}
 }
 
@@ -334,14 +338,14 @@ const getUserDataBadTimeRange = {
     "requestContext": {
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": ""
             }
         },
         "resourcePath": "/users/${user_id}/data"
     },
-    "path": `/users/${users[1]}/data`,
-    "pathParameters": { "user_id": users[1] },
+    "path": `/users/${users[1].id}/data`,
+    "pathParameters": { "user_id": users[1].id },
     "queryStringParameters": {start: "19590301", end: "19590101"}
 }
 
@@ -350,7 +354,7 @@ const putUserMinutes = {
     "requestContext": {
         "authorizer": {
             "claims": {
-                "sub": users[0],
+                "sub": users[0].id,
                 "cognito:groups": ""
             }
         },
@@ -358,6 +362,22 @@ const putUserMinutes = {
     },
     "path": `/users/minutes`,
     "queryStringParameters": {date: "20170419", minutes: "12"}
+}
+
+const postUserEmoji = {
+    "httpMethod": "POST",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": users[0].id,
+                "cognito:groups": ""
+            }
+        },
+        "resourcePath": "/users/{user_id}/emoji"
+    },
+    "path": `/users/${users[1].id}/emoji`,
+    "pathParameters": {"user_id": users[1].id}, 
+    "queryStringParameters": {e: "🏅"}
 }
 
 function dropUserDataTable() {
@@ -480,8 +500,10 @@ function writeTestUsers() {
         testUsers.push({
             PutRequest: {
                 Item: {
-                    'id': u,
-                    'group': groups[idx]
+                    'id': u.id,
+                    'group': groups[idx],
+                    'firstName': u.firstName,
+                    'lastName': u.lastName
                 }
             }
         })
@@ -812,7 +834,7 @@ describe('User request', function() {
             .then(function(done) {
                 assert.equal(done.statusCode, 200);
                 const body = JSON.parse(done.body);
-                assert.equal(body.id, users[0]);
+                assert.equal(body.id, users[0].id);
             })
             .catch(function(err) {
                 console.log(err);
@@ -1048,6 +1070,104 @@ describe('User request', function() {
                 throw(err);
             });
 
+        });
+    });
+    describe('when giving another user an emoji', function() {
+        it('should save the emoji when the call is well-formated', function() {
+            return lambdaLocal.execute({
+                event: postUserEmoji,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 201);
+                const today = new Date();
+                const todayYMD = `${today.getFullYear()}${today.getMonth() + 1}${today.getDate()}`;
+                const queryParams = {
+                    TableName: userDataTable,
+                    KeyConditionExpression: 'userId = :user_id and #D = :date',
+                    ExpressionAttributeNames: { '#D': 'date' },
+                    ExpressionAttributeValues: {':date': +todayYMD, ':user_id': postUserEmoji.pathParameters.user_id}
+                };
+                return dynDocClient.query(queryParams).promise();
+            })
+            .then(function(result) {
+                assert(result.Items.length > 0);
+                const ud = result.Items[0];
+                assert(ud.emoji.length === 1);
+                const emojiObj = ud.emoji[0];
+                assert.equal(emojiObj.emoji, postUserEmoji.queryStringParameters.e);
+                assert.equal(emojiObj.from, `${users[0].firstName} ${users[0].lastName.slice(0,1)}.`);
+                assert.equal(emojiObj.fromId, postUserEmoji.requestContext.authorizer.claims.sub);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it ('should prevent the user from giving an emoji outside of the approved list', function() {
+            const postBadEmoji = JSON.parse(JSON.stringify(postUserEmoji));
+            postBadEmoji.queryStringParameters.e = '💩';
+            return lambdaLocal.execute({
+                event: postBadEmoji,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it ('should prevent the user from giving herself an emoji', function() {
+            const postSelfEmoji = JSON.parse(JSON.stringify(postUserEmoji));
+            postSelfEmoji.pathParameters.user_id = postSelfEmoji.requestContext.authorizer.claims.sub;
+            return lambdaLocal.execute({
+                event: postSelfEmoji,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should error if no recipient id is provided', function() {
+            const postNobodyEmoji = JSON.parse(JSON.stringify(postUserEmoji));
+            postNobodyEmoji.pathParameters.user_id = undefined;
+            return lambdaLocal.execute({
+                event: postNobodyEmoji,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should error if no emoji is provided', function() {
+            const postNoEmoji = JSON.parse(JSON.stringify(postUserEmoji));
+            postNoEmoji.queryStringParameters.e = undefined;
+            return lambdaLocal.execute({
+                event: postNoEmoji,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 400);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
         });
     });
 });
