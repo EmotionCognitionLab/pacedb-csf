@@ -22,7 +22,7 @@ export class Group {
     dayOfWeek(): number {
         const today = moment().day();
         const start = this._startMoment.day();
-        return today >= start ? today - start : 7 - (today - start);
+        return today >= start ? today - start : 7 - (start - today);
     }
 
     /**
