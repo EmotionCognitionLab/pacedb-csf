@@ -83,8 +83,9 @@ export class UserComponent implements OnInit, OnDestroy {
     }
 
     emojiChosen(emoji: string) {
-        // TODO persist new emoji
-        this.emojis.push(new EmojiFeedback(emoji, this.currentUser.name()));
+        this.userService.createUserEmoji(this.user.id, emoji).take(1).subscribe(() => {
+            this.emojis.push(new EmojiFeedback(emoji, this.currentUser.name()));
+        });
     }
 
     /**
