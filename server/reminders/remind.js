@@ -19,9 +19,11 @@ const DEFAULT_TARGET_MINUTES = 20;
 exports.handler = (event, context, callback) => {
     const emailPromises = [];
     const phonePromises = [];
+    const recipients = [];
      getUsersToBeReminded()
      .then((userInfo) => {
          for (let info of userInfo.values()) {
+             recipients.push(info.contact);
              if (info.contact.indexOf('@') !== -1) {
                  emailPromises.push(sendEmail(info));
              } else {
@@ -34,6 +36,7 @@ exports.handler = (event, context, callback) => {
         // https://davidwalsh.name/promises-results
         return Promise.all(allPromises.map(p => p.catch(e => e)));
      })
+     .then(() => context.done(null, JSON.stringify(recipients)))
      .catch((err) => console.log(err))
 }
 
@@ -165,7 +168,6 @@ function getTargetMinutes(startDate) {
 // completed their training for today
 function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
     // pull training data for today
-    const now = new Date();
     const today = moment().format('YYYYMMDD');
     const params = {
         TableName: userDataTable,
@@ -176,17 +178,17 @@ function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
             ':today': +today
         },
         FilterExpression: '#D = :today',
-        ProjectionExpression: 'id, minutes'
+        ProjectionExpression: 'userId, minutes'
     }
 
     return dynamo.scan(params).promise()
     .then(userData => {
         userData.Items.forEach(ud => {
-            const activeUser = userMap.get(ud.id);
+            const activeUser = userMap.get(ud.userId);
             if (activeUser !== undefined) { // undefined means we have training data for them today but they're not in an active group, which shouldn't happen
-                const userGroup = activeUser.group;
-                if (ud.minutes >= getTargetMinutes(userGroup.startDate)) {
-                    userMap.delete(ud.id);
+                const groupObj = groupMap.get(activeUser.group);
+                if (ud.minutes >= getTargetMinutes(groupObj.startDate)) {
+                    userMap.delete(ud.userId);
                 }
             }
         });
