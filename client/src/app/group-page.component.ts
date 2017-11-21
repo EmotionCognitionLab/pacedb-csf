@@ -23,7 +23,7 @@ import { UserService } from './service/user.service';
     <div class="container-narrow">
        <ngb-alert *ngIf="statusMsg" type="success" (close)="statusMsg = null">{{ statusMsg }}</ngb-alert>
         <h2>Teammates</h2>
-        <app-user *ngFor="let user of members" [user]=user></app-user>
+        <app-user *ngFor="let user of members" [user]=user [group]=group></app-user>
         <hr />
         <h2>Messages</h2>
         <div class="form-group">
@@ -68,6 +68,7 @@ export class GroupPageComponent implements OnInit, OnDestroy {
             this.members = data.groupInfo.members;
             this.messages = data.groupInfo.messages;
             this.group = data.groupInfo.group;
+            this.weekDay = this.getDayOfWeek();
         });
 
         this._msgsLastFetched = new Date().valueOf();
@@ -80,8 +81,6 @@ export class GroupPageComponent implements OnInit, OnDestroy {
                 }
             });
         }).subscribe();
-
-        this.weekDay = this.getDayOfWeek();
 
         // hide any status messages after 10 seconds
         debounceTime.call(this._status, 10000).subscribe(() => this.statusMsg = null);

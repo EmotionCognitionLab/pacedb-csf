@@ -38,10 +38,10 @@ import { UserService } from './service/user.service';
 
 export class UserComponent implements OnInit, OnDestroy {
     @Input() user: User;
+    @Input() group: Group;
     currentUser: User;
     emojis: EmojiFeedback[] = [];
     progressClasses: string;
-    private _userGroup: Group;
     private _userData: UserData[];
     private _userDataSubscription: Subscription;
 
@@ -56,12 +56,9 @@ export class UserComponent implements OnInit, OnDestroy {
             }
 
     ngOnInit() {
-        this._userDataSubscription = Observable.fromPromise(this.groupService.getGroup(this.user.group))
-        .flatMap(group => {
-            this._userGroup = group;
-            const weekBoundaries = this.weekBoundaries(group);
-            return this.userService.getUserData(this.user.id, weekBoundaries[0], weekBoundaries[1]);
-        }).subscribe(data => {
+        const weekBoundaries = this.weekBoundaries(this.group);
+        this.userService.getUserData(this.user.id, weekBoundaries[0], weekBoundaries[1])
+        .subscribe(data => {
             this._userData = data;
             let weeklyMinutesTrained = 0;
             data.forEach(ud => {
@@ -72,7 +69,7 @@ export class UserComponent implements OnInit, OnDestroy {
                     weeklyMinutesTrained += ud.minutes;
                 }
             });
-            const weeklyMinutesTarget = this._userGroup.dailyMinutesTarget() * 7;
+            const weeklyMinutesTarget = this.group.dailyMinutesTarget() * 7;
             const trainingPercentDone = weeklyMinutesTrained / weeklyMinutesTarget;
             this.progressClasses = this.percentToCSS(trainingPercentDone);
         });
@@ -104,8 +101,8 @@ export class UserComponent implements OnInit, OnDestroy {
         // behind 1 day -> status == iffy
         // not behind -> status == good
         let status = 'bad';
-        const weekDay = this._userGroup.dayOfWeek() + 1;
-        const dailyTarget = this._userGroup.dailyMinutesTarget();
+        const weekDay = this.group.dayOfWeek() + 1;
+        const dailyTarget = this.group.dailyMinutesTarget();
         const targetToDate = dailyTarget * weekDay;
         const trainingToDate = percentOfWeekDone * dailyTarget * 7;
         if (trainingToDate >= targetToDate) {
