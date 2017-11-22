@@ -8,7 +8,9 @@ const snsEndpoint = process.env.SNS_ENDPOINT;
 const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
 const ses = new AWS.SES({endpoint: sesEndpoint, apiVersion: '2010-12-01', region: 'us-east-1'});
 const sns = new AWS.SNS({endpoint: snsEndpoint, apiVersion: '2010-03-31', region: 'us-east-1'});
+
 const moment = require('moment');
+const todayYMD = +moment().format('YYYYMMDD');
 
 const groupsTable = process.env.GROUPS_TABLE;
 const usersTable = process.env.USERS_TABLE;
@@ -16,6 +18,8 @@ const userDataTable = process.env.USER_DATA_TABLE;
 const emailSender = 'uscemotioncognitionlab@gmail.com';
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
+
+const msgsByType = new Map();
 
 exports.handler = (event, context, callback) => {
     const emailPromises = [];
@@ -35,20 +39,13 @@ exports.handler = (event, context, callback) => {
          // make sure one failure doesn't stop other sends from executing
         // https://stackoverflow.com/questions/31424561/wait-until-all-es6-promises-complete-even-rejected-promises
         // https://davidwalsh.name/promises-results
-        return Promise.all(allPromises.map(p => p.catch(e => e)));
+        return Promise.all(allPromises.map(p => p.catch(e => {
+            console.log(e);
+            return e;
+        })));
      })
      .then(() => context.done(null, JSON.stringify(recipients)))
      .catch((err) => console.log(err))
-}
-
-// Given a Set of objects with 'contact' and 'firstName' fields, uses SES to send reminders
-function sendReminderEmails(recipients) {
-    const emailPromises = [];
-    recipients.forEach((recip) => emailPromises.push(sendEmail(recip)));
-    // make sure one failure doesn't stop other sends from executing
-    // https://stackoverflow.com/questions/31424561/wait-until-all-es6-promises-complete-even-rejected-promises
-    // https://davidwalsh.name/promises-results
-    return Promise.all(emailPromises.map(p => p.catch(e => e)));
 }
 
 // recip arg is an object with 'contact' (phone number) and 'firstName' fields
@@ -130,11 +127,10 @@ function getUsersToBeReminded() {
 // Returns a promise of scan output with names of groups whose startDate is on or before today
 // and whose endDate is on or after_today
 function getActiveGroups() {
-    const today = todayDate();
     const params = {
         TableName: groupsTable,
         ExpressionAttributeValues: {
-            ':td': today
+            ':td': todayYMD
         },
         FilterExpression: "startDate <= :td AND endDate >= :td"
     }
@@ -183,14 +179,13 @@ function getTargetMinutes(startDate) {
 // completed their training for today
 function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
     // pull training data for today
-    const today = moment().format('YYYYMMDD');
     const params = {
         TableName: userDataTable,
         ExpressionAttributeNames: {
             '#D': 'date'
         },
         ExpressionAttributeValues: {
-            ':today': +today
+            ':today': todayYMD
         },
         FilterExpression: '#D = :today',
         ProjectionExpression: 'userId, minutes'
@@ -209,14 +204,4 @@ function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
         });
         return userMap;
     });
-}
-
-// Returns today's date as a YYYYMMDD *number*, not a string
-function todayDate() {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const monthStr = month.toString().length === 1 ? "0"+month.toString() : month.toString();
-    const dayStr = now.getDate().toString().length === 1 ? "0"+now.getDate().toString() : now.getDate().toString();
-    const fullStr = now.getFullYear().toString() + monthStr + dayStr;
-    return +fullStr;
 }
