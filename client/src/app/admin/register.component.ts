@@ -131,7 +131,7 @@ export class RegisterComponent implements OnInit {
         }
     }
 
-    onCamSuccess() {}
+    onCamSuccess(event) {}
 
     onCamError(err) {
         this.errMsg = err.message;

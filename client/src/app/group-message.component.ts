@@ -46,7 +46,7 @@ export class GroupMessageComponent implements OnInit {
         return moment(date).fromNow();
     }
 
-    private textParagraphs(): string {
+    textParagraphs(): string {
         if (this._paragrahedText === undefined) {
             const paras = this.msg.body.split('\n');
             this._paragrahedText = `<p>${paras.join('</p><p>')}</p>`;
