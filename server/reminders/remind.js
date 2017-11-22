@@ -3,16 +3,17 @@ process.env['PATH'] = process.env['PATH'] + ':' + process.env['LAMBDA_TASK_ROOT'
 
 const AWS = require('aws-sdk');
 const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
+const sesEndpoint = process.env.SES_ENDPOINT;
+const snsEndpoint = process.env.SNS_ENDPOINT;
 const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
-const ses = new AWS.SES({apiVersion: '2010-12-01', region: 'us-east-1'});
-const sns = new AWS.SNS({apiVersion: '2010-03-31', region: 'us-east-1'});
+const ses = new AWS.SES({endpoint: sesEndpoint, apiVersion: '2010-12-01', region: 'us-east-1'});
+const sns = new AWS.SNS({endpoint: snsEndpoint, apiVersion: '2010-03-31', region: 'us-east-1'});
 const moment = require('moment');
 
 const groupsTable = process.env.GROUPS_TABLE;
 const usersTable = process.env.USERS_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const emailSender = 'uscemotioncognitionlab@gmail.com';
-const emailTemplate = process.env.EMAIL_TEMPLATE;
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
 
@@ -73,11 +74,25 @@ function sendEmail(recip) {
         Destination: {
             ToAddresses: [recip.contact]
         },
-        Source: emailSender,
-        Template: emailTemplate,
-        TemplateData: templateData
+        Message: {
+            Body: {
+                Html: {
+                    Charset: "UTF-8",
+                    Data: "Have you done your practice today? Don't forget <a href=\"http://mindbodystudy.org/training\">to record it</a> when you're done!"
+                },
+                Text: {
+                    Charset: "UTF-8",
+                    Data: "Have you done your practice today? Don't forget to record it when you're done! \"http://mindbodystudy.org/training\""
+                }
+            },
+            Subject: {
+                Charset: "UTF-8",
+                Data: "Don't forget to practice today!"
+            }
+        },
+        Source: emailSender
     }
-    return ses.sendTemplatedEmail(params).promise();
+    return ses.sendEmail(params).promise();
 }
 
 // Returns a promise of a Map of user id -> email || phone records

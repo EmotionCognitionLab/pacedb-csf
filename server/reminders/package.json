@@ -1,0 +1,29 @@
+{
+  "name": "reminder",
+  "version": "1.0.0",
+  "description": "Code to send various reminders to hrv-social participants, implemented as AWS lambda function",
+  "main": "remind.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EmotionCognitionLab/hrv-social.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/EmotionCognitionLab/hrv-social/issues"
+  },
+  "homepage": "https://github.com/EmotionCognitionLab/hrv-social#readme",
+  "devDependencies": {
+    "assert": "^1.4.1",
+    "dotenv": "^4.0.0",
+    "lambda-local": "^1.4.4",
+    "mocha": "^4.0.1"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.145.0",
+    "moment": "^2.19.2"
+  }
+}
