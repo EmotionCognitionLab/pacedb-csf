@@ -58,13 +58,11 @@ exports.handler = (event, context, callback) => {
         }
         const allPromises = emailPromises.concat(phonePromises);
 
-        // make sure one failure doesn't stop other sends from executing
+        // may need to make sure one failure doesn't stop other sends from executing
         // https://stackoverflow.com/questions/31424561/wait-until-all-es6-promises-complete-even-rejected-promises
         // https://davidwalsh.name/promises-results
-        return Promise.all(allPromises.map(p => p.catch(e => {
-            console.log(e);
-            return e;
-        })));
+        // theoretically the catches at the end of sendSMS and sendEmail should take care of this, though
+        return Promise.all(allPromises);
     })
     .then(() => callback(null, JSON.stringify(recipients)))
     .catch((err) => console.log(err))
@@ -86,7 +84,10 @@ function sendSMS(recip, msg) {
             }
         }
     }
-    return sns.publish(params).promise();
+    return sns.publish(params).promise().catch(err => {
+        console.log(`Error sending sms to ${recip}. (Message: ${msg.sms})`);
+        console.log(err);
+    });
 }
 
 /**
@@ -117,7 +118,10 @@ function sendEmail(recip, msg) {
         },
         Source: emailSender
     }
-    return ses.sendEmail(params).promise();
+    return ses.sendEmail(params).promise().catch(err => {
+        console.log(`Error sending email to ${recip}. (Message: ${msg.text})`);
+        console.log(err);  
+    });
 }
 
 // Returns a promise of a Map of user id -> email || phone records
