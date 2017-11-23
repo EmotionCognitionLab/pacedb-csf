@@ -15,45 +15,70 @@ const todayYMD = +moment().format('YYYYMMDD');
 const groupsTable = process.env.GROUPS_TABLE;
 const usersTable = process.env.USERS_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
+const reminderMsgsTable = process.env.REMINDER_MSGS_TABLE;
 const emailSender = 'uscemotioncognitionlab@gmail.com';
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
 
-const msgsByType = new Map();
+const validMsgTypes = ['train', 'report', 'group_ok', 'group_behind', 'group_msg', 'new_emoji'];
 
 exports.handler = (event, context, callback) => {
+    const msgType = event.msgType;
+    if (validMsgTypes.indexOf(msgType) === -1) {
+        callback(new Error(`${msgType} is not a valid message type`));
+        return;
+    }
+
     const emailPromises = [];
     const phonePromises = [];
     const recipients = [];
-     getUsersToBeReminded()
-     .then((userInfo) => {
-         for (let info of userInfo.values()) {
-             recipients.push(info.contact);
-             if (info.contact.indexOf('@') !== -1) {
-                 emailPromises.push(sendEmail(info));
-             } else {
-                 phonePromises.push(sendSMS(info));
-             }
-         }
-         const allPromises = emailPromises.concat(phonePromises);
-         // make sure one failure doesn't stop other sends from executing
+    let getRecipients; // function for selecting msg recipients
+
+    switch (msgType) {
+        case 'train': {
+            getRecipients = getUsersToBeReminded;
+            break;
+        }
+    }
+    
+    let msg = {};
+    getRandomMsgForType(msgType)
+    .then((randomMsg) => {
+        msg = randomMsg;
+        return getRecipients();
+    })
+    .then((users) => {
+        for (let u of users.values()) {
+            recipients.push({recip: u.contact, msg: msg.id});
+            if (u.contact.indexOf('@') !== -1) {
+                emailPromises.push(sendEmail(u.contact, msg));
+            } else {
+                phonePromises.push(sendSMS(u.contact, msg));
+            }
+        }
+        const allPromises = emailPromises.concat(phonePromises);
+
+        // make sure one failure doesn't stop other sends from executing
         // https://stackoverflow.com/questions/31424561/wait-until-all-es6-promises-complete-even-rejected-promises
         // https://davidwalsh.name/promises-results
         return Promise.all(allPromises.map(p => p.catch(e => {
             console.log(e);
             return e;
         })));
-     })
-     .then(() => context.done(null, JSON.stringify(recipients)))
-     .catch((err) => console.log(err))
+    })
+    .then(() => callback(null, JSON.stringify(recipients)))
+    .catch((err) => console.log(err))
 }
 
-// recip arg is an object with 'contact' (phone number) and 'firstName' fields
-function sendSMS(recip) {
-    const message = `${recip.firstName} - just a quick reminder to train and report it at http://localhost:4200/scores/new when you're done!`;
+/**
+ * Sends msg to one phone number.
+ * @param {string} The e164 formatted phone number we're sending the message to 
+ * @param {object} msg An object with an sms field containing the text we're sending
+ */
+function sendSMS(recip, msg) {
     const params = {
-        Message: message,
-        PhoneNumber: recip.contact,
+        Message: msg.sms,
+        PhoneNumber: recip,
         MessageAttributes: {
             'AWS.SNS.SMS.SMSType': {
                 DataType: 'String',
@@ -64,27 +89,30 @@ function sendSMS(recip) {
     return sns.publish(params).promise();
 }
 
-// recip arg is an object with 'contact' (email address) and 'firstName' fields
-function sendEmail(recip) {
-    const templateData = `{"name": "${recip.firstName}"}`;
+/**
+ * Sends email message msg to a single recipient
+ * @param {string} recip Email address of the recipient
+ * @param {object} msg msg object with html, text, subject fields
+ */
+function sendEmail(recip, msg) {
     const params = {
         Destination: {
-            ToAddresses: [recip.contact]
+            ToAddresses: [recip]
         },
         Message: {
             Body: {
                 Html: {
                     Charset: "UTF-8",
-                    Data: "Have you done your practice today? Don't forget <a href=\"http://mindbodystudy.org/training\">to record it</a> when you're done!"
+                    Data: msg.html
                 },
                 Text: {
                     Charset: "UTF-8",
-                    Data: "Have you done your practice today? Don't forget to record it when you're done! \"http://mindbodystudy.org/training\""
+                    Data: msg.text
                 }
             },
             Subject: {
                 Charset: "UTF-8",
-                Data: "Don't forget to practice today!"
+                Data: msg.subject
             }
         },
         Source: emailSender
@@ -203,5 +231,23 @@ function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
             }
         });
         return userMap;
+    });
+}
+
+/**
+ * Returns a Promise<obj> of a randomly selected active message of type msgType
+ * @param {string} msgType The type of message you want
+ */
+function getRandomMsgForType(msgType) {
+    const params = {
+        TableName: reminderMsgsTable,
+        FilterExpression: 'active = :true and msgType = :msgType',
+        ExpressionAttributeValues: {':true': true, ':msgType': msgType }
+    }
+    return dynamo.scan(params).promise()
+    .then(result => {
+        if (result.Items.length === 0) throw new Error(`Found no active messages of type ${msgType}`)
+        const rand = Math.round(Math.random() * (result.Items.length - 1));
+        return result.Items[rand];
     });
 }

@@ -58,8 +58,8 @@ exports.writeTestUsers = function(usersTable, users) {
     return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
 }
 
-exports.dropUserDataTable = function(userDataTable) {
-    return dynClient.deleteTable({TableName: userDataTable}).promise();
+exports.dropTable = function(tableName) {
+    return dynClient.deleteTable({TableName: tableName}).promise();
 }
 
 exports.createUserDataTable = function(userDataTable) {
@@ -112,10 +112,6 @@ exports.writeTestUserData = function(userDataTable, userData) {
     return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
 }
 
-exports.dropGroupsTable = function(groupsTable) {
-    return dynClient.deleteTable({TableName: groupsTable}).promise();
-}
-
 exports.createGroupsTable = function(groupsTable) {
     const params = {
         "AttributeDefinitions": [
@@ -154,5 +150,42 @@ exports.writeTestGroupData = function(groupsTable, groupsData) {
     });
     const pushCmd = {};
     pushCmd[groupsTable] = items;
+    return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
+}
+
+exports.createReminderMsgsTable = function(tableName) {
+    const params = {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "id",
+                "AttributeType": "N"
+            }
+        ],
+        "TableName": tableName,
+        "KeySchema": [
+            {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "ReadCapacityUnits": 1,
+            "WriteCapacityUnits": 1
+        }
+    };
+    return dynClient.createTable(params).promise();
+}
+
+exports.writeTestData = function(tableName, data) {
+    const items = [];
+    data.forEach(d => {
+        items.push({
+            PutRequest: {
+                Item: d
+            }
+        });
+    });
+    const pushCmd = {};
+    pushCmd[tableName] = items;
     return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
 }

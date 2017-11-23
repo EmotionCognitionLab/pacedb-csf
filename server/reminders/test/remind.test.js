@@ -12,6 +12,7 @@ const assert = require('assert');
 const usersTable = process.env.USERS_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const groupsTable = process.env.GROUPS_TABLE;
+const reminderMsgsTable = process.env.REMINDER_MSGS_TABLE;
 
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
@@ -44,6 +45,12 @@ const groups = [
     { name: "g-inactive", startDate: 20160914, endDate: 20161030 }
 ];
 
+const msgs = [
+    {id: 1, active: true, msgType: 'train', subject: 'Please record yesterday\'s practice minutes!', html: 'Good morning!  Have you recorded yesterday\'s practice?  <a href="https://mindbodystudy.org/training">Add your minutes now</a> or enter 0 if you missed practice.', text: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: https://mindbodystudy.org/training', sms: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: http://bit.ly/2iGbuc6'},
+    {id: 2, active: false, msgType: 'train', subject: 'Do your training!', html: 'Like I said - do your training!', text: 'You heard me!', sms: 'Don\'t make me say it again'},
+    {id: 3, active: true, msgType: 'train', subject: 's', html: 'h', text: 't', sms: 's'}
+];
+
 const targetMinutesByGroup = groups.reduce((acc, cur) => {
     acc[cur.name] = getTargetMinutes(cur.startDate);
     return acc; 
@@ -55,7 +62,7 @@ const userData = [
     {userId: users[1].id, date: todayYMD, minutes: 7}
 ]
 
-const scheduledEvent = {
+const sendTrainingReminders = {
     "account": "123456789012",
     "region": "us-east-1",
     "detail": {},
@@ -65,17 +72,22 @@ const scheduledEvent = {
     "id": "cdc73f9d-aea9-11e3-9d5a-835b769c0d9c",
     "resources": [
       "arn:aws:events:us-east-1:123456789012:rule/my-schedule"
-    ]
+    ],
+    "msgType": "train"
   };
 
-function runScheduledEvent(checkTestResults) {
-    return dbSetup.writeTestUsers(usersTable, users)
+function runScheduledEvent(extraEventArgs, checkTestResults, newUsers, newUserData) {
+    const theUsers = newUsers ? newUsers : users;
+    const theUserData = newUserData ? newUserData : userData;
+    return dbSetup.writeTestUsers(usersTable, theUsers)
     .then(function() {
-        return dbSetup.writeTestUserData(userDataTable, userData);
+        return dbSetup.writeTestUserData(userDataTable, theUserData);
     })
     .then(function() {
+        const event = Object.assign({}, sendTrainingReminders);
+        Object.assign(event, extraEventArgs);
         return lambdaLocal.execute({
-            event: scheduledEvent,
+            event: event,
             lambdaPath: 'remind.js',
             envfile: './test/env.sh'
         });
@@ -91,7 +103,7 @@ describe('sending reminders for users who haven\'t done their training', functio
     before(function () {
         return setupPhoneTopics()
         .then(function() {
-            return dbSetup.dropGroupsTable(groupsTable);
+            return dbSetup.dropTable(groupsTable);
         })
         .then(function() {
             return dbSetup.createGroupsTable(groupsTable);
@@ -99,12 +111,21 @@ describe('sending reminders for users who haven\'t done their training', functio
         .then(function() {
             return dbSetup.writeTestGroupData(groupsTable, groups);
         })
+        .then(function() {
+            return dbSetup.dropTable(reminderMsgsTable);
+        })
+        .then(function() {
+            return dbSetup.createReminderMsgsTable(reminderMsgsTable);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(reminderMsgsTable, msgs);
+        })
         .catch(err => console.log(err));
     });
     beforeEach(function() {
         return dbSetup.clearUsers(usersTable)
         .then(function() {
-            return dbSetup.dropUserDataTable(userDataTable);
+            return dbSetup.dropTable(userDataTable);
         })
         .then(function() {
             return dbSetup.createUserDataTable(userDataTable);
@@ -118,15 +139,16 @@ describe('sending reminders for users who haven\'t done their training', functio
             if (user === undefined || !groupIsActive(user.group)) return;
             const targetMinutes = targetMinutesByGroup[user.group];
             if (ud.date === todayYMD && ud.minutes >= targetMinutes) {
-                usersUnderTarget.slice(usersUnderTarget.findIndex(user.email || user.phone));
-            }
+                usersUnderTarget.splice(usersUnderTarget.indexOf(user.email || user.phone), 1);
+            } 
         });
-        return runScheduledEvent(function(done) {
+        return runScheduledEvent(null, function(done) {
             const body = JSON.parse(done);
+            const recips = body.map(i => i.recip);
             usersUnderTarget.forEach(contact => {
-                assert(body.indexOf(contact) !== -1, `Expected ${contact} to be returned`);
+                assert(recips.indexOf(contact) !== -1, `Expected ${contact} to be returned`);
             });
-            assert.equal(usersUnderTarget.length, body.length);
+            assert.equal(usersUnderTarget.length, recips.length);
         });
     });
     it('should exclude users who are in inactive groups', function() {
@@ -134,41 +156,132 @@ describe('sending reminders for users who haven\'t done their training', functio
             return groupIsActive(cur.group) ? acc : acc.concat([cur.email || cur.phone]);
         }, []);
 
-        return runScheduledEvent(function(done) {
+        return runScheduledEvent(null, function(done) {
             const body = JSON.parse(done);
+            const recips = body.map(i => i.recip);
             usersInInactiveGroups.forEach(contact => {
-                assert(body.indexOf(contact) === -1, `Did not expect ${contact} to be returned`);
+                assert(recips.indexOf(contact) === -1, `Did not expect ${contact} to be returned`);
             });
         });
     });
     it('should exclude users who have done more than the target number of practice minutes today', function() {
+        const newUserData = JSON.parse(JSON.stringify(userData));
         const maxTarget = targetMinutesByWeek.reduce((acc, cur) => Math.max(acc, cur), 0);
-        userData[0].minutes = maxTarget + 1;   
+        newUserData[0].minutes = maxTarget + 1;  
         const usersOverTarget = [];
-        userData.forEach(ud => {
+        newUserData.forEach(ud => {
             const user = users.find(u => u.id === ud.userId);
             if (user === undefined || !groupIsActive(user.group)) return;
             const targetMinutes = targetMinutesByGroup[user.group];
             if (ud.date === todayYMD && ud.minutes > targetMinutes) {
                 usersOverTarget.push(user.email || user.phone);
-            }
+            } 
         });     
-        return runScheduledEvent(function(done) {
+        return runScheduledEvent(null, function(done) {
             const body = JSON.parse(done);
+            const recips = body.map(i => i.recip);
             usersOverTarget.forEach(contact => {
-                assert(body.indexOf(contact) === -1, `Did not expect ${contact} to be returned`);
-            })
-        });
+                assert(recips.indexOf(contact) === -1, `Did not expect ${contact} to be returned`);
+            });
+        }, null, newUserData);
     });
     it('should exclude users who have done exactly the target number of practice minutes today', function() {
+        const newUserData = JSON.parse(JSON.stringify(userData));
         const target = targetMinutesByGroup[users[0].group];
-        userData[0].minutes = target;
-        return runScheduledEvent(function(done) {
+        newUserData[0].minutes = target;
+        return runScheduledEvent(null, function(done) {
             const body = JSON.parse(done);
-            assert(body.indexOf(users[0].email) === -1, 'users[0] should NOT be included');
+            const recips = body.map(i => i.recip);
+            assert(recips.indexOf(users[0].email) === -1, 'users[0] should NOT be included');
+        }, null, newUserData);
+    });
+    it('should not use inactive messages', function() {
+        return runScheduledEvent(null, function(done) {
+            const body = JSON.parse(done);
+            const usedMsgs = body.map(i => i.msg);
+            const inactiveMsgs = msgs.filter(m => !m.active).map(m => m.id);
+            usedMsgs.forEach(msg => {
+                assert(inactiveMsgs.indexOf(usedMsgs) === -1, `Used msg id ${msg} is inactive and should not have been used`);
+            });
         });
     });
+    it('should use messages of the requested type');
+    it('should pick a message at random', function(done) {
+        this.timeout(10000);
+        const iterations = 100;
+        const results = [];
+        dbSetup.writeTestData(usersTable, users)
+        .then(() => dbSetup.writeTestData(userDataTable, userData))
+        .then(() => {
+            const toDo = []
+            // lambda-local is unhappy with concurrent calls
+            // (https://github.com/ashiina/lambda-local/issues/79),
+            // so we gather up a bunch of promises and then...
+            for (let i = 0; i < iterations; i++) {
+                toDo.push(getSendTrainingPromise)               
+            }
+            // ...carefully run them sequentially (note that Promise.all
+            // runs them in parallel, which we don't want), after which...
+            return runPromsSequentially(toDo, results);
+        });
+        const usersUnderTarget = users.filter(u => groupIsActive(u.group)).map(u => u.email || u.phone);
+        userData.forEach(ud => {
+            const user = users.find(u => u.id === ud.userId);
+            if (user === undefined || !groupIsActive(user.group)) return;
+            const targetMinutes = targetMinutesByGroup[user.group];
+            if (ud.date === todayYMD && ud.minutes >= targetMinutes) {
+                usersUnderTarget.splice(usersUnderTarget.indexOf(user.email || user.phone), 1);
+            }
+        });
+        // ...we hang around checking to see if they've all finished yet so that we can do our tests
+        var timer = setInterval(function() {
+            if (results.length < iterations) return;
+
+            // results is array of arrays at this point, flatten it to an array
+            const usedMsgs = results.reduce((acc, cur) => acc.concat(cur), []);
+            const activeMsgCount = msgs.filter(m => m.active).length;
+            const msgCountById = usedMsgs.reduce((acc, cur) => {
+                const curCount = acc[cur] || 0;
+                acc[cur] = curCount + 1;
+                return acc;
+            }, {});
+            const expectedUsage = Math.round((iterations * usersUnderTarget.length) / activeMsgCount);
+            const lower = expectedUsage * 0.8;
+            const upper = expectedUsage * 1.2;
+            for (const [key, val] of Object.entries(msgCountById)) {
+                assert(val > lower && val < upper, `msg id ${key} was used ${val} times; expected it to be used between ${lower} and ${upper} times.`);
+            }
+            clearInterval(timer);
+            done();
+        }, 200);
+        
+    });
 });
+
+function getSendTrainingPromise() {
+    return lambdaLocal.execute({
+        event: sendTrainingReminders,
+        lambdaPath: 'remind.js',
+        envfile: './test/env.sh',
+        timeoutMs: 5000,
+        verboseLevel: 0
+    })
+    .then(result => {
+        const body = JSON.parse(result);
+        return body.map(i => i.msg);
+    })
+    .catch(e => console.log(e));
+}
+
+function runPromsSequentially(someProms, results) {
+    if (someProms.length == 0) return;
+
+    const prom = someProms.shift();
+    prom().then((res) => {
+        results.push(res);
+        runPromsSequentially(someProms, results);
+    });
+}
 
 /**
  * Given a start date, returns the number of minutes that a user in a 
