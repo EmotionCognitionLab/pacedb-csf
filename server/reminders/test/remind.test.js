@@ -79,9 +79,9 @@ const sendTrainingReminders = {
 function runScheduledEvent(extraEventArgs, checkTestResults, newUsers, newUserData) {
     const theUsers = newUsers ? newUsers : users;
     const theUserData = newUserData ? newUserData : userData;
-    return dbSetup.writeTestUsers(usersTable, theUsers)
+    return dbSetup.writeTestData(usersTable, theUsers)
     .then(function() {
-        return dbSetup.writeTestUserData(userDataTable, theUserData);
+        return dbSetup.writeTestData(userDataTable, theUserData);
     })
     .then(function() {
         const event = Object.assign({}, sendTrainingReminders);
@@ -109,7 +109,7 @@ describe('sending reminders for users who haven\'t done their training', functio
             return dbSetup.createGroupsTable(groupsTable);
         })
         .then(function() {
-            return dbSetup.writeTestGroupData(groupsTable, groups);
+            return dbSetup.writeTestData(groupsTable, groups);
         })
         .then(function() {
             return dbSetup.dropTable(reminderMsgsTable);

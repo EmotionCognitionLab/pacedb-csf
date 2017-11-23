@@ -33,31 +33,6 @@ exports.clearUsers = function(usersTable) {
     })
 }
 
-exports.writeTestUsers = function(usersTable, users) {
-    const testUsers = [];
-    users.forEach((u, idx) => {
-        const putRequest = {
-            PutRequest: {
-                Item: {
-                    'id': u.id,
-                    'group': u.group,
-                    'firstName': u.firstName,
-                    'lastName': u.lastName
-                }
-            }
-        };
-        if (u.email !== undefined) {
-            putRequest.PutRequest.Item.email = u.email;
-        } else if (u.phone !== undefined) {
-            putRequest.PutRequest.Item.phone = u.phone;
-        }
-        testUsers.push(putRequest);
-    });
-    const pushCmd = {};
-    pushCmd[usersTable] = testUsers;
-    return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
-}
-
 exports.dropTable = function(tableName) {
     return dynClient.deleteTable({TableName: tableName}).promise();
 }
@@ -93,25 +68,6 @@ exports.createUserDataTable = function(userDataTable) {
     return dynClient.createTable(params).promise();
 }
 
-exports.writeTestUserData = function(userDataTable, userData) {
-    const items = [];
-    userData.forEach(d => {
-        items.push({
-            PutRequest: {
-                Item: {
-                    'userId': d.userId,
-                    'date': d.date,
-                    'minutes': d.minutes,
-                    'emoji': d.emoji
-                }
-            }
-        });
-    });
-    const pushCmd = {};
-    pushCmd[userDataTable] = items;
-    return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
-}
-
 exports.createGroupsTable = function(groupsTable) {
     const params = {
         "AttributeDefinitions": [
@@ -133,24 +89,6 @@ exports.createGroupsTable = function(groupsTable) {
         }
     };
     return dynClient.createTable(params).promise();
-}
-
-exports.writeTestGroupData = function(groupsTable, groupsData) {
-    const items = [];
-    groupsData.forEach(g => {
-        items.push({
-            PutRequest: {
-                Item: {
-                    'name': g.name,
-                    'startDate': g.startDate,
-                    'endDate': g.endDate
-                }
-            }
-        });
-    });
-    const pushCmd = {};
-    pushCmd[groupsTable] = items;
-    return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
 }
 
 exports.createReminderMsgsTable = function(tableName) {
