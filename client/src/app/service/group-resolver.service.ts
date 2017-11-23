@@ -15,7 +15,7 @@ export class GroupResolverService implements Resolve<GroupPage> {
     constructor(private groupService: GroupService, private router: Router) { }
 
     resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<GroupPage> {
-        let groupName = route.paramMap.get('group_name');
+        let groupName = route.queryParamMap.get('group_name');
         return this.groupService.getGroupMembers(groupName).take(1)
         .flatMap(members => {
             if (groupName === null) {
