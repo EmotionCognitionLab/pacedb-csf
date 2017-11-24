@@ -132,65 +132,42 @@ function sendEmail(recip, msg) {
 // Returns a promise of a Map of user id -> email || phone records
 // for users who need to be reminded to do their training today
 function getUsersToBeReminded() {
-    // map of group name -> group object
-    const groupMap = new Map();
-    // map of user id -> user object
-    const userMap = new Map();
-
-    return getActiveGroups()
-    .then((result) => {
-        result.Items.forEach((i) => groupMap.set(i.name, i));
-        return Array.from(groupMap.keys());
-    })
-    .then((groupNames) => {
-        return getUsersInGroups(groupNames)
-    })
-    .then((usersResult) => {
-        usersResult.Items.forEach((i) => {
-            i.contact = i.email || i.phone;
-            userMap.set(i.id, i);
-        });
-        return userMap;
-    })
-    .then(() => {
-        return getUsersWhoHaveNotCompletedTraining(userMap, groupMap);
-    })
-    .catch((err) => {
-        console.log(err);
-        return err.message;
-    });
+    return getActiveGroupsAndUsers()
+    .then((result) => getUsersWhoHaveNotCompletedTraining(result.userMap, result.groupMap));
 }
 
 /**
  * Returns a list of users in active groups who failed to report any minutes yesterday.
  */
 function getUsersMissingReporting() {
+    return getActiveGroupsAndUsers()
+    .then((result) => getUsersWithoutReports(result.userMap, result.groupMap));
+}
+
+/**
+ * Returns Promise<{userMap:Map, groupMap: Map}>, where userMap maps user id -> user obj
+ * and groupMap group name -> group obj.
+ */
+function getActiveGroupsAndUsers() {
     // map of group name -> group object
     const groupMap = new Map();
     // map of user id -> user object
     const userMap = new Map();
 
     return getActiveGroups()
-    .then((result) => {
-        result.Items.forEach((i) => groupMap.set(i.name, i));
+    .then((groupsResult) => {
+        groupsResult.Items.forEach((g) => groupMap.set(g.name, g));
         return Array.from(groupMap.keys());
     })
     .then((groupNames) => {
         return getUsersInGroups(groupNames)
     })
     .then((usersResult) => {
-        usersResult.Items.forEach((i) => {
-            i.contact = i.email || i.phone;
-            userMap.set(i.id, i);
+        usersResult.Items.forEach((u) => {
+            u.contact = u.email || u.phone;
+            userMap.set(u.id, u);
         });
-        return userMap;
-    })
-    .then(() => {
-        return getUsersWithoutReports(userMap, groupMap);
-    })
-    .catch((err) => {
-        console.log(err);
-        return err.message;
+        return { userMap: userMap, groupMap: groupMap };
     });
 }
 
