@@ -1,10 +1,10 @@
 DYNAMO_ENDPOINT=http://localhost:8000
 SES_ENDPOINT=http://localhost:4579
 SNS_ENDPOINT=http://localhost:4575
-USERS_TABLE=hrv-users
-GROUPS_TABLE=hrv-groups
-USER_DATA_TABLE=hrv-user-data
-REMINDER_MSGS_TABLE=hrv-reminder-msgs
+USERS_TABLE=hrv-users-test
+GROUPS_TABLE=hrv-groups-test
+USER_DATA_TABLE=hrv-user-data-test
+REMINDER_MSGS_TABLE=hrv-reminder-msgs-test
 AWS_ACCESS_KEY_ID=accessKey
 AWS_SECRET_ACCESS_KEY=secret
 TARGET_MINUTES_BY_WEEK=[10,10,20,20,30,30]
