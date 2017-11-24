@@ -48,7 +48,8 @@ const groups = [
 const msgs = [
     {id: 1, active: true, msgType: 'train', subject: 'Please record yesterday\'s practice minutes!', html: 'Good morning!  Have you recorded yesterday\'s practice?  <a href="https://mindbodystudy.org/training">Add your minutes now</a> or enter 0 if you missed practice.', text: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: https://mindbodystudy.org/training', sms: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: http://bit.ly/2iGbuc6'},
     {id: 2, active: false, msgType: 'train', subject: 'Do your training!', html: 'Like I said - do your training!', text: 'You heard me!', sms: 'Don\'t make me say it again'},
-    {id: 3, active: true, msgType: 'train', subject: 's', html: 'h', text: 't', sms: 's'}
+    {id: 3, active: true, msgType: 'train', subject: 's', html: 'h', text: 't', sms: 's'},
+    {id: 4, active: true, msgType: 'report', subject: 's', html: 'h', text: 't', sms: 's'}
 ];
 
 const targetMinutesByGroup = groups.reduce((acc, cur) => {
@@ -57,6 +58,7 @@ const targetMinutesByGroup = groups.reduce((acc, cur) => {
 }, {});
 
 const todayYMD = +moment().format('YYYYMMDD');
+const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
 const userData = [
     {userId: users[0].id, date: todayYMD, minutes: 10},
     {userId: users[1].id, date: todayYMD, minutes: 7}
@@ -123,7 +125,10 @@ describe('sending reminders for users who haven\'t done their training', functio
         .catch(err => console.log(err));
     });
     beforeEach(function() {
-        return dbSetup.clearUsers(usersTable)
+        return dbSetup.dropTable(usersTable)
+        .then(function() {
+            return dbSetup.createUsersTable(usersTable);
+        })
         .then(function() {
             return dbSetup.dropTable(userDataTable);
         })
@@ -239,24 +244,118 @@ describe('sending reminders for users who haven\'t done their training', functio
 
             // results is array of arrays at this point, flatten it to an array
             const usedMsgs = results.reduce((acc, cur) => acc.concat(cur), []);
-            const activeMsgCount = msgs.filter(m => m.active).length;
+            const activeTrainingMsgCount = msgs.filter(m => m.active && m.msgType === 'train').length;
             const msgCountById = usedMsgs.reduce((acc, cur) => {
                 const curCount = acc[cur] || 0;
                 acc[cur] = curCount + 1;
                 return acc;
             }, {});
-            const expectedUsage = Math.round((iterations * usersUnderTarget.length) / activeMsgCount);
+            const expectedUsage = Math.round((iterations * usersUnderTarget.length) / activeTrainingMsgCount);
             const lower = expectedUsage * 0.8;
             const upper = expectedUsage * 1.2;
             for (const [key, val] of Object.entries(msgCountById)) {
                 assert(val > lower && val < upper, `msg id ${key} was used ${val} times; expected it to be used between ${lower} and ${upper} times.`);
             }
             clearInterval(timer);
-            done();
+            done(); // call done from mocha it('...', function(done)) to tell mochajs the test is complete
         }, 200);
         
     });
 });
+
+describe('sending reminders to users who didn\'t report any minutes yesterday', function() {
+    before(function () {
+        return setupPhoneTopics()
+        .then(function() {
+            return dbSetup.dropTable(groupsTable);
+        })
+        .then(function() {
+            return dbSetup.createGroupsTable(groupsTable);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(groupsTable, groups);
+        })
+        .then(function() {
+            return dbSetup.dropTable(reminderMsgsTable);
+        })
+        .then(function() {
+            return dbSetup.createReminderMsgsTable(reminderMsgsTable);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(reminderMsgsTable, msgs);
+        })
+        .catch(err => console.log(err));
+    });
+    beforeEach(function () {
+        return dbSetup.dropTable(usersTable)
+        .then(function() {
+            return dbSetup.createUsersTable(usersTable);
+        })
+        .then(function() {
+            return dbSetup.dropTable(userDataTable);
+        })
+        .then(function() {
+            return dbSetup.createUserDataTable(userDataTable);
+        })
+        .catch(err => console.log(err));
+    })
+    it('should reach users in active groups who reported nothing yesterday', function() {
+        const usersInActiveGroups = users.filter(u => groupIsActive(u.group));
+        const reportingYesterday = userData.filter(ud => {
+            ud.minutes !== undefined && ud.date === yesterdayYMD;
+        });
+        const usersToRemind = usersInActiveGroups.filter(u => {
+            return reportingYesterday.findIndex(ud => ud.userId === u.id) === -1
+        }).map(u => u.email || u.phone);
+        return runScheduledEvent({msgType: 'report'}, function(results) {
+            const body = JSON.parse(results);
+            assert(body.length === usersToRemind.length);
+            body.forEach(item => {
+                assert(usersToRemind.indexOf(item.recip) !== -1, `${item.recip} was reminded but shouldn't have been`);
+            });
+        });
+    });
+    it('should exclude users who are in inactive groups', function() {
+        const usersInInactiveGroups = users.filter(u => !groupIsActive(u.group));
+        assert(usersInInactiveGroups.length > 0, 'Expected at least one user in an inactive group in base test data');
+        const newUserData = [{ userId: usersInInactiveGroups[0].id, date: yesterdayYMD, minutes: 3 }];
+        return runScheduledEvent({msgType: 'report'}, function(results) {
+            const body = JSON.parse(results);
+            const excludedRecipients = usersInInactiveGroups.map(u => u.email || u.phone);
+            body.forEach(item => {
+                assert(excludedRecipients.indexOf(item.recip) === -1, `${item.recip} is in inactive group and shouldn't have been reminded`)
+            });
+        }, null, newUserData);
+    });
+    it('should exclude users who reported minutes yesterday', function() {
+        const usersInActiveGroups = users.filter(u => groupIsActive(u.group));
+        assert(usersInActiveGroups.length > 0, 'Expected at least one user in an active group in the base test data');
+        const newUserData = [{ userId: usersInActiveGroups[0].id, date: yesterdayYMD, minutes: 0}];
+        return runScheduledEvent({msgType: 'report'}, function(results) {
+            const body = JSON.parse(results);
+            const shouldNotReceive = usersInActiveGroups[0].email || usersInActiveGroups[0].phone;
+            body.forEach(item => assert(body.recip !== shouldNotReceive, `${shouldNotReceive} reported minutes yesterday and should not have received a reminder`));
+        }, null, newUserData);
+    });
+    it('should reach users who got an emoji yesterday but didn\'t report any minutes', function() {
+        const usersInActiveGroups = users.filter(u => groupIsActive(u.group));
+        const reportingYesterday = userData.filter(ud => {
+            ud.minutes !== undefined && ud.date === yesterdayYMD;
+        });
+        const usersToRemind = usersInActiveGroups.filter(u => {
+            return reportingYesterday.findIndex(ud => ud.userId === u.id) === -1
+        });
+        assert(usersToRemind.length > 0, 'Expected at least one user in base test data who needs reporting reminder');
+        const newUserData = [{ userId: usersToRemind[0].id, date: yesterdayYMD, emoji: {from: 'John D.', emoji: '🤣'}}];
+        return runScheduledEvent({msgType: 'report'}, function(results) {
+            const body = JSON.parse(results);
+            const shouldContact = usersToRemind[0].email || usersToRemind[0].phone;
+            const recipients = body.map(i => i.recip);
+            assert(recipients.indexOf(shouldContact) !== -1, `${shouldContact} should have been reminded but wasn't`);
+        }, null, newUserData);
+    });
+
+})
 
 function getSendTrainingPromise() {
     return lambdaLocal.execute({

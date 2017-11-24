@@ -8,33 +8,45 @@ const dynClient = new AWS.DynamoDB({endpoint: dynamoEndpoint, apiVersion: '2012-
 exports.dynDocClient = dynDocClient;
 exports.dynClient = dynClient;
 
-exports.clearUsers = function(usersTable) {
-    const params = {
-        TableName: usersTable
-    }
-    const existingUsers = [];
-    return dynDocClient.scan(params).promise()
-    .then((data) => {
-        data.Items.forEach((u) => existingUsers.push(u));
+exports.dropTable = function(tableName) {
+    return dynClient.listTables().promise()
+    .then(results => {
+        if (results.TableNames.indexOf(tableName) !== -1) {
+            return dynClient.deleteTable({TableName: tableName}).promise();
+        } 
     })
-    // delete the existing user rows
-    .then(() => {
-        const toDelete = [];
-        if (existingUsers.length > 0) {
-            existingUsers.forEach((u) => {
-                toDelete.push({DeleteRequest: {Key: { 'id':  u.id , 'group': u.group }}});
-            });
-            const delCmd = {};
-            delCmd[usersTable] = toDelete;
-            return dynDocClient.batchWrite({RequestItems: delCmd}).promise();
-        } else {
-            return Promise.resolve();
-        }
-    })
+    .catch(e => console.log(e));
 }
 
-exports.dropTable = function(tableName) {
-    return dynClient.deleteTable({TableName: tableName}).promise();
+exports.createUsersTable = function(usersTable) {
+    const params = {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "id",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "group",
+                "AttributeType": "S"
+            }
+        ],
+        "TableName": usersTable,
+        "KeySchema": [
+            {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+            },
+            {
+                "AttributeName": "group",
+                "KeyType": "RANGE"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 1
+        }
+    };
+    return dynClient.createTable(params).promise();
 }
 
 exports.createUserDataTable = function(userDataTable) {

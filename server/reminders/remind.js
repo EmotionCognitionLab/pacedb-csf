@@ -34,9 +34,14 @@ exports.handler = (event, context, callback) => {
     const recipients = [];
     let getRecipients; // function for selecting msg recipients
 
+    // choose the recipient selection function based on the msgType
     switch (msgType) {
         case 'train': {
             getRecipients = getUsersToBeReminded;
+            break;
+        }
+        case 'report': {
+            getRecipients = getUsersMissingReporting;
             break;
         }
     }
@@ -153,7 +158,40 @@ function getUsersToBeReminded() {
     .catch((err) => {
         console.log(err);
         return err.message;
+    });
+}
+
+/**
+ * Returns a list of users in active groups who failed to report any minutes yesterday.
+ */
+function getUsersMissingReporting() {
+    // map of group name -> group object
+    const groupMap = new Map();
+    // map of user id -> user object
+    const userMap = new Map();
+
+    return getActiveGroups()
+    .then((result) => {
+        result.Items.forEach((i) => groupMap.set(i.name, i));
+        return Array.from(groupMap.keys());
     })
+    .then((groupNames) => {
+        return getUsersInGroups(groupNames)
+    })
+    .then((usersResult) => {
+        usersResult.Items.forEach((i) => {
+            i.contact = i.email || i.phone;
+            userMap.set(i.id, i);
+        });
+        return userMap;
+    })
+    .then(() => {
+        return getUsersWithoutReports(userMap, groupMap);
+    })
+    .catch((err) => {
+        console.log(err);
+        return err.message;
+    });
 }
 
 // Returns a promise of scan output with names of groups whose startDate is on or before today
@@ -233,6 +271,29 @@ function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
                     userMap.delete(ud.userId);
                 }
             }
+        });
+        return userMap;
+    });
+}
+
+/**
+ * 
+ * @param {Map} userMap user id -> user contact (email or phone) map
+ * @param {Map} groupMap group id -> group object map
+ */
+function getUsersWithoutReports(userMap, groupMap) {
+    const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
+    const params = {
+        TableName: userDataTable,
+        ExpressionAttributeNames: { '#D': 'date' },
+        ExpressionAttributeValues: { ':yesterday': yesterdayYMD },
+        FilterExpression: '#D = :yesterday and attribute_exists(minutes)',
+    }
+
+    return dynamo.scan(params).promise()
+    .then(userData => {
+        userData.Items.forEach(ud => {
+            userMap.delete(ud.userId);
         });
         return userMap;
     });
