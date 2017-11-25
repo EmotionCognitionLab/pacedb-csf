@@ -595,8 +595,12 @@ definitions:
           properties:
             from:
               type: string
+            fromId:
+              type: string
             emoji:
               type: string
+            datetime:
+              type: number
   UserDataList:
     type: array
     items:
