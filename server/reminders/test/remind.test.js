@@ -29,6 +29,9 @@ ses.verifyEmailIdentity({EmailAddress: 'uscemotioncognitionlab@gmail.com'}).prom
 const snsEndpoint = process.env.SNS_ENDPOINT;
 const sns = new AWS.SNS({endpoint: snsEndpoint, apiVersion: '2010-03-31', region: 'us-east-1'});
 
+const todayYMD = +moment().format('YYYYMMDD');
+const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
+
 // test data
 const users = [ {id: "1a", firstName: "One", lastName: "Eh", group: "g-one", email: "foo@example.com"},
                 {id: "1b", firstName: "One", lastName: "Bee", group: "g-one", phone: "12125551212"},
@@ -63,17 +66,23 @@ const reminderMsgs = [
     {id: 5, active: true, msgType: 'new_group_msg', subject: 's', html: 'h', text: 't', sms: 's'}
 ];
 
-const targetMinutesByGroup = groups.reduce((acc, cur) => {
-    acc[cur.name] = getTargetMinutes(cur.startDate);
-    return acc; 
-}, {});
-
-const todayYMD = +moment().format('YYYYMMDD');
-const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
 const userData = [
     {userId: users[0].id, date: todayYMD, minutes: 10},
     {userId: users[1].id, date: todayYMD, minutes: 7}
 ]
+
+const dbInfo = [
+    { name: groupsTable, data: groups, createFn: dbSetup.createGroupsTable },
+    { name: reminderMsgsTable, data: reminderMsgs, createFn: dbSetup.createReminderMsgsTable },
+    { name: groupMsgsTable, data: groupMsgs, createFn: dbSetup.createGroupMsgsTable },
+    { name: usersTable, data: users, createFn: dbSetup.createUsersTable },
+    { name: userDataTable, data: userData, createFn: dbSetup.createUserDataTable }
+];
+
+const targetMinutesByGroup = groups.reduce((acc, cur) => {
+    acc[cur.name] = getTargetMinutes(cur.startDate);
+    return acc; 
+}, {});
 
 const sendTrainingReminders = {
     "account": "123456789012",
@@ -87,7 +96,7 @@ const sendTrainingReminders = {
       "arn:aws:events:us-east-1:123456789012:rule/my-schedule"
     ],
     "msgType": "train"
-  };
+};
 
 function runScheduledEvent(extraEventArgs, checkTestResults, newUsers, newUserData) {
     const theUsers = newUsers ? newUsers : users;
@@ -105,6 +114,7 @@ function runScheduledEvent(extraEventArgs, checkTestResults, newUsers, newUserDa
             envfile: './test/env.sh'
         });
     })
+    .then(results => JSON.parse(results))
     .then(checkTestResults)
     .catch(function(err) {
         console.log(err);
@@ -114,26 +124,7 @@ function runScheduledEvent(extraEventArgs, checkTestResults, newUsers, newUserDa
 
 describe('sending reminders for users who haven\'t done their training', function() {
     before(function () {
-        return setupPhoneTopics()
-        .then(function() {
-            return dbSetup.dropTable(groupsTable);
-        })
-        .then(function() {
-            return dbSetup.createGroupsTable(groupsTable);
-        })
-        .then(function() {
-            return dbSetup.writeTestData(groupsTable, groups);
-        })
-        .then(function() {
-            return dbSetup.dropTable(reminderMsgsTable);
-        })
-        .then(function() {
-            return dbSetup.createReminderMsgsTable(reminderMsgsTable);
-        })
-        .then(function() {
-            return dbSetup.writeTestData(reminderMsgsTable, reminderMsgs);
-        })
-        .catch(err => console.log(err));
+        return prepTestEnv();
     });
     beforeEach(function() {
         return dbSetup.dropTable(usersTable)
@@ -158,8 +149,7 @@ describe('sending reminders for users who haven\'t done their training', functio
                 usersUnderTarget.splice(usersUnderTarget.indexOf(user.email || user.phone), 1);
             } 
         });
-        return runScheduledEvent(null, function(done) {
-            const body = JSON.parse(done);
+        return runScheduledEvent(null, function(body) {
             const recips = body.map(i => i.recip);
             usersUnderTarget.forEach(contact => {
                 assert(recips.indexOf(contact) !== -1, `Expected ${contact} to be returned`);
@@ -172,8 +162,7 @@ describe('sending reminders for users who haven\'t done their training', functio
             return groupIsActive(cur.group) ? acc : acc.concat([cur.email || cur.phone]);
         }, []);
 
-        return runScheduledEvent(null, function(done) {
-            const body = JSON.parse(done);
+        return runScheduledEvent(null, function(body) {
             const recips = body.map(i => i.recip);
             usersInInactiveGroups.forEach(contact => {
                 assert(recips.indexOf(contact) === -1, `Did not expect ${contact} to be returned`);
@@ -193,8 +182,7 @@ describe('sending reminders for users who haven\'t done their training', functio
                 usersOverTarget.push(user.email || user.phone);
             } 
         });     
-        return runScheduledEvent(null, function(done) {
-            const body = JSON.parse(done);
+        return runScheduledEvent(null, function(body) {
             const recips = body.map(i => i.recip);
             usersOverTarget.forEach(contact => {
                 assert(recips.indexOf(contact) === -1, `Did not expect ${contact} to be returned`);
@@ -205,15 +193,13 @@ describe('sending reminders for users who haven\'t done their training', functio
         const newUserData = JSON.parse(JSON.stringify(userData));
         const target = targetMinutesByGroup[users[0].group];
         newUserData[0].minutes = target;
-        return runScheduledEvent(null, function(done) {
-            const body = JSON.parse(done);
+        return runScheduledEvent(null, function(body) {
             const recips = body.map(i => i.recip);
             assert(recips.indexOf(users[0].email) === -1, 'users[0] should NOT be included');
         }, null, newUserData);
     });
     it('should not use inactive messages', function() {
-        return runScheduledEvent(null, function(done) {
-            const body = JSON.parse(done);
+        return runScheduledEvent(null, function(body) {
             const usedMsgs = body.map(i => i.msg);
             const inactiveMsgs = reminderMsgs.filter(m => !m.active).map(m => m.id);
             usedMsgs.forEach(msg => {
@@ -221,7 +207,15 @@ describe('sending reminders for users who haven\'t done their training', functio
             });
         });
     });
-    it('should use messages of the requested type');
+    it('should use messages of type "train"', function () {
+        return runScheduledEvent(null, function(body) {
+            const usedMsgs = body.map(i => i.msg);
+            const trainMsgs = reminderMsgs.filter(m => m.msgType === 'train').map(m => m.id);
+            usedMsgs.forEach(msg => {
+                assert(trainMsgs.indexOf(msg) !== -1, `Used msg id ${msg} is not of type 'train' and should not have been used`);
+            });
+        });
+    });
     it('should pick a message at random', function(done) {
         this.timeout(10000);
         const iterations = 100;
@@ -276,26 +270,7 @@ describe('sending reminders for users who haven\'t done their training', functio
 
 describe('sending reminders to users who didn\'t report any minutes yesterday', function() {
     before(function () {
-        return setupPhoneTopics()
-        .then(function() {
-            return dbSetup.dropTable(groupsTable);
-        })
-        .then(function() {
-            return dbSetup.createGroupsTable(groupsTable);
-        })
-        .then(function() {
-            return dbSetup.writeTestData(groupsTable, groups);
-        })
-        .then(function() {
-            return dbSetup.dropTable(reminderMsgsTable);
-        })
-        .then(function() {
-            return dbSetup.createReminderMsgsTable(reminderMsgsTable);
-        })
-        .then(function() {
-            return dbSetup.writeTestData(reminderMsgsTable, reminderMsgs);
-        })
-        .catch(err => console.log(err));
+        return prepTestEnv();
     });
     beforeEach(function () {
         return dbSetup.dropTable(usersTable)
@@ -318,8 +293,7 @@ describe('sending reminders to users who didn\'t report any minutes yesterday', 
         const usersToRemind = usersInActiveGroups.filter(u => {
             return reportingYesterday.findIndex(ud => ud.userId === u.id) === -1
         }).map(u => u.email || u.phone);
-        return runScheduledEvent({msgType: 'report'}, function(results) {
-            const body = JSON.parse(results);
+        return runScheduledEvent({msgType: 'report'}, function(body) {
             assert(body.length === usersToRemind.length);
             body.forEach(item => {
                 assert(usersToRemind.indexOf(item.recip) !== -1, `${item.recip} was reminded but shouldn't have been`);
@@ -330,8 +304,7 @@ describe('sending reminders to users who didn\'t report any minutes yesterday', 
         const usersInInactiveGroups = users.filter(u => !groupIsActive(u.group));
         assert(usersInInactiveGroups.length > 0, 'Expected at least one user in an inactive group in base test data');
         const newUserData = [{ userId: usersInInactiveGroups[0].id, date: yesterdayYMD, minutes: 3 }];
-        return runScheduledEvent({msgType: 'report'}, function(results) {
-            const body = JSON.parse(results);
+        return runScheduledEvent({msgType: 'report'}, function(body) {
             const excludedRecipients = usersInInactiveGroups.map(u => u.email || u.phone);
             body.forEach(item => {
                 assert(excludedRecipients.indexOf(item.recip) === -1, `${item.recip} is in inactive group and shouldn't have been reminded`)
@@ -342,8 +315,7 @@ describe('sending reminders to users who didn\'t report any minutes yesterday', 
         const usersInActiveGroups = users.filter(u => groupIsActive(u.group));
         assert(usersInActiveGroups.length > 0, 'Expected at least one user in an active group in the base test data');
         const newUserData = [{ userId: usersInActiveGroups[0].id, date: yesterdayYMD, minutes: 0}];
-        return runScheduledEvent({msgType: 'report'}, function(results) {
-            const body = JSON.parse(results);
+        return runScheduledEvent({msgType: 'report'}, function(body) {
             const shouldNotReceive = usersInActiveGroups[0].email || usersInActiveGroups[0].phone;
             body.forEach(item => assert(body.recip !== shouldNotReceive, `${shouldNotReceive} reported minutes yesterday and should not have received a reminder`));
         }, null, newUserData);
@@ -358,59 +330,24 @@ describe('sending reminders to users who didn\'t report any minutes yesterday', 
         });
         assert(usersToRemind.length > 0, 'Expected at least one user in base test data who needs reporting reminder');
         const newUserData = [{ userId: usersToRemind[0].id, date: yesterdayYMD, emoji: {from: 'John D.', emoji: '🤣'}}];
-        return runScheduledEvent({msgType: 'report'}, function(results) {
-            const body = JSON.parse(results);
+        return runScheduledEvent({msgType: 'report'}, function(body) {
             const shouldContact = usersToRemind[0].email || usersToRemind[0].phone;
             const recipients = body.map(i => i.recip);
             assert(recipients.indexOf(shouldContact) !== -1, `${shouldContact} should have been reminded but wasn't`);
         }, null, newUserData);
     });
-
+    it('should only use messages of type "report"', function() {
+        return runScheduledEvent({msgType: 'report'}, function(body) {
+            const reportMsgs = reminderMsgs.filter(rm => rm.msgType === 'report').map(rm => rm.id);
+            const usedMsgs = body.map(i => i.msg);
+            usedMsgs.forEach(m => assert(reportMsgs.indexOf(m) !== -1, `Message id ${m} was used but shouldn't have been; it is not of type 'report'`));
+        });
+    });
 })
 
 describe('sending notifications to users whose groups have new messages', function() {
     before(function() {
-        return setupPhoneTopics()
-        .then(function() {
-            return dbSetup.dropTable(groupsTable);
-        })
-        .then(function() {
-            return dbSetup.createGroupsTable(groupsTable);
-        })
-        .then(function() {
-            return dbSetup.writeTestData(groupsTable, groups);
-        })
-        .then(function() {
-            return dbSetup.dropTable(reminderMsgsTable);
-        })
-        .then(function() {
-            return dbSetup.createReminderMsgsTable(reminderMsgsTable);
-        })
-        .then(function() {
-            return dbSetup.writeTestData(reminderMsgsTable, reminderMsgs);
-        })
-        .then(function() {
-            return dbSetup.dropTable(groupMsgsTable);
-        })
-        .then(function() {
-            return dbSetup.createGroupMsgsTable(groupMsgsTable);
-        })
-        .then(function() {
-            return dbSetup.writeTestData(groupMsgsTable, groupMsgs);
-        })
-        .then(function() {
-            return dbSetup.dropTable(usersTable);
-        })
-        .then(function() {
-            return dbSetup.createUsersTable(usersTable);
-        })
-        .then(function() {
-            return dbSetup.dropTable(userDataTable);
-        })
-        .then(function() {
-            return dbSetup.createUserDataTable(userDataTable);
-        })
-        .catch(e => console.log(e))
+        return prepTestEnv();
     });
     it('should notify users in all active groups with new messages', function() {
         const newMsgLimit = +moment().subtract(NEW_MSG_MINUTES, 'minutes').format('x');
@@ -420,8 +357,7 @@ describe('sending notifications to users whose groups have new messages', functi
         const shouldNotify = users.filter(u => activeGroupsWithNewMsgs.indexOf(u.group) !== -1).map(u => u.email || u.phone);
         assert(shouldNotify.length > 0, 'Expected at least one user in base test data to get new group message notification');
 
-        return runScheduledEvent({msgType: 'new_group_msg'}, function(results) {
-            const body = JSON.parse(results);
+        return runScheduledEvent({msgType: 'new_group_msg'}, function(body) {
             assert.equal(body.length, shouldNotify.length);
             const recipients = body.map(i => i.recip);
             recipients.forEach(r => assert(shouldNotify.indexOf(r) !== -1, `${r} was notified but shouldn't have been`));
@@ -437,8 +373,7 @@ describe('sending notifications to users whose groups have new messages', functi
         const shouldNotNotify = users.filter(u => inactiveGroupsWithNewMsgs.indexOf(u.group) !== -1).map(u => u.email || u.phone);
         assert(shouldNotNotify.length > 0, 'Expected at least one user in base test data to be in an inactive group with a new message');
 
-        return runScheduledEvent({msgType: 'new_group_msg'}, function(results) {
-            const body = JSON.parse(results);
+        return runScheduledEvent({msgType: 'new_group_msg'}, function(body) {
             const recipients = body.map(i => i.recip);
             recipients.forEach(r => assert(shouldNotNotify.indexOf(r) === -1, `${r} was notified but shouldn't have been; his group is inactive`));
         });
@@ -454,12 +389,44 @@ describe('sending notifications to users whose groups have new messages', functi
         assert(activeGroupsNoNewMsgs.length > 0, 'Expected at least one active group with no new messages in base test data');
         const shouldNotNotify = users.filter(u => activeGroupsNoNewMsgs.indexOf(u.group) !== -1).map(u => u.email || u.phone);
 
-        return runScheduledEvent({msgType: 'new_group_msg'}, function(results) {
-            const body = JSON.parse(results);
+        return runScheduledEvent({msgType: 'new_group_msg'}, function(body) {
             body.forEach(i => assert(shouldNotNotify.indexOf(i.recip) === -1, `${i.recip} was notified and shouldn't have been; she's in an active group with no new messages`));
-        })
+        });
+    });
+    it('should only use message of type "new_group_msg"', function() {
+        return runScheduledEvent({msgType: 'new_group_msg'}, function(body) {
+            const newGroupMsgs = reminderMsgs.filter(rm => rm.msgType === 'new_group_msg').map(rm => rm.id);
+            const usedMsgs = body.map(i => i.msg);
+            usedMsgs.forEach(um => assert(newGroupMsgs.indexOf(um) !== -1, `Message id ${um} was used and shouldn't have been; it isn't of type 'new_group_msg'`));
+        });
+    });
+});
+
+function cleanDb() {
+    const dropPromises = dbInfo.map(dbi => dbSetup.dropTable(dbi.name));
+    return Promise.all(dropPromises)
+    .then(function() {
+        const createPromises = dbInfo.map(dbi => dbi.createFn(dbi.name));
+        return Promise.all(createPromises);
     })
-})
+    .catch(e => console.log(e))
+}
+
+function prepTestEnv() {
+    return setupPhoneTopics()
+    .then(function() {
+        return cleanDb()
+    })
+    .then(function() {
+        return writeTestData();
+    })
+    .catch(e => console.log(e));
+}
+
+function writeTestData() {
+    const writePromises = dbInfo.map(dbi => dbSetup.writeTestData(dbi.name, dbi.data));
+    return Promise.all(writePromises);
+}
 
 function getSendTrainingPromise() {
     return lambdaLocal.execute({
