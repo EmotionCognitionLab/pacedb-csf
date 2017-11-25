@@ -29,7 +29,7 @@ const messages = [
 ]
 const userData = [
     {userId: users[0].id, datetime: 20171122, minutes: 10},
-    {userId: users[0].id, datetime: 20171123, emoji: [{from: 'Ad N.', fromId: 'ad9', emoji: '💩'}]},
+    {userId: users[0].id, datetime: 20171123, emoji: [{from: 'Ad N.', fromId: 'ad9', emoji: '💩', datetime: 1511368724048}]},
     {userId: users[1].id, datetime: 20170419, minutes: 7}
 ]
 
@@ -1074,6 +1074,7 @@ describe('User request', function() {
     });
     describe('when giving another user an emoji', function() {
         it('should save the emoji when the call is well-formated', function() {
+            const today = new Date();
             return lambdaLocal.execute({
                 event: postUserEmoji,
                 lambdaPath: 'api.js',
@@ -1081,7 +1082,6 @@ describe('User request', function() {
             })
             .then(function(done) {
                 assert.equal(done.statusCode, 201);
-                const today = new Date();
                 const todayYMD = `${today.getFullYear()}${today.getMonth() + 1}${today.getDate()}`;
                 const queryParams = {
                     TableName: userDataTable,
@@ -1099,6 +1099,7 @@ describe('User request', function() {
                 assert.equal(emojiObj.emoji, postUserEmoji.queryStringParameters.e);
                 assert.equal(emojiObj.from, `${users[0].firstName} ${users[0].lastName.slice(0,1)}.`);
                 assert.equal(emojiObj.fromId, postUserEmoji.requestContext.authorizer.claims.sub);
+                assert(emojiObj.datetime >= today.valueOf(), 'The datetime on the saved emoji is earlier than expected');
             })
             .catch(function(err) {
                 console.log(err);

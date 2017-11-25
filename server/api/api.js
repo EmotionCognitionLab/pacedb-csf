@@ -324,7 +324,7 @@ function writeUserEmoji(event) {
             TableName: userDataTable,
             Key: { 'userId': recipId, 'date': +todayYMD},
             UpdateExpression: 'set emoji = list_append(if_not_exists(emoji, :emptyList), :newEmoji)',
-            ExpressionAttributeValues: { ':emptyList': [], ':newEmoji': [ {'emoji': emoji, 'from': senderName, 'fromId': senderId} ] }
+            ExpressionAttributeValues: { ':emptyList': [], ':newEmoji': [ {'emoji': emoji, 'from': senderName, 'fromId': senderId, 'datetime': today.valueOf()} ] }
         };
         return dynamo.update(writeParams).promise()
     })
