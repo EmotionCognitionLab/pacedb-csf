@@ -13,6 +13,7 @@ const usersTable = process.env.USERS_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const groupsTable = process.env.GROUPS_TABLE;
 const reminderMsgsTable = process.env.REMINDER_MSGS_TABLE;
+const groupMsgsTable = process.env.GROUP_MSGS_TABLE;
 
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
@@ -45,11 +46,21 @@ const groups = [
     { name: "g-inactive", startDate: 20160914, endDate: 20161030 }
 ];
 
-const msgs = [
+const nowMs = +moment().format('x');
+const aWhileAgoMs = +moment().subtract(5, 'hours').format('x');
+const groupMsgs = [
+    { group: "g-inactive", date: nowMs, body: 'something', fromId: users.filter(u => u.group === "g-inactive")[0].id },
+    { group: "g-one", date: nowMs, body: 'something', fromId: users.filter(u => u.group === "g-one")[0].id },
+    { group: "g-two", date: aWhileAgoMs, body: 'something', fromId: users.filter(u => u.group === "g-two")[0].id }
+];
+const NEW_MSG_MINUTES = 120; //group messages younger than this are new
+
+const reminderMsgs = [
     {id: 1, active: true, msgType: 'train', subject: 'Please record yesterday\'s practice minutes!', html: 'Good morning!  Have you recorded yesterday\'s practice?  <a href="https://mindbodystudy.org/training">Add your minutes now</a> or enter 0 if you missed practice.', text: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: https://mindbodystudy.org/training', sms: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: http://bit.ly/2iGbuc6'},
     {id: 2, active: false, msgType: 'train', subject: 'Do your training!', html: 'Like I said - do your training!', text: 'You heard me!', sms: 'Don\'t make me say it again'},
     {id: 3, active: true, msgType: 'train', subject: 's', html: 'h', text: 't', sms: 's'},
-    {id: 4, active: true, msgType: 'report', subject: 's', html: 'h', text: 't', sms: 's'}
+    {id: 4, active: true, msgType: 'report', subject: 's', html: 'h', text: 't', sms: 's'},
+    {id: 5, active: true, msgType: 'new_group_msg', subject: 's', html: 'h', text: 't', sms: 's'}
 ];
 
 const targetMinutesByGroup = groups.reduce((acc, cur) => {
@@ -120,7 +131,7 @@ describe('sending reminders for users who haven\'t done their training', functio
             return dbSetup.createReminderMsgsTable(reminderMsgsTable);
         })
         .then(function() {
-            return dbSetup.writeTestData(reminderMsgsTable, msgs);
+            return dbSetup.writeTestData(reminderMsgsTable, reminderMsgs);
         })
         .catch(err => console.log(err));
     });
@@ -204,7 +215,7 @@ describe('sending reminders for users who haven\'t done their training', functio
         return runScheduledEvent(null, function(done) {
             const body = JSON.parse(done);
             const usedMsgs = body.map(i => i.msg);
-            const inactiveMsgs = msgs.filter(m => !m.active).map(m => m.id);
+            const inactiveMsgs = reminderMsgs.filter(m => !m.active).map(m => m.id);
             usedMsgs.forEach(msg => {
                 assert(inactiveMsgs.indexOf(usedMsgs) === -1, `Used msg id ${msg} is inactive and should not have been used`);
             });
@@ -244,7 +255,7 @@ describe('sending reminders for users who haven\'t done their training', functio
 
             // results is array of arrays at this point, flatten it to an array
             const usedMsgs = results.reduce((acc, cur) => acc.concat(cur), []);
-            const activeTrainingMsgCount = msgs.filter(m => m.active && m.msgType === 'train').length;
+            const activeTrainingMsgCount = reminderMsgs.filter(m => m.active && m.msgType === 'train').length;
             const msgCountById = usedMsgs.reduce((acc, cur) => {
                 const curCount = acc[cur] || 0;
                 acc[cur] = curCount + 1;
@@ -282,7 +293,7 @@ describe('sending reminders to users who didn\'t report any minutes yesterday', 
             return dbSetup.createReminderMsgsTable(reminderMsgsTable);
         })
         .then(function() {
-            return dbSetup.writeTestData(reminderMsgsTable, msgs);
+            return dbSetup.writeTestData(reminderMsgsTable, reminderMsgs);
         })
         .catch(err => console.log(err));
     });
@@ -355,6 +366,99 @@ describe('sending reminders to users who didn\'t report any minutes yesterday', 
         }, null, newUserData);
     });
 
+})
+
+describe('sending notifications to users whose groups have new messages', function() {
+    before(function() {
+        return setupPhoneTopics()
+        .then(function() {
+            return dbSetup.dropTable(groupsTable);
+        })
+        .then(function() {
+            return dbSetup.createGroupsTable(groupsTable);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(groupsTable, groups);
+        })
+        .then(function() {
+            return dbSetup.dropTable(reminderMsgsTable);
+        })
+        .then(function() {
+            return dbSetup.createReminderMsgsTable(reminderMsgsTable);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(reminderMsgsTable, reminderMsgs);
+        })
+        .then(function() {
+            return dbSetup.dropTable(groupMsgsTable);
+        })
+        .then(function() {
+            return dbSetup.createGroupMsgsTable(groupMsgsTable);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(groupMsgsTable, groupMsgs);
+        })
+        .then(function() {
+            return dbSetup.dropTable(usersTable);
+        })
+        .then(function() {
+            return dbSetup.createUsersTable(usersTable);
+        })
+        .then(function() {
+            return dbSetup.dropTable(userDataTable);
+        })
+        .then(function() {
+            return dbSetup.createUserDataTable(userDataTable);
+        })
+        .catch(e => console.log(e))
+    });
+    it('should notify users in all active groups with new messages', function() {
+        const newMsgLimit = +moment().subtract(NEW_MSG_MINUTES, 'minutes').format('x');
+        const activeGroupsWithNewMsgs = groupMsgs
+        .filter(gm => gm.date >= newMsgLimit).filter(gm => groupIsActive(gm.group))
+        .map(gm => gm.group);
+        const shouldNotify = users.filter(u => activeGroupsWithNewMsgs.indexOf(u.group) !== -1).map(u => u.email || u.phone);
+        assert(shouldNotify.length > 0, 'Expected at least one user in base test data to get new group message notification');
+
+        return runScheduledEvent({msgType: 'new_group_msg'}, function(results) {
+            const body = JSON.parse(results);
+            assert.equal(body.length, shouldNotify.length);
+            const recipients = body.map(i => i.recip);
+            recipients.forEach(r => assert(shouldNotify.indexOf(r) !== -1, `${r} was notified but shouldn't have been`));
+            shouldNotify.forEach(u => assert(recipients.indexOf(u) !== -1, `${u} should have been notified but wasn't`));
+        });
+
+    });
+    it('should not notify users in inactive groups', function() {
+        const newMsgLimit = +moment().subtract(NEW_MSG_MINUTES, 'minutes').format('x');
+        const inactiveGroupsWithNewMsgs = groupMsgs
+        .filter(gm => gm.date >= newMsgLimit).filter(gm => !groupIsActive(gm.group))
+        .map(gm => gm.group);
+        const shouldNotNotify = users.filter(u => inactiveGroupsWithNewMsgs.indexOf(u.group) !== -1).map(u => u.email || u.phone);
+        assert(shouldNotNotify.length > 0, 'Expected at least one user in base test data to be in an inactive group with a new message');
+
+        return runScheduledEvent({msgType: 'new_group_msg'}, function(results) {
+            const body = JSON.parse(results);
+            const recipients = body.map(i => i.recip);
+            recipients.forEach(r => assert(shouldNotNotify.indexOf(r) === -1, `${r} was notified but shouldn't have been; his group is inactive`));
+        });
+    });
+    it('should not notify users in active groups that have no new messages', function() {
+        const newMsgsLimit = +moment().subtract(NEW_MSG_MINUTES, 'minutes').format('x');
+        const activeGroupsNoNewMsgs = groups.filter(g => groupIsActive(g.name));
+        const groupsWithNewMsgs = groupMsgs.filter(gm => gm.date >= newMsgsLimit).map(gm => gm.group);
+        groupsWithNewMsgs.forEach(g => {
+            const activeIdx = activeGroupsNoNewMsgs.indexOf(g);
+            if (activeIdx !== -1) activeGroupsNoNewMsgs.splice(activeIdx, 1);
+        });
+        assert(activeGroupsNoNewMsgs.length > 0, 'Expected at least one active group with no new messages in base test data');
+        const shouldNotNotify = users.filter(u => activeGroupsNoNewMsgs.indexOf(u.group) !== -1).map(u => u.email || u.phone);
+
+        return runScheduledEvent({msgType: 'new_group_msg'}, function(results) {
+            const body = JSON.parse(results);
+            body.forEach(i => assert(shouldNotNotify.indexOf(i.recip) === -1, `${i.recip} was notified and shouldn't have been; she's in an active group with no new messages`));
+        })
+    })
 })
 
 function getSendTrainingPromise() {

@@ -13,6 +13,7 @@ const moment = require('moment');
 const todayYMD = +moment().format('YYYYMMDD');
 
 const groupsTable = process.env.GROUPS_TABLE;
+const groupMsgsTable = process.env.GROUP_MSGS_TABLE;
 const usersTable = process.env.USERS_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const reminderMsgsTable = process.env.REMINDER_MSGS_TABLE;
@@ -20,7 +21,9 @@ const emailSender = 'uscemotioncognitionlab@gmail.com';
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
 
-const validMsgTypes = ['train', 'report', 'group_ok', 'group_behind', 'group_msg', 'new_emoji'];
+const NEW_MSG_MINUTES = 120; //group messages younger than this are new
+
+const validMsgTypes = ['train', 'report', 'group_ok', 'group_behind', 'new_group_msg', 'new_emoji'];
 
 exports.handler = (event, context, callback) => {
     const msgType = event.msgType;
@@ -32,7 +35,10 @@ exports.handler = (event, context, callback) => {
     const emailPromises = [];
     const phonePromises = [];
     const recipients = [];
-    let getRecipients; // function for selecting msg recipients
+    // function for selecting msg recipients
+    // it must return a Map of user id -> user obj values
+    // the user obj must have a contact field that contains the email or phone number to contact the user at
+    let getRecipients;
 
     // choose the recipient selection function based on the msgType
     switch (msgType) {
@@ -42,6 +48,10 @@ exports.handler = (event, context, callback) => {
         }
         case 'report': {
             getRecipients = getUsersMissingReporting;
+            break;
+        }
+        case 'new_group_msg': {
+            getRecipients = getUsersInGroupsWithNewMessages;
             break;
         }
     }
@@ -129,7 +139,7 @@ function sendEmail(recip, msg) {
     });
 }
 
-// Returns a promise of a Map of user id -> email || phone records
+// Returns a promise of a Map of user id -> user obj
 // for users who need to be reminded to do their training today
 function getUsersToBeReminded() {
     return getActiveGroupsAndUsers()
@@ -137,11 +147,50 @@ function getUsersToBeReminded() {
 }
 
 /**
- * Returns a list of users in active groups who failed to report any minutes yesterday.
+ * Returns a promise of a Map of user id -> user obj of users in active groups who failed to report any minutes yesterday.
  */
 function getUsersMissingReporting() {
     return getActiveGroupsAndUsers()
     .then((result) => getUsersWithoutReports(result.userMap, result.groupMap));
+}
+
+/**
+ * Returns Promise<Map<user id, user obj>> of users in groups that have new messages
+ */
+function getUsersInGroupsWithNewMessages() {
+    return getActiveGroups()
+    .then((groupsResult) => groupsResult.Items.map(g => g.name))
+    .then((activeGroups) => {
+        if (activeGroups.length > 100) throw new Error('Too many groups! No more than 100 are allowed.');
+
+        const newLimit = +moment().subtract(NEW_MSG_MINUTES, 'minutes').format('x');
+        const attrVals = {}
+        attrVals[':newLimit'] = newLimit;
+        activeGroups.forEach((g, idx) => {
+            attrVals[':val'+idx] = g;
+        });
+        const groupAndTimeConstraint = `#G in (${Object.keys(attrVals).join(', ')}) and #D >= :newLimit`;
+        const params = {
+            TableName: groupMsgsTable,
+            ExpressionAttributeNames: {
+                '#G': 'group',
+                '#D': 'date'
+            },
+            ExpressionAttributeValues: attrVals,
+            FilterExpression: groupAndTimeConstraint,
+            ProjectionExpression: '#G'
+        }
+        return dynamo.scan(params).promise();
+    })
+    .then((groupsWithNewMsgsResult) => getUsersInGroups(groupsWithNewMsgsResult.Items.map(gm => gm.group)))
+    .then(usersResult => {
+        const userMap = new Map();
+        usersResult.Items.forEach(u => {
+            u.contact = u.email || u.phone;
+            userMap.set(u.id, u);
+        });
+        return userMap;
+    });
 }
 
 /**
