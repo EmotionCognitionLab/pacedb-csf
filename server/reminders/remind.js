@@ -22,6 +22,7 @@ const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
 
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
+const NEW_EMOJI_MINUTES = 120; //emojis younger than this are new
 
 const validMsgTypes = ['train', 'report', 'group_ok', 'group_behind', 'new_group_msg', 'new_emoji'];
 
@@ -52,6 +53,10 @@ exports.handler = (event, context, callback) => {
         }
         case 'new_group_msg': {
             getRecipients = getUsersInGroupsWithNewMessages;
+            break;
+        }
+        case 'new_emoji': {
+            getRecipients = getUsersWithNewEmoji;
             break;
         }
     }
@@ -191,6 +196,44 @@ function getUsersInGroupsWithNewMessages() {
         });
         return userMap;
     });
+}
+
+/**
+ * Returns Promise<Map<user id, user obj>> of users with new emoji
+ */
+function getUsersWithNewEmoji() {
+    // TODO restrict query to users in active groups
+    const params = {
+        TableName: userDataTable,
+        FilterExpression: '#D = :today and attribute_exists(emoji)',
+        ExpressionAttributeNames: { '#D': 'date' },
+        ExpressionAttributeValues: { ':today': todayYMD }
+    }
+    return dynamo.scan(params).promise()
+    .then((results) => {
+        const newEmojiLimit = +moment().subtract(NEW_EMOJI_MINUTES, 'minutes').format('x');
+        const users = new Set();
+        results.Items.filter(i => i.emoji.findIndex(em => em.datetime >= newEmojiLimit) !== -1)
+        .forEach(i => users.add(i.userId));
+        return users;
+    })
+    .then((users) => {
+        if (users.size > 100) throw new Error('Too many users have new emojis in the past two hours - only 100 can be handled.')
+        
+        const keys = [];
+        users.forEach(u => keys.push({id: u}));
+        const params = { RequestItems: {} };
+        params.RequestItems[usersTable] = { Keys: keys };
+        return dynamo.batchGet(params).promise()
+    })
+    .then((usersResult) => {
+        const userMap = new Map();
+        usersResult.Responses[usersTable].forEach(u => {
+            u.contact = u.email || u.phone;
+            userMap.set(u.id, u);
+        });
+        return userMap;
+    })
 }
 
 /**

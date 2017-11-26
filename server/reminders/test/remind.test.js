@@ -63,13 +63,15 @@ const reminderMsgs = [
     {id: 2, active: false, msgType: 'train', subject: 'Do your training!', html: 'Like I said - do your training!', text: 'You heard me!', sms: 'Don\'t make me say it again'},
     {id: 3, active: true, msgType: 'train', subject: 's', html: 'h', text: 't', sms: 's'},
     {id: 4, active: true, msgType: 'report', subject: 's', html: 'h', text: 't', sms: 's'},
-    {id: 5, active: true, msgType: 'new_group_msg', subject: 's', html: 'h', text: 't', sms: 's'}
+    {id: 5, active: true, msgType: 'new_group_msg', subject: 's', html: 'h', text: 't', sms: 's'},
+    {id: 6, active: true, msgType: 'new_emoji', subject: 's', html: 'h', text: 't', sms: 's'}
 ];
 
 const userData = [
-    {userId: users[0].id, date: todayYMD, minutes: 10},
+    {userId: users[0].id, date: todayYMD, minutes: 10, emoji: [{emoji: '😒', from: 'One B.', fromId: users[1].id, datetime: nowMs}]},
     {userId: users[1].id, date: todayYMD, minutes: 7}
 ]
+const NEW_EMOJI_MINUTES = 120; //emoji younger than this are new
 
 const dbInfo = [
     { name: groupsTable, data: groups, createFn: dbSetup.createGroupsTable },
@@ -401,6 +403,64 @@ describe('sending notifications to users whose groups have new messages', functi
         });
     });
 });
+
+describe('sending notifications to users who have received new emoji', function() {
+    const newEmojiLimit = +moment().subtract(NEW_EMOJI_MINUTES, 'minutes').format('x');
+    const earlier = +moment().subtract(7, 'hours').format('x');
+    
+    before(function() {
+        return prepTestEnv();
+    });
+    it('should notify users who have 1 or more emojis that are less then 2 hours old, using the "new_emoji" message type', function() {
+        const newEmojiUsers = userData.filter
+            (ud => ud.emoji !== undefined && ud.emoji.findIndex(em => em.datetime >= newEmojiLimit) !== -1)
+            .map(ud => ud.userId);
+        const shouldNotify = users.filter(u => newEmojiUsers.indexOf(u.id) !== -1)
+            .map(u => u.email || u.phone);
+        assert(shouldNotify.length > 0, 'Expected at least one user with new emoji in base test data');
+        return runScheduledEvent({msgType: 'new_emoji'}, function(body) {
+            const notified = body.map(i => i.recip);
+            assert.equal(notified.length, shouldNotify.length);
+            notified.forEach(n => assert(shouldNotify.includes(n), `${n} was notified but should not have been; he doesn't have new emoji`));
+            shouldNotify.forEach(s => assert(notified.includes(s), `${s} was not notified but should have been; she has new emoji`));
+            const okMsgs = reminderMsgs.filter(m => m.msgType === 'new_emoji').map(m => m.id);
+            body.forEach(i => assert(okMsgs.includes(i.msg), `Used wrong message type (id ${i.msg}) - it is not of type 'new_emoji'`));
+        });
+    });
+    it('should not notify users who have received no emoji in the last two hours', function() {
+        const noNewEmojiUsers = userData.filter
+            (ud => ud.emoji === undefined || ud.emoji.length === 0 || 
+                (ud.emoji !== undefined && ud.emoji.findIndex(em => em.datetime >= newEmojiLimit) === -1))
+            .map(ud => ud.userId);
+        const shouldNotNotify = users.filter(u => noNewEmojiUsers.indexOf(u.id) !== -1).map(u => u.email || u.phone);
+        assert(shouldNotNotify.length > 0, 'Expected at least one user with no new emoji in base test data');
+        return runScheduledEvent({msgType: 'new_emoji'}, function(body) {
+            const notified = body.map(i => i.recip);
+            notified.forEach(n => assert(!shouldNotNotify.includes(n), `${n} was notified and should not have been; she has no new emoji`));
+        });
+    });
+    it('should not notify users who have received an emoji more than two hours ago', function() {
+        const newUserData = JSON.parse(JSON.stringify(userData));
+        newUserData.push({userId: users[2].id, date: todayYMD, emoji: [{emoji: '😒', from: 'One B.', fromId: users[1].id, datetime: earlier}]});
+        const newEmojiUsers = userData.filter
+            (ud => ud.emoji !== undefined && ud.emoji.findIndex(em => em.datetime >= newEmojiLimit) !== -1)
+            .map(ud => ud.userId);
+        assert(!newEmojiUsers.includes(users[2].id), `Did not expect the base test data to assign a new emoji to user id ${users[2].id}`);
+        
+        return runScheduledEvent({msgType: 'new_emoji'}, function(body) {
+            body.forEach(i => assert(i.recip !== users[2].id), `${users[2].email || users[2].phone} was notified and should not have been; his newest emoji is older than the cutoff limit`);
+        }, null, newUserData);
+    });
+    it('should notify users who have a mix of emojis that are less and more than two hours old', function() {
+        const newUserData = JSON.parse(JSON.stringify(userData));
+        newUserData.push({userId: users[2].id, date: todayYMD, emoji: [{emoji: '😒', from: 'One B.', fromId: users[1].id, datetime: earlier}, {emoji: '😒', from: 'One B.', fromId: users[1].id, datetime: nowMs}]});
+        
+        return runScheduledEvent({msgType: 'new_emoji'}, function(body) {
+            const recips = body.map(i => i.recip);
+            assert(recips.includes(users[2].email || users[2].phone), `${users[2].email || users[2].phone} was not notified and should have been; she has a mix of new and old emoji`);
+        }, null, newUserData);
+    });
+})
 
 function cleanDb() {
     const dropPromises = dbInfo.map(dbi => dbSetup.dropTable(dbi.name));
