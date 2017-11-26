@@ -24,10 +24,6 @@ exports.createUsersTable = function(usersTable) {
             {
                 "AttributeName": "id",
                 "AttributeType": "S"
-            },
-            {
-                "AttributeName": "group",
-                "AttributeType": "S"
             }
         ],
         "TableName": usersTable,
@@ -35,10 +31,6 @@ exports.createUsersTable = function(usersTable) {
             {
                 "AttributeName": "id",
                 "KeyType": "HASH"
-            },
-            {
-                "AttributeName": "group",
-                "KeyType": "RANGE"
             }
         ],
         "ProvisionedThroughput": {

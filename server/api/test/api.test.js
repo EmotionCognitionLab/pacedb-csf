@@ -483,7 +483,7 @@ function clearUsersTable() {
         const toDelete = [];
         if (existingUsers.length > 0) {
             existingUsers.forEach((u) => {
-                toDelete.push({DeleteRequest: {Key: { 'id':  u.id , 'group': u.group }}});
+                toDelete.push({DeleteRequest: {Key: { 'id':  u.id }}});
             });
             const delCmd = {};
             delCmd[usersTable] = toDelete;
