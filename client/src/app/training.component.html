@@ -1,8 +1,8 @@
-<div class="container">
+<div class="narrow">
     <div *ngIf="submitErr != ''" class="alert alert-danger">{{submitErr}}</div>
     <div *ngIf="statusMsg != ''" class="alert alert-info">{{statusMsg}}</div>
-    <div class="month-name">{{day.format('MMM')}}</div>
-    <div class="date-nav">
+    <div>
+        <div class="month-name">{{day.format('MMM')}}</div>
         <div id="yesterday" (click)="changeDay(-1)">
             <img src="/assets/img/left-arrow.png">
         </div>
@@ -15,12 +15,12 @@
     <div class="time-entry-form">
         <form (ngSubmit)="saveMinutes()" #minForm="ngForm">
             <div>
-                <label for="minutes">For this day I did</label>
+                <label for="minutes">I did</label>
                 <input id="minutes" name="minutes" type="text" required size="4"
                 pattern="[0-9]{1,4}" #min="ngModel" [(ngModel)]="userMinutes"> minutes.
                 <button class="btn" [disabled]="!minForm.form.valid">Submit</button>
             </div>
         </form>
-        <div *ngIf="validityErr !== ''" id="validity" class="alert alert-danger">{{validityErr}}</div>
     </div>
+    <div *ngIf="validityErr !== ''" id="validity" class="alert alert-danger">{{validityErr}}</div>
 </div>

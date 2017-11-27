@@ -4,33 +4,39 @@
     cursor: pointer;
 }
 #yesterday {
-    margin-left: -1.75em;
-    margin-top: -0.1em;
+    margin: -3px 5px 0px 140px;
     font-size: 2em;
 }
 #tomorrow {
     font-size: 2em;
-    margin-left: 0.2em;
-    margin-top: -0.1em;
+    margin: -3px 0px 0px 5px;
 }
 .month-day {
     font-size: 2em;
-    background: gray;
-    min-width: 2.5em;
+    background: rgb(232,232,232);
+    width: 80px;
     text-align: center;
 }
 .month-name {
-    background: gray;
+    background: rgb(232,232,232);
     text-transform: uppercase;
-    max-width: 5em;
+    width: 80px;
+    margin: 0px 200px 3px 175px;
     text-align: center;
-    margin-bottom: 0.1em;
+}
+.narrow {
+    max-width: 480px;
+    margin: 2% 0% 0% 2%;
+    display: flex;
+    display: -webkit-flex; /* Safari 8 */
+    flex-wrap: wrap;
+    -webkit-flex-wrap: wrap; /* Safari 8 */
+    justify-content: center;
+    -webkit-justify-content: center; /* Safari 8 */
 }
 .time-entry-form {
-    margin-left: -7em;
     margin-top: 2em;
 }
 .alert {
-    width: 30%;
     margin-top: 1em;
 }
