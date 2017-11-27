@@ -5,6 +5,7 @@ import { ForbiddenComponent } from './forbidden.component';
 import { LoginComponent } from './login.component';
 import { GroupPageComponent } from './group-page.component';
 import { TrainingComponent } from './training.component';
+import { VerifyComponent } from './verify.component';
 
 import { GroupResolverService } from './service/group-resolver.service';
 import { RouteGuardService } from './service/route-guard.service';
@@ -21,7 +22,8 @@ const routes: Routes = [
   { path: 'training',
     component: TrainingComponent,
     canActivate: [RouteGuardService]
-  }
+  },
+  { path: 'verify', component: VerifyComponent }
 ];
 
 @NgModule({

@@ -4,7 +4,6 @@ import { RouterModule, Routes } from '@angular/router';
 import { AdminDashboardComponent } from './admin-dashboard.component';
 import { GroupsComponent } from './groups.component';
 import { RegisterComponent } from './register.component';
-import { VerifyComponent } from './verify.component';
 
 import { RouteGuardService } from '../service/route-guard.service';
 
@@ -20,7 +19,6 @@ const adminRoutes: Routes = [
                 path: '',
                 canActivateChild: [RouteGuardService],
                 children: [
-                    { path: 'verify', component: VerifyComponent },
                     { path: '', component: AdminDashboardComponent }
                 ]
             }

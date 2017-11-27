@@ -14,6 +14,7 @@ import { LoginComponent } from './login.component';
 import { UserComponent } from './user.component';
 import { GroupPageComponent } from './group-page.component';
 import { TrainingComponent } from './training.component';
+import { VerifyComponent } from './verify.component';
 
 import { AuthService } from './service/auth.service';
 import { AwsConfigService } from './service/aws-config.service';
@@ -31,7 +32,8 @@ import { UserService } from './service/user.service';
     LoginComponent,
     UserComponent,
     GroupPageComponent,
-    TrainingComponent
+    TrainingComponent,
+    VerifyComponent
   ],
   imports: [
     NgbModule.forRoot(),
