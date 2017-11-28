@@ -39,7 +39,7 @@ import { UserService } from './service/user.service';
 export class UserComponent implements OnInit, OnDestroy {
     @Input() user: User;
     @Input() group: Group;
-    currentUser: User;
+    currentUser = new User('', '', '', '');
     emojis: EmojiFeedback[] = [];
     progressClasses: string;
     private _userData: UserData[];
@@ -57,7 +57,7 @@ export class UserComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
         const weekBoundaries = this.weekBoundaries(this.group);
-        this.userService.getUserData(this.user.id, weekBoundaries[0], weekBoundaries[1])
+        this._userDataSubscription = this.userService.getUserData(this.user.id, weekBoundaries[0], weekBoundaries[1])
         .subscribe(data => {
             this._userData = data;
             let weeklyMinutesTrained = 0;
