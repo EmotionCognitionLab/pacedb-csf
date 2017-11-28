@@ -20,7 +20,7 @@ import { UserService } from './service/user.service';
 @Component({
     selector: 'app-group-page',
     template: `
-    <div class="container-narrow">
+    <div class="container">
        <ngb-alert *ngIf="statusMsg" type="success" (close)="statusMsg = null">{{ statusMsg }}</ngb-alert>
         <h2>{{group.name}}</h2>
         <h3>Teammates</h3>
@@ -29,15 +29,19 @@ import { UserService } from './service/user.service';
         <h2>Messages</h2>
         <div class="form-group">
             <form (ngSubmit)="sendGroupMsg()" #msgForm="ngForm">
-                <div class="textarea-container">
+                <div class="textarea-container msg-area-div">
                     <div class="title">Send a message to the group</div>
-                    <textarea rows="3" cols="70" name="msgText" required #msg="ngModel" [(ngModel)]="msgText" type="textarea" class="group-msg-txt"></textarea>
+                    <textarea rows="3" name="msgText" required #msg="ngModel" [(ngModel)]="msgText" type="textarea" class="group-msg-txt"></textarea>
                 </div>
+                <div class="msg-area-div" style="height: 40px;">
                 <button class="btn msg-text-btn" [disabled]="!msgForm.form.valid" type="submit">Submit</button>
+                </div>
             </form>
         </div>
         <div style="line-height: 0.5em;">&nbsp;</div>
+        <div id="messages-container">
         <group-message *ngFor="let msg of messages" [msg]=msg></group-message>
+    </div>
     </div>
     `
 })

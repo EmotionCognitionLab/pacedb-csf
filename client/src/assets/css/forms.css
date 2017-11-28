@@ -14,10 +14,6 @@ input.short {
 .btn {
   border: 1px solid;
 }
-.container-narrow {
-  max-width: 750px;
-  margin-left: 6em;
-}
 .file-upload {
   margin-bottom: 1em;
 }
@@ -27,16 +23,24 @@ input.short {
   padding: .4em;
 }
 .msg-text-btn {
-  margin: 6.0em 0em 0em .5em;
+  margin: 5px 0px 10px 0px;
+  float: right;
+}
+.msg-container {
+  max-width: 640px;
+}
+.msg-area-div {
+  max-width: 640px;
+  margin-left: 59px;
 }
 .textarea-container {
-  margin-left: 3.7em;
-  float: left;
   border: 1px solid black;
   border-radius: 3px;
 }
 .textarea-container textarea {
   border: none;
+  max-width: 640px;
+  width: 100%;
 }
 .textarea-container textarea:focus {
   outline:none;
