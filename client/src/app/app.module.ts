@@ -4,6 +4,8 @@ import { HttpModule } from '@angular/http';
 import { NgModule } from '@angular/core';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
+import { SlideMenuModule } from 'cuppa-ng2-slidemenu/cuppa-ng2-slidemenu';
+
 import { AdminModule } from './admin/admin.module';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
@@ -41,7 +43,8 @@ import { UserService } from './service/user.service';
     FormsModule,
     HttpModule,
     AdminModule,
-    AppRoutingModule
+    AppRoutingModule,
+    SlideMenuModule
   ],
   providers: [AuthService, AwsConfigService, GroupService, DynamoService, RouteGuardService, UserService],
   bootstrap: [AppComponent]
