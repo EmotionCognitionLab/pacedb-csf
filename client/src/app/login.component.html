@@ -1,26 +1,66 @@
 <div class="container">
-    <h1>Login</h1>
     <div [hidden]="statusMsg === ''" 
         class="alert" 
         [class.alert-danger]="loginHasError"
         [class.alert-success]="!loginHasError">
         {{statusMsg}}
     </div>
-    <form (ngSubmit)="login()" #loginForm="ngForm">
-        <div class="form-group">
-            <input type="text" class="form-control short left" id="username" required [(ngModel)]="username" name="username" placeholder="Email or phone"
-                #usernameFld="ngModel">
-            <input type="password" class="form-control short" id="password" required [(ngModel)]="password" name="password" placeholder="Password"
-                #passwordFld="ngModel">
-        </div>
-        <div [hidden]="usernameFld.valid || usernameFld.pristine" class="alert alert-danger">
-            Email or phone number is required.
-        </div>
-        <div [hidden]="passwordFld.valid || passwordFld.pristine" class="alert alert-danger">
-            Password is required.
-        </div>
-        <button class="btn" 
-        [disabled]="!loginForm.form.valid" 
-        type="submit">Login</button>
-    </form>
+    <div id="login" *ngIf="pwdRecoveryMode === ''">
+        <h1>Login</h1>
+        <form (ngSubmit)="login()" #loginForm="ngForm">
+            <div class="form-group">
+                <input type="text" class="form-control short left" id="username" required [(ngModel)]="username" name="username" placeholder="Email or phone"
+                    #usernameFld="ngModel">
+                <input type="password" class="form-control short" id="password" required [(ngModel)]="password" name="password" placeholder="Password"
+                    #passwordFld="ngModel">
+            </div>
+            <div [hidden]="usernameFld.valid || usernameFld.pristine" class="alert alert-danger">
+                Email or phone number is required.
+            </div>
+            <div [hidden]="passwordFld.valid || passwordFld.pristine" class="alert alert-danger">
+                Password is required.
+            </div>
+            <button class="btn" 
+            [disabled]="!loginForm.form.valid" 
+            type="submit">Login</button>
+        </form>
+        <br/>
+        <div><p><a class="clickable-url" (click)="switchMode('request')">Forgot your password?</a></p></div>
+    </div>
+    <div id="recover" *ngIf="pwdRecoveryMode === 'request'">
+        <h1>Request Password Reset</h1>
+        <p>Enter the email or phone number you registered with and we'll send you a link to reset your password.</p>
+        <form (ngSubmit)="requestPasswordReset()" #recoveryForm="ngForm">
+            <div class="form-group">
+                <input type="text" class="form-control short left" id="recovery-username" required [(ngModel)]="username" name="username" placeholder="Email or phone"
+                #recoveryUsernameFld="ngModel">
+            </div>
+            <div [hidden]="recoveryUsernameFld.valid || recoveryUsernameFld.pristine" class="alert alert-danger">
+                        Email or phone number is required.
+            </div>
+            <button class="btn" 
+            [disabled]="!recoveryForm.form.valid" 
+            type="submit">Reset Password</button>
+        </form>
+        <br/>
+        <div><p><a class="clickable-url" (click)="switchMode('')">Hmmm, maybe I remember it after all...</a></p></div>
+    </div>
+    <div id="reset" *ngIf="pwdRecoveryMode === 'reset'">
+        <h3>Enter the code from the message and a new password below</h3>
+        <form (ngSubmit)="resetPassword()" #resetForm="ngForm">
+            <div class="form-group">
+                <input type="text" class="form-control short left" id="reset-code" required [(ngModel)]="resetCode" name="code" placeholder="Reset code"
+                 #resetCodeFld="ngModel">
+                <input type="password" class="form-control short" id="reset-password" required [(ngModel)]="password" name="password" placeholder="New Password"
+                 #resetPasswordFld="ngModel">
+            </div>
+            <div [hidden]="resetCodeFld.valid || resetCodeFld.pristine" class="alert alert-danger">
+                Reset code is required.
+            </div>
+            <div [hidden]="resetPasswordFld.valid || resetPasswordFld.pristine" class="alert alert-danger">
+                New password is required.
+            </div>
+            <button class="btn" [disabled]="!resetForm.form.valid" type="submit">Reset password</button>
+        </form>
+    </div>
 </div>

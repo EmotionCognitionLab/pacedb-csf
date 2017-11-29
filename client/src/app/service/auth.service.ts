@@ -220,6 +220,41 @@ export class AuthService {
         );
     }
 
+    requestPasswordReset(username: string): Promise<string> {
+        const userPool = new CognitoUserPool(AuthService.poolData);
+        const userData = {
+            Username: username,
+            Pool: userPool
+        };
+        const cognitoUser = new CognitoUser(userData);
+
+        return new Promise<string>((resolve, reject) =>
+            cognitoUser.forgotPassword( {
+                onSuccess: function(data) {
+                    resolve(`We've sent a message with recovery instructions to ${data.CodeDeliveryDetails.Destination}.`);
+                },
+                onFailure: function(err) {
+                    reject(err);
+                }
+            }
+        ));
+    }
+
+    resetPassword(username: string, code: string, password: string): Promise<string> {
+        const userPool = new CognitoUserPool(AuthService.poolData);
+        const userData = {
+            Username: username,
+            Pool: userPool
+        };
+        const cognitoUser = new CognitoUser(userData);
+
+        return new Promise<string>((resolve, reject) =>
+            cognitoUser.confirmPassword(code, password, {
+                onSuccess: () => resolve('Password reset.'),
+                onFailure: (err) => reject(err)
+            }));
+    }
+
     verify(username: string, token: string): Promise<string> {
         const userPool = new CognitoUserPool(AuthService.poolData);
         const userData = {
