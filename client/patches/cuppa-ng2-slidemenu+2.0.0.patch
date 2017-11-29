@@ -1,0 +1,14 @@
+patch-package
+--- a/node_modules/cuppa-ng2-slidemenu/slideMenu.d.ts
++++ b/node_modules/cuppa-ng2-slidemenu/slideMenu.d.ts
+@@ -15,8 +15,8 @@ export declare class SlideMenu implements AfterViewInit {
+     constructor(_elementRef: ElementRef, sanitizer: DomSanitizer);
+     ngOnInit(): void;
+     ngAfterViewInit(): void;
+-    private menuToggle();
+-    private closeMenu();
++    menuToggle();
++    closeMenu();
+     currentItem: any;
+     private onItemClick(item);
+     private toggleSubMenu(item);
