@@ -142,6 +142,7 @@ export class RegisterComponent implements OnInit {
         this.useCamera = !this.useCamera;
         if (this.useCamera) {
             $event.target.innerText = 'Hide camera';
+            this.file = undefined;
         } else {
             $event.target.innerText = 'Use camera';
         }
@@ -157,7 +158,7 @@ export class RegisterComponent implements OnInit {
     register(): void {
         this.statusMsg = 'Uploading cropped image...';
         const rand = Math.floor(Math.random() * 10000000);
-        const fileExt = this.file.name.split('.').pop();
+        const fileExt = this.file === undefined ? 'png' : this.file.name.split('.').pop();
         // strip out the data-url header
         const buf = new Buffer(this.imgData.image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
         const key =  `medium/${rand}.${fileExt}`;
@@ -173,10 +174,12 @@ export class RegisterComponent implements OnInit {
             this.user.photoUrl = `https://${environment.usrImgBucket}.s3.${this._s3.config.region}.amazonaws.com/${key}`;
             // then upload the full-size photo
             this.statusMsg = 'Uploading full image...';
-            const keyFull = `full/${rand}-${this.file.name}`;
+            const fname = this.file === undefined ? 'cam.png' : this.file.name;
+            const keyFull = `full/${rand}-${fname}`;
+            const body = this.file === undefined ? new Buffer(this.cropper.image.original.currentSrc.replace(/^data:image\/\w+;base64/, ''), 'base64') : this.file ;
             const s3paramsFull = {
                 ACL: 'authenticated-read',
-                Body: this.file,
+                Body: body,
                 Bucket: `${environment.usrImgBucket}`,
                 Key: keyFull,
                 Metadata: {
@@ -190,9 +193,10 @@ export class RegisterComponent implements OnInit {
             return this.authService.register(this.user);
         })
         .then((res) => {
-            this.router.navigate(['/admin/verify', {'username': this.user.username()}]);
+            this.router.navigate(['/verify', {'username': this.user.username()}]);
         })
         .catch((err) => {
+            this.statusMsg = '';
             this.errMsg = err.message;
         });
     }
