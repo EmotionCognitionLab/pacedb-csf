@@ -3,7 +3,9 @@ import * as moment from 'moment';
 export class Group {
     // number of minutes per day participants should aim to practice in a given week
     // week 1 == TARGET_MINUTES[0], week 2 == TARGET_MINUTES[1], etc.
-    private static TARGET_MINUTES = [10, 10, 20, 20, 30];
+    private static TARGET_MINUTES = [20, 25, 30, 35, 40, 40, 40];
+    // we use this as target minutes if something goes wrong and we can't figure out the actual target
+    private static DEFAULT_TARGET_MINUTES = 40;
 
     // convenient alternate forms of startDate and endDate
     private _startMoment: moment.Moment;
@@ -47,7 +49,7 @@ export class Group {
     dailyMinutesTarget(): number {
         const curWeek = this.weekNum();
         if (curWeek === undefined || curWeek > Group.TARGET_MINUTES.length - 1) {
-            return undefined;
+            return Group.DEFAULT_TARGET_MINUTES;
         }
         return Group.TARGET_MINUTES[curWeek];
     }
