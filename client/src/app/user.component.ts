@@ -101,10 +101,10 @@ export class UserComponent implements OnInit, OnDestroy {
         // behind 1 day -> status == iffy
         // not behind -> status == good
         let status = 'bad';
-        const weekDay = this.group.dayOfWeek() + 1;
+        const weekDay = this.group.dayOfWeek();
         const dailyTarget = this.group.dailyMinutesTarget();
         const targetToDate = dailyTarget * weekDay;
-        const trainingToDate = percentOfWeekDone * dailyTarget * 7;
+        const trainingToDate = Math.round(percentOfWeekDone * dailyTarget * 7);
         if (trainingToDate >= targetToDate) {
             status = 'good';
         } else if (trainingToDate < targetToDate && trainingToDate >= (targetToDate - dailyTarget)) {
