@@ -37,8 +37,8 @@ exports.handler = (event, context, callback) => {
     const phonePromises = [];
     const recipients = [];
     // function for selecting msg recipients
-    // it must return a Map of user id -> user obj values
-    // the user obj must have a contact field that contains the email or phone number to contact the user at
+    // it must return a Promise<[{msg: msg obj, recipients: [user obj]}]>
+    // where the msg obj is a record from the hrv-reminder-msgs table and the user obj from hrv-users
     let getRecipients;
 
     // choose the recipient selection function based on the msgType
@@ -61,21 +61,21 @@ exports.handler = (event, context, callback) => {
         }
     }
     
-    let msg = {};
-    getRandomMsgForType(msgType)
-    .then((randomMsg) => {
-        msg = randomMsg;
-        return getRecipients();
-    })
-    .then((users) => {
-        for (let u of users.values()) {
-            recipients.push({recip: u.contact, msg: msg.id});
-            if (u.contact.indexOf('@') !== -1) {
-                emailPromises.push(sendEmail(u.contact, msg));
-            } else {
-                phonePromises.push(sendSMS(u.contact, msg));
-            }
-        }
+    getRecipients()
+    .then((results) => {
+        results.forEach((msgAndRecips) => {
+            const msg = msgAndRecips.msg;
+            const users = msgAndRecips.recipients;
+            users.forEach(u => {
+                const contact = u.email || u.phone;
+                recipients.push({recip: contact, msg: msg.id});
+                if (contact.indexOf('@') !== -1) {
+                    emailPromises.push(sendEmail(contact, msg));
+                } else {
+                    phonePromises.push(sendSMS(contact, msg));
+                }
+            });
+        });
         const allPromises = emailPromises.concat(phonePromises);
 
         // may need to make sure one failure doesn't stop other sends from executing
@@ -144,25 +144,38 @@ function sendEmail(recip, msg) {
     });
 }
 
-// Returns a promise of a Map of user id -> user obj
+// Returns Promise<[{msg: msg obj, recipients: [user obj]}]>
 // for users who need to be reminded to do their training today
 function getUsersToBeReminded() {
+    let userMap;
     return getActiveGroupsAndUsers()
-    .then((result) => getUsersWhoHaveNotCompletedTraining(result.userMap, result.groupMap));
+    .then((result) => getUsersWhoHaveNotCompletedTraining(result.userMap, result.groupMap))
+    .then((recipientMap) => {
+        userMap = recipientMap;
+        return getRandomMsgForType('train');
+    })
+    .then((msg) => [{ msg: msg, recipients: Array.from(userMap.values()) }]);
 }
 
 /**
- * Returns a promise of a Map of user id -> user obj of users in active groups who failed to report any minutes yesterday.
+ * Returns a Promise<[{msg: msg obj, recipients: [user obj]}]> of users in active groups who failed to report any minutes yesterday.
  */
 function getUsersMissingReporting() {
+    let userMap;
     return getActiveGroupsAndUsers()
-    .then((result) => getUsersWithoutReports(result.userMap, result.groupMap));
+    .then((result) => getUsersWithoutReports(result.userMap, result.groupMap))
+    .then((recipientMap) => {
+        userMap = recipientMap;
+        return getRandomMsgForType('report');
+    })
+    .then((msg) => [{ msg: msg, recipients: Array.from(userMap.values()) }]);
 }
 
 /**
- * Returns Promise<Map<user id, user obj>> of users in groups that have new messages
+ * Returns Promise<[{msg: msg obj, recipients: [user obj]}]> of users in groups that have new messages
  */
 function getUsersInGroupsWithNewMessages() {
+    let users;
     return getActiveGroups()
     .then((groupsResult) => groupsResult.Items.map(g => g.name))
     .then((activeGroups) => {
@@ -189,20 +202,18 @@ function getUsersInGroupsWithNewMessages() {
     })
     .then((groupsWithNewMsgsResult) => getUsersInGroups(groupsWithNewMsgsResult.Items.map(gm => gm.group)))
     .then(usersResult => {
-        const userMap = new Map();
-        usersResult.Items.forEach(u => {
-            u.contact = u.email || u.phone;
-            userMap.set(u.id, u);
-        });
-        return userMap;
-    });
+        users = usersResult.Items;
+        return getRandomMsgForType('new_group_msg');
+    })
+    .then((msg) => [{ msg: msg, recipients: users }]);
 }
 
 /**
- * Returns Promise<Map<user id, user obj>> of users with new emoji
+ * Returns Promise<[{msg: msg obj, recipients: [user obj]}]> of users with new emoji
  */
 function getUsersWithNewEmoji() {
     // TODO restrict query to users in active groups
+    let users;
     const params = {
         TableName: userDataTable,
         FilterExpression: '#D = :today and attribute_exists(emoji)',
@@ -227,13 +238,10 @@ function getUsersWithNewEmoji() {
         return dynamo.batchGet(params).promise()
     })
     .then((usersResult) => {
-        const userMap = new Map();
-        usersResult.Responses[usersTable].forEach(u => {
-            u.contact = u.email || u.phone;
-            userMap.set(u.id, u);
-        });
-        return userMap;
+        users = usersResult.Responses[usersTable];
+        return getRandomMsgForType('new_emoji');
     })
+    .then((msg) => [{ msg: msg, recipients: users }]);
 }
 
 /**

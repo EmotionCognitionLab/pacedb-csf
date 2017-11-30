@@ -113,7 +113,8 @@ function runScheduledEvent(extraEventArgs, checkTestResults, newUsers, newUserDa
         return lambdaLocal.execute({
             event: event,
             lambdaPath: 'remind.js',
-            envfile: './test/env.sh'
+            envfile: './test/env.sh',
+            verboseLevel: 0 // set this to 3 to get all lambda-local output
         });
     })
     .then(results => JSON.parse(results))
@@ -493,8 +494,7 @@ function getSendTrainingPromise() {
         event: sendTrainingReminders,
         lambdaPath: 'remind.js',
         envfile: './test/env.sh',
-        timeoutMs: 5000,
-        verboseLevel: 0
+        timeoutMs: 5000
     })
     .then(result => {
         const body = JSON.parse(result);
