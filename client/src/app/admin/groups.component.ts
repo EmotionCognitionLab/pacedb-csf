@@ -10,6 +10,9 @@ import { GroupService } from '../service/group.service';
 })
 
 export class GroupsComponent implements OnInit {
+    // the keys that we don't reject when user types in earnings field
+    // digits handled separately
+    private static ALLOWED_EARNING_KEYS = ['ArrowLeft', 'ArrowRight', 'Backspace', 'Tab'];
     groups: Group[];
     errMsg: string;
 
@@ -53,5 +56,32 @@ export class GroupsComponent implements OnInit {
     formattedDate(dateNum: number): string {
         const dateStr = dateNum.toString();
         return dateStr.slice(0, 4) + '-' + dateStr.slice(4, 6) + '-' + dateStr.slice(6, 8);
+    }
+
+    // prevents users from entering non-digits in earnings field
+    filterEarningInput(event) {
+        if (!event.metaKey && !GroupsComponent.ALLOWED_EARNING_KEYS.includes(event.key) && !event.key.match(/[0-9]/)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }
+
+    // on enter or blur, save the field contents
+    // unless they hit escape, then reset the field contents
+    saveEarningInput(event) {
+        if (event.type === 'keyup' && event.key === 'Escape') {
+            event.target.innerText = event.target.dataset.earnings;
+            return;
+        }
+        if ((event.type === 'keyup' && event.key === 'Enter') || event.type === 'blur') {
+            const group = this.groups[event.target.dataset.idx];
+            group.earnings = +event.target.innerText;
+            this.groupService.addGroup(group)
+            .then(res => {
+                event.target.dataset.earnings = +event.target.innerText;
+                event.target.blur();
+            })
+            .catch(err => console.log(err));
+        }
     }
 }

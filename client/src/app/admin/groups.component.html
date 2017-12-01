@@ -7,14 +7,19 @@
             <tr>
                 <th class="col-xs-3">Group Name</th>
                 <th class="col-xs-3">Start Date</th>
-                <th class="col-xs-6">End Date</th>
+                <th class="col-xs-3">End Date</th>
+                <th class="col-xs-6">$ Earned</th>
             </tr>
         </thead>
         <tbody>
-            <tr *ngFor="let g of groups">
+            <tr *ngFor="let g of groups; let i = index">
                 <td class="col-xs-3"><a [routerLink]="['/group']" [queryParams]="{group_name: g.name }">{{g.name}}</a></td>
                 <td class="col-xs-3">{{formattedDate(g.startDate)}}</td>
-                <td class="col-xs-6">{{formattedDate(g.endDate)}}</td>
+                <td class="col-xs-3">{{formattedDate(g.endDate)}}</td>
+                <td class="col-xs-6" [attr.data-earnings]="g.earnings" [attr.data-idx]="i" contenteditable="true" 
+                (keyup)="saveEarningInput($event)" (keydown)="filterEarningInput($event)"
+                (blur)="saveEarningInput($event)"
+                tabindex="{{i + 1}}">{{g.earnings}}</td>
             </tr>
         </tbody>
     </table>

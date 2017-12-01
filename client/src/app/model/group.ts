@@ -11,7 +11,7 @@ export class Group {
     private _startMoment: moment.Moment;
     private _endMoment: moment.Moment;
 
-    constructor(public name: string, public startDate: number, public endDate: number) {
+    constructor(public name: string, public startDate: number, public endDate: number, public earnings = 0) {
         this._startMoment = moment(startDate.toString());
         this._endMoment = moment(endDate.toString());
     }

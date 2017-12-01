@@ -30,7 +30,8 @@ export class GroupService {
             Item: {
                 'name': newGroup.name,
                 'startDate': newGroup.startDate,
-                'endDate': newGroup.endDate
+                'endDate': newGroup.endDate,
+                'earnings': newGroup.earnings
             }
         }).promise();
         })
@@ -53,7 +54,11 @@ export class GroupService {
             if (item.Item === undefined) {
                 return undefined;
             }
-            return new Group(item.Item.name, item.Item.startDate, item.Item.endDate);
+            const g = new Group(item.Item.name, item.Item.startDate, item.Item.endDate);
+            if (item.Item.earnings !== undefined) {
+                g.earnings = item.Item.earnings;
+            }
+            return g;
         })
         .catch((err) => {
             console.log(err);
@@ -83,7 +88,11 @@ export class GroupService {
                 throw new Error('No groups found.');
             }
             scanResult.Items.forEach(i => {
-                result.push(new Group(i.name, i.startDate, i.endDate));
+                const g = new Group(i.name, i.startDate, i.endDate);
+                if (i.earnings !== undefined) {
+                    g.earnings = i.earnings;
+                }
+                result.push(g);
             });
             if (scanResult.LastEvaluatedKey !== undefined) {
                 return this._getAllGroups(result, scanResult.LastEvaluatedKey);
