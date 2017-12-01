@@ -407,6 +407,26 @@ describe('sending notifications to users whose groups have new messages', functi
             usedMsgs.forEach(um => assert(newGroupMsgs.indexOf(um) !== -1, `Message id ${um} was used and shouldn't have been; it isn't of type 'new_group_msg'`));
         });
     });
+    it('should complete successfully when there are no groups with new messages', async function() {
+        // the try/catch/finally pattern we use below in no new emoji test doesn't work here
+        // when this is written that way, the finally block appears to be executed 
+        // while the runScheduledEvent is still running, meaning that there can be data in the 
+        // group messages table, causing the test to fail
+        await dbSetup.dropTable(groupMsgsTable)
+        await dbSetup.createGroupMsgsTable(groupMsgsTable);
+        await dbSetup.writeTestData(groupMsgsTable, [{group: 'does not exist', date: aWhileAgoMs}]);
+        return runScheduledEvent({msgType: 'new_group_msg'}, function(body) {
+            assert(body.length === 0);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(groupMsgsTable, groupMsgs);
+        })
+        .catch(function(err) {
+            console.log(err);
+            dbSetup.writeTestData(groupMsgsTable, groupMsgs);
+            throw err;
+        });
+    });
 });
 
 describe('sending notifications to users who have received new emoji', function() {
@@ -464,6 +484,19 @@ describe('sending notifications to users who have received new emoji', function(
             const recips = body.map(i => i.recip);
             assert(recips.includes(users[2].email || users[2].phone), `${users[2].email || users[2].phone} was not notified and should have been; she has a mix of new and old emoji`);
         }, null, newUserData);
+    });
+    it('should complete successfully when there are no users with new emoji', async function() {
+        try {
+            await dbSetup.dropTable(userDataTable);
+            await dbSetup.createUserDataTable(userDataTable);
+            return runScheduledEvent({msgType: 'new_emoji'}, function(body) {
+                assert(body.length === 0);
+            }, null, [{userId: users[0].id, date: todayYMD, minutes: 10}]);
+        } catch(err) {
+            console.log(err);
+        } finally {
+            await dbSetup.writeTestData(userDataTable, userData);
+        }
     });
 })
 
@@ -607,7 +640,8 @@ function getSendTrainingPromise() {
         event: sendTrainingReminders,
         lambdaPath: 'remind.js',
         envfile: './test/env.sh',
-        timeoutMs: 5000
+        timeoutMs: 5000,
+        verboseLevel: 0 // set this to 3 to get all lambda-local output
     })
     .then(result => {
         const body = JSON.parse(result);

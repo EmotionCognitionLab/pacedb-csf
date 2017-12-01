@@ -241,12 +241,21 @@ function getUsersInGroupsWithNewMessages() {
         }
         return dynamo.scan(params).promise();
     })
-    .then((groupsWithNewMsgsResult) => getUsersInGroups(groupsWithNewMsgsResult.Items.map(gm => gm.group)))
+    .then((groupsWithNewMsgsResult) => {
+        if (groupsWithNewMsgsResult.Items.length === 0) return Promise.reject([]); // no groups have new messages; just return
+          
+        return getUsersInGroups(groupsWithNewMsgsResult.Items.map(gm => gm.group));  
+    })
     .then(usersResult => {
         users = usersResult.Items;
         return getRandomMsgForType('new_group_msg');
     })
-    .then((msg) => [{ msg: msg, recipients: users }]);
+    .then((msg) => [{ msg: msg, recipients: users }])
+    .catch((maybeErr) => {
+        if (maybeErr instanceof Array && maybeErr.length === 0) return maybeErr; // there weren't any groups with new messages
+            
+        throw maybeErr;
+    });
 }
 
 /**
@@ -272,6 +281,8 @@ function getUsersWithNewEmoji() {
     .then((users) => {
         if (users.size > 100) throw new Error('Too many users have new emojis in the past two hours - only 100 can be handled.')
         
+        if (users.size === 0) return Promise.reject([]); // nobody has any new emoji - abort
+
         const keys = [];
         users.forEach(u => keys.push({id: u}));
         const params = { RequestItems: {} };
@@ -282,7 +293,12 @@ function getUsersWithNewEmoji() {
         users = usersResult.Responses[usersTable];
         return getRandomMsgForType('new_emoji');
     })
-    .then((msg) => [{ msg: msg, recipients: users }]);
+    .then((msg) => [{ msg: msg, recipients: users }])
+    .catch((maybeErr) => {
+        if (maybeErr instanceof Array && maybeErr.length === 0) return maybeErr; // there weren't any users with new emoji
+            
+        throw maybeErr;
+    })
 }
 
 
