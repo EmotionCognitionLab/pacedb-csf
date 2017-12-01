@@ -32,7 +32,7 @@ exports.handler = (event, context, callback) => {
         callback(new Error(`${msgType} is not a valid message type`));
         return;
     }
-
+    console.log(`Running reminders for message type ${msgType}`);
     const emailPromises = [];
     const phonePromises = [];
     const recipients = [];
@@ -88,8 +88,15 @@ exports.handler = (event, context, callback) => {
         // theoretically the catches at the end of sendSMS and sendEmail should take care of this, though
         return Promise.all(allPromises);
     })
-    .then(() => callback(null, JSON.stringify(recipients)))
-    .catch((err) => console.log(err))
+    .then(() => {
+        console.log(`Done running reminders for message type ${msgType}`);
+        callback(null, JSON.stringify(recipients));
+    })
+    .catch((err) => {
+        console.log(`Error running reminders for message type ${msgType}: ${err.message}`);
+        console.log(err);
+        callback(err);
+    });
 }
 
 /**
