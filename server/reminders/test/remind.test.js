@@ -36,7 +36,8 @@ const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
 const users = [ {id: "1a", firstName: "One", lastName: "Eh", group: "g-one", email: "foo@example.com"},
                 {id: "1b", firstName: "One", lastName: "Bee", group: "g-one", phone: "12125551212"},
                 {id: "2b", firstName: "Two", lastName: "Bee", group: "g-two", email: "bar@example.com"},
-                {id: "ad9", firstName: "Ad", lastName: "Nine", group: "g-inactive", phone: "+12095551212"}
+                {id: "ad9", firstName: "Ad", lastName: "Nine", group: "g-inactive", phone: "+12095551212"},
+                {id: "ad8", firstName: "Ad", lastName: "Eight", group: "g-inactive-2", email: "bash@example.com"}
             ];
 
 const group1startDate = moment().subtract(3, 'weeks');
@@ -46,7 +47,8 @@ const group2endDate = moment().add(39, 'days');
 const groups = [ 
     { name: "g-one", startDate: +group1startDate.format("YYYYMMDD"), endDate: +group1endDate.format("YYYYMMDD") },
     { name: "g-two", startDate: +group2startDate.format("YYYYMMDD"), endDate: +group2endDate.format("YYYYMMDD") },
-    { name: "g-inactive", startDate: 20160914, endDate: 20161030 }
+    { name: "g-inactive", startDate: 20160914, endDate: 20161030 },
+    { name: "g-inactive-2", startDate: 20160915, endDate: 20161031 }
 ];
 
 const nowMs = +moment().format('x');
@@ -64,7 +66,9 @@ const reminderMsgs = [
     {id: 3, active: true, msgType: 'train', subject: 's', html: 'h', text: 't', sms: 's'},
     {id: 4, active: true, msgType: 'report', subject: 's', html: 'h', text: 't', sms: 's'},
     {id: 5, active: true, msgType: 'new_group_msg', subject: 's', html: 'h', text: 't', sms: 's'},
-    {id: 6, active: true, msgType: 'new_emoji', subject: 's', html: 'h', text: 't', sms: 's'}
+    {id: 6, active: true, msgType: 'new_emoji', subject: 's', html: 'h', text: 't', sms: 's'},
+    {id: 7, active: true, msgType: 'group_behind', subject: 's', html: 'h', text: 't', sms: 's'},
+    {id: 8, active: true, msgType: 'group_ok', subject: 's', html: 'h', text: 't', sms: 's'},
 ];
 
 const userData = [
@@ -463,6 +467,115 @@ describe('sending notifications to users who have received new emoji', function(
     });
 })
 
+describe('sending group status notifications', function() {
+    before(function() {
+        return prepTestEnv();
+    });
+    beforeEach(function() {
+        return dbSetup.dropTable(usersTable)
+        .then(function() {
+            return dbSetup.createUsersTable(usersTable);
+        })
+        .then(function() {
+            return dbSetup.dropTable(userDataTable);
+        })
+        .then(function() {
+            return dbSetup.createUserDataTable(userDataTable);
+        })
+        .catch(err => console.log(err));
+    });
+    const inactiveGroups = groups.filter(g => g.startDate >= todayYMD || g.endDate <= todayYMD);
+    const inactive = {
+        groupName: inactiveGroups[0].name,
+        startDate: inactiveGroups[0].startDate,
+        users: users.filter(u => u.group === inactiveGroups[0].name),
+        dayOfWeek: dayOfWeek(inactiveGroups[0].startDate),
+        totalTargetMin: targetMinutesByGroup[inactiveGroups[0].name] * dayOfWeek(inactiveGroups[0].startDate)
+    }
+    // groups that are active and whose week doesn't start today
+    const validGroups = groups.filter(g => 
+        g.startDate <= todayYMD && g.endDate >= todayYMD && !isFirstDayOfWeek(g.startDate)
+    );
+    const valid = {
+        groupName: validGroups[0].name,
+        startDate: validGroups[0].startDate,
+        users: users.filter(u => u.group === validGroups[0].name),
+        dayOfWeek: dayOfWeek(validGroups[0].startDate),
+        totalTargetMin: targetMinutesByGroup[validGroups[0].name] * dayOfWeek(validGroups[0].startDate)
+    }
+    const activeNotValidGroups = groups.filter(g => 
+        g.startDate <= todayYMD && g.endDate >= todayYMD && isFirstDayOfWeek(g.startDate)
+    );
+    const activeNotValid = {
+        groupName: activeNotValidGroups[0].name,
+        startDate: activeNotValidGroups[0].startDate,
+        users: users.filter(u => u.group === activeNotValidGroups[0].name),
+        dayOfWeek: dayOfWeek(activeNotValidGroups[0].startDate),
+        totalTargetMin: targetMinutesByGroup[activeNotValidGroups[0].name] * dayOfWeek(activeNotValidGroups[0].startDate)
+    };
+    const behindMsgs = reminderMsgs.filter(m => m.msgType === 'group_behind').map(m => m.id);
+    const okMsgs = reminderMsgs.filter(m => m.msgType === 'group_ok').map(m => m.id);
+
+    it('requires valid base test data', function() {
+        assert(inactive.users.length > 0, 'Expected at least one user in an inactive group in the base test data');
+        assert(valid.users.length > 0, 'Expected at least one user in the base test data in a group that is active and whose week doesn\'t start today');
+        assert(activeNotValid.users.length > 0, 'Expected at least one user in the base test data belonging to a group that is active but whose week starts today');
+    });
+    it('should only notify users in active groups whose week doesn\'t start today', function() {
+        const ud = [
+            {userId: inactive.users[0].id, date: yesterdayYMD, minutes: 0},
+            {userId: valid.users[0].id, date: yesterdayYMD, minutes: 0},
+            {userId: activeNotValid.users[0].id, date: yesterdayYMD, minutes: 0}
+        ];
+        return runScheduledEvent({msgType: 'group_status'}, function(body) {
+            assert(body.length === valid.users.length);
+            const intendedRecips = valid.users.map(u => u.email || u.phone);
+            const recips = body.map(i => i.recip);
+            assert.equal(recips.sort, intendedRecips.sort);
+        }, null, ud);
+    });
+    it('should send an off-target notification to all users in a group where at least one user is off target', function() {
+        const newUsers = [
+            {id: 'g-three', group: valid.groupName, email: 'g3@example.com'}
+        ].concat(users);
+        const newUd = [ { userId: valid.users[0].id, date: yesterdayYMD, minutes: 0 } ];  
+        return runScheduledEvent({msgType: 'group_status'}, function(body) {
+            assert(body.length === valid.users.length + 1);
+            body.forEach(i => assert(behindMsgs.includes(i.msg)));
+            const intendedRecips = valid.users.map(u => u.email || u.phone).concat([newUsers[0].email || newUsers[0].phone]);
+            const recips = body.map(i => i.recip);
+            assert.equal(recips.sort, intendedRecips.sort);
+        }, newUsers, newUd); 
+    });
+    it('should send an on-target notification to all users in groups where everyone in the group is on target', function() {
+        const ud = valid.users.map(u => {
+            return {userId:u.id, date: yesterdayYMD, minutes: valid.totalTargetMin};
+        });
+        return runScheduledEvent({msgType: 'group_status'}, function(body) {
+            body.forEach(i => assert(okMsgs.includes(i.msg)));
+            const intendedRecips = valid.users.map(u => u.email || u.phone);
+            const recips = body.map(i => i.recip);
+            assert.equal(recips.sort, intendedRecips.sort);
+        }, null, ud);
+    });
+    it('should ignore today\'s minutes when calculating if the group is on target', function() {
+        const ud = valid.users.map(u => {
+            return {userId:u.id, date: todayYMD, minutes: valid.totalTargetMin};
+        });
+        return runScheduledEvent({msgType: 'group_status'}, function(body) {
+            assert(body.length > 0);
+            body.forEach(i => assert(behindMsgs.includes(i.msg))); // since we ignore today's minutes and that's all we have the group should be behind
+        }, null, ud);
+    });
+    it('should send an off-target notification to groups whose members have recorded no activity', function() {
+        const ud = [];
+        return runScheduledEvent({msgType: 'group_status'}, function(body) {
+            assert(body.length > 0);
+            body.forEach(i => assert(behindMsgs.includes(i.msg)));
+        });
+    });
+});
+
 function cleanDb() {
     const dropPromises = dbInfo.map(dbi => dbSetup.dropTable(dbi.name));
     return Promise.all(dropPromises)
@@ -553,4 +666,15 @@ function setupPhoneTopics() {
         })
     });
     return Promise.all(subscriptionPromises.map(p => p.catch(e => e)));
+}
+
+function dayOfWeek(startDate) {
+    const today = moment().day();
+    const startMoment = moment(startDate.toString())
+    const start = startMoment.day();
+    return today >= start ? today - start : 7 - (start - today);
+}
+
+function isFirstDayOfWeek(startDate) {
+    return dayOfWeek(startDate) === 0;
 }

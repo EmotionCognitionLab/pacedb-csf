@@ -24,7 +24,7 @@ const DEFAULT_TARGET_MINUTES = 20;
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
 const NEW_EMOJI_MINUTES = 120; //emojis younger than this are new
 
-const validMsgTypes = ['train', 'report', 'group_ok', 'group_behind', 'new_group_msg', 'new_emoji'];
+const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji'];
 
 exports.handler = (event, context, callback) => {
     const msgType = event.msgType;
@@ -49,6 +49,10 @@ exports.handler = (event, context, callback) => {
         }
         case 'report': {
             getRecipients = getUsersMissingReporting;
+            break;
+        }
+        case 'group_status': {
+            getRecipients = getGroupStatus;
             break;
         }
         case 'new_group_msg': {
@@ -172,6 +176,36 @@ function getUsersMissingReporting() {
 }
 
 /**
+ * Returns a Promise<[{msg: msg obj, recipients: [user obj]}]> with one entry
+ * for users in groups that are doing well (all users on target for training)
+ * and another for users in groups that are not doing well (at least one user off target).
+ */
+function getGroupStatus() {
+    let offTargetRecips, onTargetRecips;
+    let result = [];
+    let userMap, groupMap;
+    return getActiveGroupsAndUsers()
+    .then((groupsAndUsers) => {
+        userMap = groupsAndUsers.userMap;
+        groupMap = groupsAndUsers.groupMap;
+        return filterGroupsByTarget(userMap, groupMap, false)
+    })
+    .then((result) => {
+        offTargetRecips = result.offTarget;
+        onTargetRecips = result.onTarget;
+        return getRandomMsgForType('group_behind');
+    })
+    .then((msgBehind) => {
+        result.push({ msg: msgBehind, recipients: offTargetRecips });
+        return getRandomMsgForType('group_ok');
+    })
+    .then((msgOk) => {
+        result.push({ msg: msgOk, recipients: onTargetRecips });
+        return result;
+    });
+}
+
+/**
  * Returns Promise<[{msg: msg obj, recipients: [user obj]}]> of users in groups that have new messages
  */
 function getUsersInGroupsWithNewMessages() {
@@ -244,6 +278,51 @@ function getUsersWithNewEmoji() {
     .then((msg) => [{ msg: msg, recipients: users }]);
 }
 
+
+/**
+ * Given the params, returns a Promise<{onTarget: [user obj], offTarget: [user obj]> of users where:
+ * (1) all members of the group have done the target number of practice minutes
+ * for the week so far (onTarget) 
+ * or
+ * (2) at least one member of the group has not done the target number of practice minutes
+ * for the week so far (offTarget).
+ * Note that 'so far' means 'up until yesterday' and that if today happens to be the first
+ * day of the week for a particular group no users from that group will be returned.
+ * @param {*} userMap Map<user id, user obj>
+ * @param {*} groupMap Map<group name, group>
+ */
+function filterGroupsByTarget(userMap, groupMap) {
+    const usersByGroup = new Map(); // Map<Group obj, [User obj]>
+    for (let user of userMap.values()) {
+        const curGroup = groupMap.get(user.group);
+        if (isFirstDayOfWeek(curGroup.startDate)) continue;
+
+        const curUsers = usersByGroup.get(curGroup) || [];
+        curUsers.push(user);
+        usersByGroup.set(curGroup, curUsers);
+    }
+
+    const result = { onTarget: [], offTarget: [] };
+    const targetCheckPromises = [];
+    for (let [group, users] of usersByGroup.entries()) {
+        const prom = allUsersOnTarget(group.startDate, users)
+        .then((allOnTarget) => {
+            if (allOnTarget) {
+                result.onTarget.push(...users);
+            } else {
+                result.offTarget.push(...users);
+            }
+        })
+        .catch((err) => {
+            console.log(`Error checking if members of group ${group.name} are all on target: ${err.message}`);
+            console.log(err);
+        });
+
+        targetCheckPromises.push(prom);
+    }
+    return Promise.all(targetCheckPromises).then(() => result);
+}
+
 /**
  * Returns Promise<{userMap:Map, groupMap: Map}>, where userMap maps user id -> user obj
  * and groupMap group name -> group obj.
@@ -312,7 +391,7 @@ function getUsersInGroups(groups) {
  * group with that start date should have spent training today.
  * @param {number} startDate 
  */
-function getTargetMinutes(startDate) {
+function getDailyTargetMinutes(startDate) {
     const today = moment();
     const startMoment = moment(startDate.toString());
     const weekNum = Math.floor(today.diff(startMoment, 'days') / 7);
@@ -344,7 +423,7 @@ function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
             const activeUser = userMap.get(ud.userId);
             if (activeUser !== undefined) { // undefined means we have training data for them today but they're not in an active group, which shouldn't happen
                 const groupObj = groupMap.get(activeUser.group);
-                if (ud.minutes >= getTargetMinutes(groupObj.startDate)) {
+                if (ud.minutes >= getDailyTargetMinutes(groupObj.startDate)) {
                     userMap.delete(ud.userId);
                 }
             }
@@ -373,6 +452,78 @@ function getUsersWithoutReports(userMap, groupMap) {
             userMap.delete(ud.userId);
         });
         return userMap;
+    });
+}
+
+function isFirstDayOfWeek(startDate) {
+    const today = moment().day();
+    const startMoment = moment(startDate.toString())
+    const start = startMoment.day();
+    const dayOfWeek = today >= start ? today - start : 7 - (start - today);
+    return dayOfWeek === 0;
+}
+
+/**
+ * Returns Promise<true> if all of the users have done the target number of training minutes
+ * expected for the week to date (not including the current day), Promise<false> otherwise.
+ * @param {number} startDate of the group the users are in, in YYYYMMDD format
+ * @param {[user obj]} users All of the users in the group
+ */
+function allUsersOnTarget(startDate, users) {
+    const today = moment().day();
+    const start = moment(startDate.toString()).day();
+    const dayOfWeek = today >= start ? today - start : 7 - (start - today);
+
+    const yesterday = moment().subtract(1, 'days');
+    const startOfWeek = moment().subtract(dayOfWeek, 'days');
+
+    const params = {
+        TableName: userDataTable,
+        KeyConditionExpression: "userId = :userId and #D between :start and :end",
+        ExpressionAttributeValues: {
+            ':start': +startOfWeek.format('YYYYMMDD'),
+            ':end': +yesterday.format('YYYYMMDD')
+        },
+        ExpressionAttributeNames: {
+            '#D': 'date'
+        },
+        FilterExpression: "attribute_exists(minutes)"
+    };
+
+    const promises = users.map(user => {
+        params.ExpressionAttributeValues[':userId'] = user.id;
+        return dynamo.query(params).promise()
+        .then((result) => result.Items)
+        .catch(err => {
+            console.log(`Error querying userData in allUsersOnTarget for user id ${user.id}: ${JSON.stringify(err)}`);
+            return {};
+        });
+    });
+
+    return Promise.all(promises)
+    .then((udRecordsArr) => {
+        const udRecords = [].concat(...udRecordsArr); // flatten 2D records array that Promise.all returns
+        const minutesByUser = udRecords.reduce((acc, cur) => {
+            // if a query failed above we return {} - check for that and skip it 
+            if (Object.keys(cur).length === 0 && cur.constructor === Object) return acc;
+
+            const minSoFar = acc[cur.userId] || 0;
+            acc[cur.userId] = minSoFar + cur.minutes;
+            return acc;
+        }, {});
+
+        const dailyTarget = getDailyTargetMinutes(startDate);
+        const target = dayOfWeek * dailyTarget;
+        let result = true;
+        if (Object.keys(minutesByUser).length > 0) {
+            Object.keys(minutesByUser).forEach(userId => {
+                if (minutesByUser[userId] < target) result = false;
+            });
+        } else {
+            // there were no user data records for this group at all, so they're not on target
+            result = false;
+        }
+        return result;
     });
 }
 
