@@ -40,9 +40,9 @@ const groupNameNotCallerNotAdmin = {
                 "sub": "57b8e036-f007-4e2f-b3c6-d7882525fae2",
                 "cognito:groups": undefined
             }
-        },
-        "resourcePath": "/group/members"
+        }
     },
+    "path": "/group/members",
     "queryStringParameters": { group_name: 'fobers' }
 }
 
@@ -53,9 +53,9 @@ const noGroupName = {
                 "sub": users[0].id,
                 "cognito:groups": undefined
             }
-        },
-        "resourcePath": "/group/members"
+        }
     },
+    "path": "/group/members",
     "queryStringParameters": null
 }
 
@@ -66,9 +66,9 @@ const groupNameCallerIsAdmin = {
                 "sub": "57b8e036-f007-4e2f-b3c6-d7882525fae2",
                 "cognito:groups": adminGroupName
             }
-        },
-        "resourcePath": "/group/members"
+        }
     },
+    "path": "/group/members",
     "queryStringParameters": { group_name: 'group2' }
 }
 
@@ -79,9 +79,9 @@ const unknownGroupCallerIsAdmin = {
                 "sub": "57b8e036-f007-4e2f-b3c6-d7882525fae2",
                 "cognito:groups": adminGroupName
             }
-        },
-        "resourcePath": "/group/members"
+        }
     },
+    "path": "/group/members",
     "queryStringParameters": { group_name: 'does-not-exist' }
 }
 
@@ -92,9 +92,9 @@ const callerDoesNotExist = {
                 "sub": 'nobody-by-that-name',
                 "cognito:groups": undefined
             }
-        },
-        "resourcePath": "/group/members"
+        }
     },
+    "path": "/group/members",
     "queryStringParameters": null
 }
 
@@ -106,9 +106,9 @@ const groupMsgToCallerGroup = {
                 "sub": users[0].id,
                 "cognito:groups": undefined
             }
-        },
-        "resourcePath": "/group/messages"
+        }
     },
+    "path": "/group/messages",
     "queryStringParameters": {since: 0 },
     "body": '{ "body": "This is a group message" }'
 }
@@ -128,9 +128,9 @@ const groupMsgWithFullMsg = {
                 "sub": users[0].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/group/messages"
+        }
     },
+    "path": "/group/messages",
     "queryStringParameters": null,
     "body": JSON.stringify(fullGroupMessage)
 }
@@ -143,9 +143,9 @@ const groupMsgFromAdmin = {
                 "sub": users[0].id,
                 "cognito:groups": adminGroupName
             }
-        },
-        "resourcePath": "/group/messages"
+        }
     },
+    "path": "/group/messages",
     "queryStringParameters": { group_name: 'group2' },
     "body": '{"body": "Hi, this is your admin speaking"}'
 }
@@ -158,9 +158,9 @@ const groupMsgWithWrongGroupNameCallerNotAdmin = {
                 "sub": users[0].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/group/messages"
+        }
     },
+    "path": "/group/messages",
     "queryStringParameters": { group_name: 'group2' },
     "body": '{"body": "This message should not be in this group!"}'
 }
@@ -173,9 +173,9 @@ const getMsgsForGroup = {
                 "sub": users[0].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/group/messages"
+        }
     },
+    "path": "/group/messages",
     "queryStringParameters": {since: 0}
 }
 
@@ -187,9 +187,9 @@ const getMsgsAsAdmin = {
                 "sub": "57b8e036-f007-4e2f-b3c6-d7882525fae2",
                 "cognito:groups": adminGroupName
             }
-        },
-        "resourcePath": "/group/messages"
+        }
     },
+    "path": "/group/messages",
     "queryStringParameters": { group_name: groups[0], since: 0 }
 }
 
@@ -201,9 +201,9 @@ const getMsgsForGroupNotAdmin = {
                 "sub": users[2].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/group/messages"
+        }
     },
+    "path": "/group/messages",
     "queryStringParameters": { group_name: groups[0], since: 0 }
 }
 
@@ -215,9 +215,9 @@ const getMsgsSince = {
                 "sub": users[0].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/group/messages"
+        }
     },
+    "path": "/group/messages",
     "queryStringParameters": {since: messages[0].date}
 }
 
@@ -229,8 +229,7 @@ const getUser = {
                 "sub": users[2].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/users/${user_id}"
+        }
     },
     "path": `/users/${users[0].id}`,
     "pathParameters": { "user_id": users[0].id },
@@ -245,8 +244,7 @@ const getNonExistentUser = {
                 "sub": users[2].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/users/${user_id}"
+        }
     },
     "path": "/users/0000-ffff",
     "pathParameters": { "user_id": "0000-ffff" },
@@ -261,8 +259,7 @@ const getOwnUserData = {
                 "sub": users[0].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/users/${user_id}/data"
+        }
     },
     "path": `/users/${users[0].id}/data`,
     "pathParameters": { "user_id": users[0].id },
@@ -277,8 +274,7 @@ const getOtherUserData = {
                 "sub": users[1].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/users/${user_id}/data"
+        }
     },
     "path": `/users/${users[0].id}/data`,
     "pathParameters": { "user_id": users[0].id },
@@ -293,8 +289,7 @@ const getUserDataMissingStartParam = {
                 "sub": users[1].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/users/${user_id}/data"
+        }
     },
     "path": `/users/${users[0].id}/data`,
     "pathParameters": { "user_id": users[0].id },
@@ -309,8 +304,7 @@ const getUserDataNonexistentUser = {
                 "sub": users[0].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/users/${user_id}/data"
+        }
     },
     "path": `/users/faa-baa-1/data`,
     "pathParameters": { "user_id": "faa-baa-1" },
@@ -325,8 +319,7 @@ const getUserDataEmptyTimeRange = {
                 "sub": users[0].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/users/${user_id}/data"
+        }
     },
     "path": `/users/${users[1].id}/data`,
     "pathParameters": { "user_id": users[1].id },
@@ -341,8 +334,7 @@ const getUserDataBadTimeRange = {
                 "sub": users[0].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/users/${user_id}/data"
+        }
     },
     "path": `/users/${users[1].id}/data`,
     "pathParameters": { "user_id": users[1].id },
@@ -357,8 +349,7 @@ const putUserMinutes = {
                 "sub": users[0].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/users/minutes"
+        }
     },
     "path": `/users/minutes`,
     "queryStringParameters": {date: "20170419", minutes: "12"}
@@ -372,8 +363,7 @@ const postUserEmoji = {
                 "sub": users[0].id,
                 "cognito:groups": ""
             }
-        },
-        "resourcePath": "/users/{user_id}/emoji"
+        }
     },
     "path": `/users/${users[1].id}/emoji`,
     "pathParameters": {"user_id": users[1].id}, 

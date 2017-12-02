@@ -11,7 +11,7 @@ const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
 exports.handler = (event, context, callback) => {
-    const path = event.requestContext.resourcePath;
+    const path = event.path;
     if (path === '/group/members') {
         getGroupMembers(event)
         .then((result) => callback(null, result))
@@ -70,7 +70,7 @@ exports.handler = (event, context, callback) => {
             return callback(null, errorResult(err.message));
         })
     } else {
-        console.log("Unknown resource: " + event.requestContext.resourcePath);
+        console.log("Unknown resource: " + event.path);
         callback(null, errorResult("404:Unknown operation"));
     }
 }
