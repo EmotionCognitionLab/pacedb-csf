@@ -5,6 +5,19 @@
 .badge-container {
     float: left;
 }
+#delete-btn {
+    float: right;
+}
+.icon-btn {
+    color: black;
+    cursor: pointer;
+}
+.icon-btn:hover {
+    color: #0000ee;
+}
+.icon-btn svg {
+    fill: currentColor;
+}
 .msg-container {
     border: 1px solid black;
     border-radius: 3px;

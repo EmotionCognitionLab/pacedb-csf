@@ -7,6 +7,7 @@ export const environment = {
   awsRegion: 'us-east-2',
   dynamoEndpoint: 'https://dynamodb.us-east-2.amazonaws.com',
   groupsTable: 'hrv-users',
+  groupMsgsTable: 'hrv-group-messages',
   groupsWithAdminPerms: ['staff'],
   usrImgBucket: 'hrv-usr-imgs'
 };

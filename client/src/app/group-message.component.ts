@@ -3,54 +3,60 @@ import { Component, Input, OnInit } from '@angular/core';
 import { GroupMessage } from './model/group-message';
 import { User } from './model/user';
 
+import { AuthService } from './service/auth.service';
+import { GroupService } from './service/group.service';
 import { UserService } from './service/user.service';
 
 import { Observable } from 'rxjs/Observable';
 
 import * as moment from 'moment';
+import { SimpleChanges } from '@angular/core/src/metadata/lifecycle_hooks';
 
 @Component({
     selector: 'group-message',
-    template: `
-        <div class="badge-container">
-            <img class="small-img" height="45" width="45" src="{{ senderPhoto | async }} "/>
-            <div class="staff-label" [hidden]="hideStaffLabel | async">STAFF</div>
-        </div>
-        <div class="msg-container">
-            <div class="title">{{ senderName | async }} <span class="ago-date">{{displayDate(msg.date)}}</span></div>
-            <div class="msg-text" [innerHTML]="textParagraphs()"></div>
-        </div>
-    `,
+    templateUrl: 'group-message.component.html',
     styleUrls: ['../assets/css/group-message.css']
 })
 
 export class GroupMessageComponent implements OnInit {
     // a function that takes a user id and returns a user object
     @Input() msg: GroupMessage;
-    private _paragrahedText: string;
+    paragrahedText: string;
     senderName: Observable<string>;
     senderPhoto: Observable<string>;
     hideStaffLabel: Observable<boolean>;
+    isAdmin = false;
 
-    constructor(private userService: UserService) { }
+    constructor(
+        private userService: UserService,
+        private authService: AuthService,
+        private groupService: GroupService) { }
 
     ngOnInit() {
-        this._paragrahedText = this.textParagraphs();
+        this.paragraphText();
         const sender = this.userService.getUser(this.msg.fromId);
         this.senderName = sender.map(u => u.name());
         this.senderPhoto = sender.map(u => u.photoUrl);
         this.hideStaffLabel = sender.map(u => !u.isAdmin);
+        this.authService.isAdminInsecure('').then((isAdmin) => this.isAdmin = isAdmin)
+        .catch(err => console.log(err));
+    }
+
+    deleteMessage() {
+        this.groupService.deleteGroupMessage(this.msg)
+        .then((res) => {
+            this.msg = res;
+            this.paragraphText();
+        })
+        .catch(err => console.log(err));
     }
 
     displayDate(date: number): string {
         return moment(date).fromNow();
     }
 
-    textParagraphs(): string {
-        if (this._paragrahedText === undefined) {
-            const paras = this.msg.body.split('\n');
-            this._paragrahedText = `<p>${paras.join('</p><p>')}</p>`;
-        }
-        return this._paragrahedText;
+    paragraphText(): void {
+        const paras = this.msg.body.split('\n');
+        this.paragrahedText = `<p>${paras.join('</p><p>')}</p>`;
     }
 }

@@ -3,3 +3,13 @@
 .staff-label {
     font-size: 0.5em;
 }
+
+.credit {
+    font-size: .2em;
+    color: #eee;
+    margin: 200px 0 0 200px;
+}
+
+.credit a {
+    color: #eee;
+}

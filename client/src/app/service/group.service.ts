@@ -18,6 +18,7 @@ import { environment } from '../../environments/environment';
 @Injectable()
 export class GroupService {
     static tableName = 'hrv-groups';
+    static msgTableName = 'hrv-group-messages';
     basePath = environment.apiBasePath;
 
     constructor(private dyno: DynamoService, private authService: AuthService, protected http: Http) {}
@@ -166,6 +167,35 @@ export class GroupService {
             headers.set('Authorization', accessToken);
             requestOptions.headers = headers;
             return this.http.request(path, requestOptions);
+        });
+    }
+
+     /**
+     *
+     * @summary Delete a specific group message. Returns the updated message, or the original if an error occurs.
+     * @param msg The message to be deleted
+     */
+    public deleteGroupMessage(msg: GroupMessage, extraHttpRequestParams?: any): Promise<GroupMessage> {
+        return this.dyno.docClient
+        .then((docClient) => {
+            const params = {
+                TableName: environment.groupMsgsTable,
+                Key: { group: msg.group, date: msg.date },
+                UpdateExpression: 'set original=if_not_exists(original, :body), body=:deleted',
+                ExpressionAttributeValues: { ':body': msg.body, ':deleted': 'This message has been deleted.' },
+                ReturnValues: 'ALL_NEW'
+            };
+            return docClient.update(params).promise();
+        })
+        .then((res) =>  {
+            const delMsg = new GroupMessage(res.Attributes.body);
+            delMsg.group = res.Attributes.group;
+            delMsg.date = res.Attributes.date;
+            return delMsg;
+        })
+        .catch(err => {
+                console.log(err);
+                return msg;
         });
     }
 
