@@ -6,7 +6,7 @@ import { NgModule } from '@angular/core';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 import {ImageCropperComponent, ImageCropperModule } from 'ng2-img-cropper';
-import { WebCamComponent } from 'ack-angular-webcam';
+import { WebCamModule } from 'ack-angular-webcam';
 
 import { AdminDashboardComponent } from './admin-dashboard.component';
 import { AddGroupComponent } from './add-group.component';
@@ -23,7 +23,8 @@ import { AdminRoutingModule } from './admin-routing.module';
         BrowserModule,
         CommonModule,
         FormsModule,
-        ImageCropperModule
+        ImageCropperModule,
+        WebCamModule
     ],
     exports: [],
     declarations: [
@@ -31,8 +32,7 @@ import { AdminRoutingModule } from './admin-routing.module';
         AddGroupComponent,
         DateInValidRangeDirective,
         GroupsComponent,
-        RegisterComponent,
-        WebCamComponent
+        RegisterComponent
     ],
     providers: [],
 })
