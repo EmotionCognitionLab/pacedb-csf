@@ -315,7 +315,11 @@ function writeUserEmoji(event) {
     }
     // TODO prevent users from giving emoji to users in another group (unless they're an admin)
     const today = new Date();
-    const todayYMD = `${today.getFullYear()}${today.getMonth() + 1}${today.getDate()}`;
+    let month = today.getMonth() + 1;
+    month = month < 10 ? `0${month}` : month.toString();
+    let day = today.getDate();
+    day = day < 10 ? `0${day}` : day.toString();
+    const todayYMD = `${today.getFullYear()}${month}${day}`;
     return userFromDynamo(senderId)
     .then(senderResult => {
         const sender = senderResult.Items.length === 1 ? senderResult.Items[0] : {firstName: 'Unknown', lastName: 'U'};

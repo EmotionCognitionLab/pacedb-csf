@@ -1072,7 +1072,11 @@ describe('User request', function() {
             })
             .then(function(done) {
                 assert.equal(done.statusCode, 201);
-                const todayYMD = `${today.getFullYear()}${today.getMonth() + 1}${today.getDate()}`;
+                let month = today.getMonth() + 1;
+                month = month < 10 ? `0${month}` : month.toString();
+                let day = today.getDate();
+                day = day < 10 ? `0${day}` : day.toString();
+                const todayYMD = `${today.getFullYear()}${month}${day}`;
                 const queryParams = {
                     TableName: userDataTable,
                     KeyConditionExpression: 'userId = :user_id and #D = :date',
