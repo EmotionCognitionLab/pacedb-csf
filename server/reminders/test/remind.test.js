@@ -61,14 +61,14 @@ const groupMsgs = [
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
 
 const reminderMsgs = [
-    {id: 1, active: true, msgType: 'train', subject: 'Please record yesterday\'s practice minutes!', html: 'Good morning!  Have you recorded yesterday\'s practice?  <a href="https://mindbodystudy.org/training">Add your minutes now</a> or enter 0 if you missed practice.', text: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: https://mindbodystudy.org/training', sms: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: http://bit.ly/2iGbuc6'},
-    {id: 2, active: false, msgType: 'train', subject: 'Do your training!', html: 'Like I said - do your training!', text: 'You heard me!', sms: 'Don\'t make me say it again'},
-    {id: 3, active: true, msgType: 'train', subject: 's', html: 'h', text: 't', sms: 's'},
-    {id: 4, active: true, msgType: 'report', subject: 's', html: 'h', text: 't', sms: 's'},
-    {id: 5, active: true, msgType: 'new_group_msg', subject: 's', html: 'h', text: 't', sms: 's'},
-    {id: 6, active: true, msgType: 'new_emoji', subject: 's', html: 'h', text: 't', sms: 's'},
-    {id: 7, active: true, msgType: 'group_behind', subject: 's', html: 'h', text: 't', sms: 's'},
-    {id: 8, active: true, msgType: 'group_ok', subject: 's', html: 'h', text: 't', sms: 's'},
+    {id: 1, active: true, msgType: 'train', subject: 'Please record yesterday\'s practice minutes!', html: 'Good morning!  Have you recorded yesterday\'s practice?  <a href="https://mindbodystudy.org/training">Add your minutes now</a> or enter 0 if you missed practice.', text: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: https://mindbodystudy.org/training', sms: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: http://bit.ly/2iGbuc6', sends: {email: 0, sms: 0}},
+    {id: 2, active: false, msgType: 'train', subject: 'Do your training!', html: 'Like I said - do your training!', text: 'You heard me!', sms: 'Don\'t make me say it again', sends: {email: 0, sms: 0}},
+    {id: 3, active: true, msgType: 'train', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 4, active: true, msgType: 'report', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 5, active: true, msgType: 'new_group_msg', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 6, active: true, msgType: 'new_emoji', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 7, active: true, msgType: 'group_behind', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 1, sms: 2}},
+    {id: 8, active: true, msgType: 'group_ok', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 3, sms: 4}},
 ];
 
 const userData = [
@@ -605,6 +605,73 @@ describe('sending group status notifications', function() {
         return runScheduledEvent({msgType: 'group_status'}, function(body) {
             assert(body.length > 0);
             body.forEach(i => assert(behindMsgs.includes(i.msg)));
+        });
+    });
+    it('should add the number of recipients who received each message type in each message medium to the existing send counts', function () {
+        //set up data with two groups eligible to get reminders. The valid group will get an on-track reminder, 
+        //while groupB gets an off-track one. Each group will have at least one email and one phone recipient.
+        const groupB = {
+            name: 'groupB',
+            startDate: +moment().subtract(4, 'days').format("YYYYMMDD"),
+            endDate: +moment().add(45, 'days').format("YYYYMMDD")
+        };
+        const userB1 = {id: 'b1', email: 'userB1@exammple.com', group: groupB.name};
+        const userB2 = {id: 'b2', phone: '+12135551212', group: groupB.name};
+        const validPhoneUser = {id: 'ab1', phone: '+14155551212', group: valid.groupName};
+        assert(valid.users.find(u => u.email !== undefined) !== undefined, 'Expected at least one email recipient in the valid users group');
+        
+        let ud = valid.users.map(u => { 
+            return { userId: u.id, date: yesterdayYMD, minutes: valid.totalTargetMin };
+        }).concat([{userId: validPhoneUser.id, date: yesterdayYMD, minutes: valid.totalTargetMin}]);
+
+        let rmdUsers = valid.users.concat([userB1, userB2, validPhoneUser]);
+
+        let baseEmailSends = 0, basePhoneSends = 0;
+        reminderMsgs.filter(m => m.msgType === 'group_ok' || m.msgType === 'group_behind').forEach(m => {
+            baseEmailSends += m.sends.email;
+            basePhoneSends += m.sends.sms;
+        });
+
+        const expectedPhoneSends = rmdUsers.filter(u => u.phone !== undefined).length + basePhoneSends;
+        const expectedEmailSends = rmdUsers.filter(u => u.email !== undefined).length + baseEmailSends;
+        const sentMsgIds = new Set();
+
+        return dbSetup.dropTable(groupsTable)
+        .then(() => dbSetup.createGroupsTable(groupsTable))
+        .then(() => dbSetup.writeTestData(groupsTable, groups.concat([groupB])))
+        .then(() => dbSetup.dropTable(reminderMsgsTable))
+        .then(() => dbSetup.createReminderMsgsTable(reminderMsgsTable))
+        .then(() => dbSetup.writeTestData(reminderMsgsTable, reminderMsgs))
+        .then(() => sns.createTopic({Name: 'blah'}).promise())
+        .then((result) => {
+            const subscriptionPromises = [];
+            subscriptionPromises.push(sns.subscribe({Protocol: 'sms', Endpoint: userB2.phone, TopicArn: result.TopicArn}).promise());
+            subscriptionPromises.push(sns.subscribe({Protocol: 'sms', Endpoint: validPhoneUser.phone, TopicArn: result.TopicArn}).promise());
+            return Promise.all(subscriptionPromises.map(p => p.catch(e => e)));
+        })
+        .then(() => runScheduledEvent({msgType: 'group_status'}, function(body) {
+            body.forEach(i => sentMsgIds.add(i.msg));
+        }, rmdUsers, ud))
+        .then(() => {
+            const keys = [];
+            sentMsgIds.forEach(id => keys.push({id: id}));
+            const params = { RequestItems: {} };
+            params.RequestItems[reminderMsgsTable] = { Keys: keys };
+            return dynDocClient.batchGet(params).promise();
+        })
+        .then((result) => {
+            let emailSends = 0;
+            let phoneSends = 0;
+            const msgs = result.Responses[reminderMsgsTable];
+            msgs.forEach(m => {
+                assert(m.sends !== undefined, `Expected a sends object to have been written to reminder messages row id ${m.id}`)
+                assert(m.sends.email > 0, `Expected at least one email recip per message id, but got 0 for msg id ${m.id}`);
+                assert(m.sends.sms > 0, `Expected at least one sms recip per message id, but got 0 for msg id ${m.id}`)
+                emailSends += m.sends.email;
+                phoneSends += m.sends.sms;
+            });
+            assert.equal(emailSends, expectedEmailSends);
+            assert.equal(phoneSends, expectedPhoneSends);
         });
     });
 });

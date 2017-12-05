@@ -88,6 +88,7 @@ exports.handler = (event, context, callback) => {
         // theoretically the catches at the end of sendSMS and sendEmail should take care of this, though
         return Promise.all(allPromises);
     })
+    .then(() => saveSendData(recipients))
     .then(() => {
         console.log(`Done running reminders for message type ${msgType}`);
         callback(null, JSON.stringify(recipients));
@@ -566,4 +567,39 @@ function getRandomMsgForType(msgType) {
         const rand = Math.round(Math.random() * (result.Items.length - 1));
         return result.Items[rand];
     });
+}
+
+/**
+ * Writes information about the number of times each message was sent
+ * and via which medium (email or SMS) to dynamo.
+ * @param {obj} data [{recip:<email addr or phone #}, msg:<msg id>}]
+ */
+function saveSendData(data) {
+    // builds {msgId: {email: count, sms: count}} object of count data
+    const sends = data.reduce((acc, cur) => {
+        const countsForId = acc[cur.msg] || {};
+        if (cur.recip.indexOf('@') !== -1) {
+            countsForId['email'] = 1 + (countsForId['email'] || 0);
+            countsForId['sms'] = countsForId['sms'] || 0;
+        } else {
+            countsForId['sms'] = 1 + (countsForId['sms'] || 0);
+            countsForId['email'] = countsForId['email'] || 0;
+        }
+        acc[cur.msg] = countsForId;
+        return acc;
+    }, {});
+
+    // saves those data to dynamo
+    const promises = [];
+    Object.keys(sends).forEach(k => {
+        const params = {
+            TableName: reminderMsgsTable,
+            Key: {id: +k},
+            UpdateExpression: 'ADD sends.email :sendsEmail, sends.sms :sendsSMS',
+            ExpressionAttributeValues: { ':sendsEmail': sends[k].email, ':sendsSMS': sends[k].sms }
+        };
+        promises.push(dynamo.update(params).promise().catch(e => console.log(`Error writing send count information for msg id ${k}: ${e.message}`)));
+    });
+    return Promise.all(promises);
+
 }
