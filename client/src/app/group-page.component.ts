@@ -22,7 +22,7 @@ import { UserService } from './service/user.service';
     template: `
     <div class="container">
        <ngb-alert *ngIf="statusMsg" type="success" (close)="statusMsg = null">{{ statusMsg }}</ngb-alert>
-        <h2>{{group.name}}</h2>
+        <h2>Team {{group.name}}</h2>
         <span *ngIf="group.earnings > 0">💰 \${{group.earnings}} earned so far! 💰</span>
         <h3>Teammates</h3>
         <app-user *ngFor="let user of members" [user]=user [group]=group></app-user>
