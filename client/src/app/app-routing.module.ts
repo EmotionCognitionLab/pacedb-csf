@@ -9,28 +9,35 @@ import { VerifyComponent } from './verify.component';
 
 import { GroupResolverService } from './service/group-resolver.service';
 import { RouteGuardService } from './service/route-guard.service';
+import { TrackingResolverService } from './service/tracking-resolver.service';
 
 const routes: Routes = [
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
-  { path: 'forbidden', component: ForbiddenComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'group',
-    component: GroupPageComponent,
-    canActivate: [RouteGuardService],
-    resolve: { groupInfo: GroupResolverService }
-  },
-  { path: 'training',
-    component: TrainingComponent,
-    canActivate: [RouteGuardService]
-  },
-  { path: 'verify', component: VerifyComponent }
+  {
+    path: '',
+    resolve: { nothing: TrackingResolverService },
+    children: [
+      { path: '', redirectTo: '/login', pathMatch: 'full' },
+      { path: 'forbidden', component: ForbiddenComponent },
+      { path: 'login', component: LoginComponent },
+      { path: 'group',
+        component: GroupPageComponent,
+        canActivate: [RouteGuardService],
+        resolve: { groupInfo: GroupResolverService }
+      },
+      { path: 'training',
+        component: TrainingComponent,
+        canActivate: [RouteGuardService]
+      },
+      { path: 'verify', component: VerifyComponent }
+    ]
+  }
 ];
 
 @NgModule({
   imports: [ RouterModule.forRoot(routes) ],
   exports: [ RouterModule ],
   providers: [
-    GroupResolverService
+    GroupResolverService, TrackingResolverService
   ]
 })
 

@@ -31,6 +31,7 @@ function(err, csvRecs) {
             r.active = false;
         }
         r.sends = {email: 0, sms: 0};
+        r.clicks = {email: 0, sms: 0};
         items.push({PutRequest: {Item: r}})
     });
     const pushCmd = {};
