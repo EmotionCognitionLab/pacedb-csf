@@ -2,7 +2,7 @@
     cursor: default;
 }
 .user {
-    height: 100px;
+    height: 90px;
 }
 .user img {
     display: block;
@@ -16,7 +16,7 @@
 #progress-container {
     text-align: left;
     float: left;
-    margin: 10px 10px 0px 10px;
+    margin: 0 10px 0px 10px;
 }
 
 .progress {

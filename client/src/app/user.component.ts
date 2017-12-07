@@ -19,14 +19,14 @@ import { UserService } from './service/user.service';
     template: `
         <div class="user">
             <img class="small-user" src="{{user.photoUrl}}" />
-            <div id="progress-containe2r">
+            <div id="progress-container">
                 {{user.name()}}
                 <div>
                     <div *ngIf="user.isAdmin" class="staff-label">STAFF</div>
                 </div>
                 <span *ngFor="let fb of emojis" class='emoji-feedback' title="{{fb.from}}">{{fb.emoji}}&nbsp;</span>
                 <br />
-                <div class='progress {{progressClasses}}'>
+                <div class='progress {{progressClasses}}' placement="top" ngbTooltip="{{weeklyMinutesTrained}} minutes completed this week">
                     <span class='status'></span>
                 </div>
                 <emoji-picker *ngIf="currentUser.id !== user.id" (onSelected)="emojiChosen($event)"></emoji-picker>
@@ -42,6 +42,7 @@ export class UserComponent implements OnInit, OnDestroy {
     currentUser = new User('', '', '', '');
     emojis: EmojiFeedback[] = [];
     progressClasses: string;
+    weeklyMinutesTrained = 0;
     private _userData: UserData[];
     private _userDataSubscription: Subscription;
 
@@ -60,17 +61,16 @@ export class UserComponent implements OnInit, OnDestroy {
         this._userDataSubscription = this.userService.getUserData(this.user.id, weekBoundaries[0], weekBoundaries[1])
         .subscribe(data => {
             this._userData = data;
-            let weeklyMinutesTrained = 0;
             data.forEach(ud => {
                 if (ud.emoji !== undefined && ud.emoji.length > 0) {
                     this.emojis.push(...ud.emoji);
                 }
                 if (ud.minutes !== undefined) {
-                    weeklyMinutesTrained += ud.minutes;
+                    this.weeklyMinutesTrained += ud.minutes;
                 }
             });
             const weeklyMinutesTarget = this.group.dailyMinutesTarget() * 7;
-            const trainingPercentDone = weeklyMinutesTrained / weeklyMinutesTarget;
+            const trainingPercentDone = this.weeklyMinutesTrained / weeklyMinutesTarget;
             this.progressClasses = this.percentToCSS(trainingPercentDone);
         });
     }
