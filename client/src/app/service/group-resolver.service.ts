@@ -23,13 +23,7 @@ export class GroupResolverService implements Resolve<GroupPage> {
             }
             return Observable.fromPromise(this.groupService.getGroup(groupName))
             .map(group => {
-                return {members: members, group: group};
-            });
-        })
-        .flatMap(groupPage => {
-            return this.groupService.getGroupMessages(0, groupName).take(1)
-            .map(msgs => {
-                return { members: groupPage.members, messages: msgs, group: groupPage.group };
+                return {members: members, messages: [], group: group};
             });
         });
     }

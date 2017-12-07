@@ -67,14 +67,17 @@ export class GroupPageComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
         this.route.data
-        .subscribe((data: { groupInfo: GroupPage }) => {
+        .flatMap((data: { groupInfo: GroupPage }) => {
             // push all the members into the user cache so we don't re-fetch them
             // when displaying messages
             data.groupInfo.members.forEach(m => this.userService.cacheSet(m.id, m));
             this.members = data.groupInfo.members;
-            this.messages = data.groupInfo.messages;
             this.group = data.groupInfo.group;
             this.weekDay = this.getDayOfWeek();
+            return this.groupService.getGroupMessages(0, data.groupInfo.group.name);
+        })
+        .subscribe((msgs) => {
+            this.messages = msgs;
         });
 
         this._msgsLastFetched = new Date().valueOf();
