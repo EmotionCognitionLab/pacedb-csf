@@ -8,6 +8,7 @@ const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
 const dynDocClient = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: 'us-east-2'});
 const dynClient = new AWS.DynamoDB({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: 'us-east-2'});
 const assert = require('assert');
+const dbSetup = require('../../common-test/db-setup.js');
 
 const usersTable = process.env.USERS_TABLE;
 const groupMessageTable = process.env.GROUP_MESSAGE_TABLE;
@@ -15,12 +16,12 @@ const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
 // test data
-const users = [ {id: '1a', firstName: 'One', lastName: 'Eh'},
-                {id: '1b', firstName: 'One', lastName: 'Bee'},
-                {id: '2b', firstName: 'Two', lastName: 'Bee'},
-                {id: 'ad9', firstName: 'Ad', lastName: 'Nine'}
-            ];
 const groups = ['group1', 'group1', 'group2', 'special-group'];
+const users = [ {id: '1a', group: groups[0], firstName: 'One', lastName: 'Eh'},
+                {id: '1b', group: groups[1], firstName: 'One', lastName: 'Bee'},
+                {id: '2b', group: groups[2], firstName: 'Two', lastName: 'Bee'},
+                {id: 'ad9', group: groups[3], firstName: 'Ad', lastName: 'Nine'}
+            ];
 const messages = [
     {fromId: users[0].id, group: groups[0], date: 123456789, body: 'Howdy, folks!'},
     {fromId: users[0].id, group: groups[0], date: 123456900, body: 'Howdy, folks!'},
@@ -28,9 +29,9 @@ const messages = [
     {fromId: users[2].id, group: groups[2], date: 123456100, body: 'Howdy, folks!'}
 ]
 const userData = [
-    {userId: users[0].id, datetime: 20171122, minutes: 10},
-    {userId: users[0].id, datetime: 20171123, emoji: [{from: 'Ad N.', fromId: 'ad9', emoji: '💩', datetime: 1511368724048}]},
-    {userId: users[1].id, datetime: 20170419, minutes: 7}
+    {userId: users[0].id, date: 20171122, minutes: 10},
+    {userId: users[0].id, date: 20171123, emoji: [{from: 'Ad N.', fromId: 'ad9', emoji: '💩', datetime: 1511368724048}]},
+    {userId: users[1].id, date: 20170419, minutes: 7}
 ]
 
 const groupNameNotCallerNotAdmin = {
@@ -370,164 +371,23 @@ const postUserEmoji = {
     "queryStringParameters": {e: "🏅"}
 }
 
-function dropUserDataTable() {
-    return dynClient.deleteTable({TableName: userDataTable}).promise();
-}
-
-function createUserDataTable() {
-    const params = {
-        "AttributeDefinitions": [
-            {
-                "AttributeName": "userId",
-                "AttributeType": "S"
-            },
-            {
-                "AttributeName": "date",
-                "AttributeType": "N"
-            }
-        ],
-        "TableName": userDataTable,
-        "KeySchema": [
-            {
-                "AttributeName": "userId",
-                "KeyType": "HASH"
-            },
-            {
-                "AttributeName": "date",
-                "KeyType": "RANGE"
-            }
-        ],
-        "ProvisionedThroughput": {
-            "ReadCapacityUnits": 5,
-            "WriteCapacityUnits": 1
-        }
-    };
-    return dynClient.createTable(params).promise();
-}
-
-function writeTestUserData() {
-    const items = [];
-    userData.forEach(d => {
-        items.push({
-            PutRequest: {
-                Item: {
-                    'userId': d.userId,
-                    'date': d.datetime,
-                    'minutes': d.minutes,
-                    'emoji': d.emoji
-                }
-            }
-        });
-    });
-    const pushCmd = {};
-    pushCmd[userDataTable] = items;
-    return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
-}
-
-function dropGroupMessagesTable() {
-    return dynClient.deleteTable({TableName: groupMessageTable}).promise();
-}
-
-function createGroupMessagesTable() {
-    const params = {
-        "AttributeDefinitions": [
-            {
-                "AttributeName": "group",
-                "AttributeType": "S"
-            },
-            {
-                "AttributeName": "date",
-                "AttributeType": "N"
-            }
-        ],
-        "TableName": "hrv-group-messages",
-        "KeySchema": [
-            {
-                "AttributeName": "group",
-                "KeyType": "HASH"
-            },
-            {
-                "AttributeName": "date",
-                "KeyType": "RANGE"
-            }
-        ],
-        "ProvisionedThroughput": {
-            "ReadCapacityUnits": 5,
-            "WriteCapacityUnits": 1
-        }
-    };
-    return dynClient.createTable(params).promise();
-}
-
-function clearUsersTable() {
-    const params = {
-        TableName: usersTable
-    }
-    const existingUsers = [];
-    return dynDocClient.scan(params).promise()
-    .then((data) => {
-        data.Items.forEach((u) => existingUsers.push(u));
-    })
-    // delete the existing user rows
-    .then(() => {
-        const toDelete = [];
-        if (existingUsers.length > 0) {
-            existingUsers.forEach((u) => {
-                toDelete.push({DeleteRequest: {Key: { 'id':  u.id }}});
-            });
-            const delCmd = {};
-            delCmd[usersTable] = toDelete;
-            return dynDocClient.batchWrite({RequestItems: delCmd}).promise();
-        } else {
-            return Promise.resolve();
-        }
-    })
-}
-
-function writeTestUsers() {
-    const testUsers = [];
-    users.forEach((u, idx) => {
-        testUsers.push({
-            PutRequest: {
-                Item: {
-                    'id': u.id,
-                    'group': groups[idx],
-                    'firstName': u.firstName,
-                    'lastName': u.lastName
-                }
-            }
-        })
-    });
-    const pushCmd = {};
-    pushCmd[usersTable] = testUsers;
-    return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
-}
-
-function writeTestMessages() {
-    const testMessages = [];
-    messages.forEach((m) => {
-        testMessages.push({
-            PutRequest: {
-                Item: m
-            }
-        });
-    });
-    const pushCmd = {};
-    pushCmd[groupMessageTable] = testMessages;
-    return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
-}
-
 describe('Request to get messages for a group', function() {
     before(function() {
-        return dropGroupMessagesTable()
+        return dbSetup.dropTable(groupMessageTable)
         .then(function() {
-            return createGroupMessagesTable();
+            return dbSetup.createGroupMsgsTable(groupMessageTable);
         })
         .then(function() {
-            return writeTestMessages();
+            return dbSetup.writeTestData(groupMessageTable, messages);
         })
         .then(function() {
-            return writeTestUsers();
+            return dbSetup.dropTable(usersTable);
+        })
+        .then(function() {
+            return dbSetup.createUsersTable(usersTable);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, users);
         });
     });
     describe('with no group name provided', function() {
@@ -616,12 +476,12 @@ describe('Request to get messages for a group', function() {
 
 describe('Request to save a group message', function() {
     before(function() {
-        return dropGroupMessagesTable()
+        return dbSetup.dropTable(groupMessageTable)
         .then(function() {
-            return createGroupMessagesTable();
+            return dbSetup.createGroupMsgsTable(groupMessageTable);
         })
         .then(function() {
-            return writeTestUsers();
+            return dbSetup.writeTestData(usersTable, users);
         });
     });
     describe('with no group_name provided', function() {
@@ -703,9 +563,12 @@ describe('Request to save a group message', function() {
 
 describe('Group members request', function() {
     before(function() {
-        return clearUsersTable()
+        return dbSetup.dropTable(usersTable)
         .then(function() {
-            return writeTestUsers();
+            return dbSetup.createUsersTable(usersTable);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, users);
         });
     });
     describe('with no group_name provided', function() {
@@ -800,18 +663,21 @@ describe('Group members request', function() {
 
 describe('User request', function() {
     before(function() {
-        return clearUsersTable()
+        return dbSetup.dropTable(usersTable)
         .then(function() {
-            return writeTestUsers();
+            return dbSetup.createUsersTable(usersTable);
         })
         .then(function() {
-            return dropUserDataTable();
+            return dbSetup.writeTestData(usersTable, users);
         })
         .then(function() {
-            return createUserDataTable();
+            return dbSetup.dropTable(userDataTable);
         })
         .then(function() {
-            return writeTestUserData();
+            return dbSetup.createUserDataTable(userDataTable);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(userDataTable, userData);
         });
     });
     describe('for an existing user', function() {
