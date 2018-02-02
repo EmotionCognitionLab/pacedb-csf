@@ -3,7 +3,7 @@
 This directory contains the files for the AWS lambda function that sends daily reminders via either email or SMS (depending on the participant) to study participants.
 
 # Setup
-If you're working with a fresh checkout you'll need to do `npm install` in order to get the necessary dependencies. See "Deployment" below for details on the shipping implications.
+If you're working with a fresh checkout you'll need to do `npm install` in order to get the necessary dependencies.
 
 If you don't already have them, you'll also want to install moto (`pip install moto[server]`) and local dynamodb - see "Local Testing" below.
 
@@ -20,18 +20,7 @@ The remind.js code (and the associated test code) pulls in a lot of external dep
 environment variables. For the purposes of the tests, these environment variables live in test/env.sh. If you need to add, remove or alter stuff being picked up from the environment, that's the place to do it.
 
 # Deployment
-As mentioned, for now we have to package up the entire aws-sdk node module and ship it with our lambda function. Follow these steps to deploy:
-
-```
-rm -rf node_modules
-npm install --production
-mkdir pkg
-cp remind.js pkg/
-cp node_modules/ pkg/
-cd pkg/
-zip -r ../remind.zip *
-cd ..
-```
-Now you have a zip file that you can upload to your lambda function using the lambda console. Don't forget to also set all of the environment variables defined in env.json in the "Environment variables" section of the lambda console.
+Deployment is handled via [Serverless](https://serverless.com). To deploy just this lambda function
+(and its dependencies), make sure that you are in the server directory and run `sls deploy function remind`.
 
 
