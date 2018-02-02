@@ -1,0 +1,37 @@
+Parameters:
+  ServiceParam:
+    Type: String
+    Default: hrv
+    Description: The name of the service that you're creating with this stack
+  StageParam:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+Resources:
+    # SNS role so that cognito can send SMS messages
+  cognitoSNSRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              Service: 
+                - "cognito-idp.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "CognitoSNSPolicy"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - Effect: "Allow"
+                Action: "sns:publish"
+                Resource: "*"
+Outputs:
+  CognitoSNSRoleARN:
+    Value:
+      Fn::GetAtt: [cognitoSNSRole, Arn]

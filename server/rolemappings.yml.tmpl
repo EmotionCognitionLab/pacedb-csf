@@ -1,0 +1,17 @@
+# This file exists as a solution to the problem described here: https://forums.aws.amazon.com/thread.jspa?messageID=793299 .
+# The #ID_POOL_KEY# string below is replaced dynamically by the setup/setup.js script
+# after the cognito user pool and user pool client have been created. 
+# Once it has been replaced, this file is incorporated by reference in the ../serverless.yml file .
+
+# In short: ONLY EDIT THIS FILE VERY, VERY CAREFULLY.
+"#ID_POOL_KEY#":
+  AmbiguousRoleResolution: "AuthenticatedRole"
+  RulesConfiguration:
+      Rules:
+      - Claim: "cognito:groups"
+        MatchType: "Contains"
+        Value: 
+          Fn::ImportValue: "${self:service}-${self:provider.stage}-cognitoStaffGroup" 
+        RoleARN:
+          Fn::ImportValue: "${self:service}-${self:provider.stage}-clientAdminRoleARN"
+  Type: "Rules"

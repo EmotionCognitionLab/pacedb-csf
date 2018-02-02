@@ -1,0 +1,83 @@
+{
+    "PoolName": "#SERVICE#-#STAGE#-users",
+    "Policies": {
+        "PasswordPolicy": {
+            "MinimumLength": 8,
+            "RequireUppercase": true,
+            "RequireLowercase": true,
+            "RequireNumbers": false,
+            "RequireSymbols": false
+        }
+    },
+    "AutoVerifiedAttributes": [
+        "email",
+        "phone_number"
+    ],
+    "UsernameAttributes": [
+        "phone_number",
+        "email"
+    ],
+    "SmsVerificationMessage": "Please go to https://mindbodystudy.org/verify and enter your verification code: {####}.",
+    "EmailVerificationMessage": "Please go to https://mindbodystudy.org/verify and enter your verification code: {####}.",
+    "EmailVerificationSubject": "Your verification code for mindbodystudy.org",
+    "EmailConfiguration": {
+        "SourceArn": "#EMAIL_SENDER_ARN#",
+        "ReplyToEmailAddress": "#REPLY_TO_EMAIL#"
+    },
+    "SmsConfiguration": {
+        "SnsCallerArn": "#COGNITO_SNS_ROLE_ARN#",
+        "ExternalId": "#SERVICE#-sns-extern"
+    },
+    "AdminCreateUserConfig": {
+        "AllowAdminCreateUserOnly": false,
+        "UnusedAccountValidityDays": 7
+    },
+    "Schema": [
+        {
+            "Name": "family_name",
+            "AttributeDataType": "String",
+            "DeveloperOnlyAttribute": false,
+            "Mutable": false,
+            "Required": true
+        },
+        {
+            "Name": "given_name",
+            "AttributeDataType": "String",
+            "DeveloperOnlyAttribute": false,
+            "Mutable": false,
+            "Required": true
+        },
+        {
+            "Name": "picture",
+            "AttributeDataType": "String",
+            "DeveloperOnlyAttribute": false,
+            "Mutable": true,
+            "Required": true
+        },
+        {
+            "Name": "group",
+            "AttributeDataType": "String",
+            "DeveloperOnlyAttribute": false,
+            "Mutable": false,
+            "Required": false,
+            "StringAttributeConstraints": {
+                "MinLength": "3",
+                "MaxLength": "256"
+            }
+        },
+        {
+            "Name": "email",
+            "AttributeDataType": "String",
+            "DeveloperOnlyAttribute": false,
+            "Mutable": false,
+            "Required": false
+        },
+        {
+            "Name": "phone_number",
+            "AttributeDataType": "String",
+            "DeveloperOnlyAttribute": false,
+            "Mutable": false,
+            "Required": false
+        }
+    ]
+}

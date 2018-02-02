@@ -13,7 +13,7 @@ const usersTable = process.env.USERS_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const groupsTable = process.env.GROUPS_TABLE;
 const reminderMsgsTable = process.env.REMINDER_MSGS_TABLE;
-const groupMsgsTable = process.env.GROUP_MSGS_TABLE;
+const groupMsgsTable = process.env.GROUP_MESSAGES_TABLE;
 
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;

@@ -6,7 +6,9 @@
  **/
 
 const AWS = require('aws-sdk');
-const dynamo = new AWS.DynamoDB.DocumentClient({region: 'us-east-2'});
+const region = process.env.REGION;
+const usersTable = process.env.USERS_TABLE;
+const dynamo = new AWS.DynamoDB.DocumentClient({region: region});
 
 exports.handler = (event, context, callback) => {
     const userRec = buildUserRecord(event);
@@ -22,7 +24,7 @@ exports.handler = (event, context, callback) => {
 
 function buildUserRecord(event) {
     let result = {
-        TableName: "hrv-users",
+        TableName: usersTable,
         Item: {
             id: event.request.userAttributes["sub"],
             group: event.request.userAttributes["custom:group"],

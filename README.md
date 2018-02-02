@@ -6,7 +6,7 @@ Copy the file "client/src/environments/environment.ts" to "environments/environm
 
 In the client directory, run npm install.
 
-[ TBD: All of the setup on the AWS side.]
+Follow the instructions in server/setup/README.md to set up all of the server-side resources you will need.
 
 # Running
 In the client directory, use ng serve -e local to run the app using your local environment settings.

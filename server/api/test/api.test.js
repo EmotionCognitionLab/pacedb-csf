@@ -5,13 +5,14 @@ require('dotenv').config({path: './test/env.sh'})
 const lambdaLocal = require('lambda-local');
 const AWS = require('aws-sdk');
 const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
-const dynDocClient = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: 'us-east-2'});
-const dynClient = new AWS.DynamoDB({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: 'us-east-2'});
+const region = process.env.REGION;
+const dynDocClient = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: region});
+const dynClient = new AWS.DynamoDB({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: region});
 const assert = require('assert');
 const dbSetup = require('../../common-test/db-setup.js');
 
 const usersTable = process.env.USERS_TABLE;
-const groupMessageTable = process.env.GROUP_MESSAGE_TABLE;
+const groupMessagesTable = process.env.GROUP_MESSAGES_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
@@ -373,12 +374,12 @@ const postUserEmoji = {
 
 describe('Request to get messages for a group', function() {
     before(function() {
-        return dbSetup.dropTable(groupMessageTable)
+        return dbSetup.dropTable(groupMessagesTable)
         .then(function() {
-            return dbSetup.createGroupMsgsTable(groupMessageTable);
+            return dbSetup.createGroupMsgsTable(groupMessagesTable);
         })
         .then(function() {
-            return dbSetup.writeTestData(groupMessageTable, messages);
+            return dbSetup.writeTestData(groupMessagesTable, messages);
         })
         .then(function() {
             return dbSetup.dropTable(usersTable);
@@ -476,9 +477,9 @@ describe('Request to get messages for a group', function() {
 
 describe('Request to save a group message', function() {
     before(function() {
-        return dbSetup.dropTable(groupMessageTable)
+        return dbSetup.dropTable(groupMessagesTable)
         .then(function() {
-            return dbSetup.createGroupMsgsTable(groupMessageTable);
+            return dbSetup.createGroupMsgsTable(groupMessagesTable);
         })
         .then(function() {
             return dbSetup.writeTestData(usersTable, users);

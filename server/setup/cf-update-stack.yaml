@@ -1,0 +1,265 @@
+Parameters:
+  AdminEmailParam:
+    Type: String
+    Description: The email address of an admin user
+  AdminFirstNameParam:
+    Type: String
+    Default: Dev
+    Description: The first name of an admin user
+  AdminLastNameParam:
+    Type: String
+    Default: Admin
+    Description: The last name of an admin user
+  AdminPhotoUrlParam:
+    Type: String
+    Description: The url of a photo that will be used for the admin user
+  CognitoUserPoolIdParam:
+    Type: String
+    Description: The id of the cognito user pool that will hold all of our users
+  ServiceParam:
+    Type: String
+    Default: hrv
+    Description: The name of the service that you're creating with this stack
+  StageParam:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+  
+Resources:
+# S3 bucket for storing pictures of users
+  imgBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: 
+        Fn::Sub: ${ServiceParam}-${StageParam}-usr-imgs
+      WebsiteConfiguration:
+        IndexDocument: index.html
+
+# start of cognito setup
+# see https://gist.github.com/singledigit/2c4d7232fa96d9e98a3de89cf6ebe7a5 for example
+    # SNS role so that cognito can send SMS messages
+    # This is created in cf-create-stack.yaml, but if we don't maintain it here the update
+    # operation wipes it out.
+  cognitoSNSRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              Service: 
+                - "cognito-idp.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "CognitoSNSPolicy"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - Effect: "Allow"
+                Action: "sns:publish"
+                Resource: "*"
+# cognito user pool group for staff
+  cognitoStaffGroup:
+    Type: "AWS::Cognito::UserPoolGroup"
+    Properties:
+      GroupName: staff
+      Description: "lab staff"
+      Precedence: 1
+      RoleArn: 
+        Fn::GetAtt: [clientAdminRole, Arn]
+      UserPoolId:
+        Ref: CognitoUserPoolIdParam
+# cognito user pool client for use by the identity pool (and the front-end app)
+  cognitoUserPoolClient:
+    Type: "AWS::Cognito::UserPoolClient"
+    Properties:
+      ClientName: 
+        Fn::Sub: ${ServiceParam}-${StageParam}-client
+      ExplicitAuthFlows:
+        - ADMIN_NO_SRP_AUTH
+      GenerateSecret: false
+      RefreshTokenValidity: 30
+      UserPoolId: 
+        Ref: CognitoUserPoolIdParam
+# our cognito identity pool
+  cognitoIdPool:
+    Type: "AWS::Cognito::IdentityPool"
+    Properties:
+      IdentityPoolName: 
+        Fn::Sub: ${ServiceParam}${StageParam}IdPool
+      AllowUnauthenticatedIdentities: false
+      CognitoIdentityProviders: 
+        - ClientId: !Ref cognitoUserPoolClient
+          ProviderName:
+            Fn::Sub: cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPoolIdParam}
+  clientAdminAccount:
+    Type: "AWS::Cognito::UserPoolUser"
+    Properties:
+      DesiredDeliveryMediums: 
+        - EMAIL
+      UserAttributes:
+        - Name: email
+          Value: !Ref AdminEmailParam
+        - Name: given_name
+          Value: !Ref AdminFirstNameParam
+        - Name: family_name
+          Value: !Ref AdminLastNameParam
+        - Name: picture
+          Value: !Ref AdminPhotoUrlParam
+        - Name: "custom:group"
+          Value: !Ref cognitoStaffGroup
+      Username: !Ref AdminEmailParam
+      UserPoolId: !Ref CognitoUserPoolIdParam
+
+# role for unauthorized cognito users
+  cognitoUnauthorizedRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              Federated: "cognito-identity.amazonaws.com"
+            Action: 
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals: 
+                "cognito-identity.amazonaws.com:aud": 
+                  Ref: cognitoIdPool
+              "ForAnyValue:StringLike":
+                "cognito-identity.amazonaws.com:amr": unauthenticated
+      Policies:
+        - PolicyName: "CognitoUnauthorizedPolicy"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - Effect: "Allow"
+                Action:
+                  - "mobileanalytics:PutEvents"
+                  - "cognito-sync:*"
+                Resource: "*"
+# end of cognito setup
+
+# policy to allow reading all hrv dynamodb tables
+  dynamoReadAccess:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: Allows read access to hrv tables
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "dynamodb:BatchGetItem"
+              - "dynamodb:GetItem"
+              - "dynamodb:Query"
+              - "dynamodb:Scan"
+            Resource:
+              - "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table:${ServiceParam}-${StageParam}-*"
+      ManagedPolicyName: 
+        Fn::Sub: "${ServiceParam}-${StageParam}-dynamo-read"
+
+# policy to allow writing cloudwatch logs
+  cloudwatchWriteAccess:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: Allows writing logs to cloudwatch
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+              - "logs:DescribeLogStreams"
+            Resource: "arn:aws:logs:*:*:*"
+      ManagedPolicyName:
+        Fn::Sub: "${ServiceParam}-${StageParam}-cloudwatch-write"
+
+# role for client app admins
+  clientAdminRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              Service: 
+                - "lambda.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "dynamoAllAccess"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:DeleteItem"
+                  - "dynamodb:GetItem"
+                  - "dynamodb:PutItem"
+                  - "dynamodb:Scan"
+                  - "dynamodb:Query"
+                  - "dynamodb:UpdateItem"
+                Resource:
+                  - "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table:${ServiceParam}-${StageParam}-*"
+        - PolicyName: "s3WriteUserImages"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:PutObject"
+                  - "s3:PutObjectAcl"
+                Resource:
+                  - Fn::GetAtt: [imgBucket, Arn]
+Outputs:
+  ClientAdminAccount:
+    Value:
+      Ref: clientAdminAccount
+  ClientAdminRoleARN:
+    Value:
+      Fn::GetAtt: [clientAdminRole, Arn]
+    Export:
+      Name: !Sub "${ServiceParam}-${StageParam}-clientAdminRoleARN"
+  CloudwatchWriteAccess:
+    Value:
+      Ref: cloudwatchWriteAccess
+    Export:
+      Name: !Sub "${ServiceParam}-${StageParam}-cloudwatchWriteAccess"
+  CognitoSNSRoleARN:
+    Value:
+      Fn::GetAtt: [cognitoSNSRole, Arn]
+  CognitoStaffGroup:
+    Value:
+      Ref: cognitoStaffGroup
+    Export:
+      Name: !Sub "${ServiceParam}-${StageParam}-cognitoStaffGroup"
+  IdentityPoolId:
+    Value: 
+      Ref: cognitoIdPool
+    Export:
+      Name: !Sub "${ServiceParam}-${StageParam}-identityPoolId"
+  CognitoUnauthorizedRole:
+    Value:
+      Fn::GetAtt: [cognitoUnauthorizedRole, Arn]
+    Export:
+      Name: !Sub "${ServiceParam}-${StageParam}-cognitoUnauthorizedRole"
+  DynamoReadAccess:
+    Value:
+      Ref: dynamoReadAccess
+    Export:
+      Name: !Sub "${ServiceParam}-${StageParam}-dynamoReadAccess"
+  UserPoolClientId:
+    Value: 
+      Ref: cognitoUserPoolClient
+  UserImgBucket:
+    Value:
+      Ref: imgBucket

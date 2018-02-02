@@ -3,10 +3,11 @@
 
 const AWS = require('aws-sdk');
 const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
-const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
+const region = process.env.REGION;
+const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: region});
 
 const usersTable = process.env.USERS_TABLE;
-const groupMessageTable = process.env.GROUP_MESSAGE_TABLE;
+const groupMessagesTable = process.env.GROUP_MESSAGES_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
@@ -135,7 +136,7 @@ function getGroupMessages(event) {
         const since = event.queryStringParameters !== undefined &&
             event.queryStringParameters['since'] !== undefined ? +event.queryStringParameters['since'] : 0;
         const params = {
-            TableName: groupMessageTable,
+            TableName: groupMessagesTable,
             KeyConditionExpression: '#G = :theGroup and #D >= :since',
             ExpressionAttributeNames: { '#G': 'group', '#D': 'date' },
             ExpressionAttributeValues: { ':theGroup': groupName, ':since': since },
@@ -192,7 +193,7 @@ function writeGroupMessage(event) {
             body: msgBody
         }
         const params = {
-            TableName: groupMessageTable,
+            TableName: groupMessagesTable,
             Item: msg
         };
         return dynamo.put(params).promise();

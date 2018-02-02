@@ -1,0 +1,389 @@
+# This file is used as part of the setup process. You should not need
+# to edit it unless you want to change the configuration of (some of) the AWS
+# resources used to run the service. Note that only some of the AWS resources
+# are configured here (mostly DynamoDB, Lambda, and things that depend on them) -
+# you'll find the rest in setup/cf-create-stack.yaml, setup/cf-update-stack.yaml,
+# setup/cognito-user-pool.json.tmpl, rolemappings.yml.tmpl and the setup/setup.js
+# script itself.
+
+service: ${opt:service, 'hrv'}
+
+custom:
+  dynamodb:
+    start:
+      sharedDb: true
+      dbPath: /tmp/
+
+  localDynamoEndpoint: "http://localhost:8000"
+  prodDynamoEndpoint: 
+    Fn::Sub: "https://dynamodb.${self:provider.region}.amazonaws.com"
+  devDynamoEndpoint: ${self:custom.prodDynamoEndpoint}
+  roleMappings: ${file(./rolemappings.yml)}
+  
+provider:
+  name: aws
+  runtime: nodejs6.10
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-west-2'}
+
+# you can define service wide environment variables here
+  environment:
+    USER_DATA_TABLE:
+      Ref: userDataTable
+    USERS_TABLE:
+      Ref: usersTable
+    GROUP_MESSAGES_TABLE:
+      Ref: groupMessagesTable
+    DYNAMO_ENDPOINT: ${self:custom.${self:provider.stage}DynamoEndpoint}
+
+# you can add packaging information here
+package:
+  individually: true
+#  include:
+#    - include-me.js
+#    - include-me-dir/**
+  exclude: # add everything in the server directory that isn't a lambda function (or needed for one) to this list
+    - common-test/**
+    - dynamodb/**
+    - node_modules/**
+    - package-lock.json
+    - shared-local-instance.db
+    - rolemappings.yml.tmpl
+    - setup/**
+
+functions:
+  api:
+    package:
+      exclude:
+        - verification/**
+        - reminders/**
+        - api/test/**
+        - api/node_modules/** # api function doesn't have any dependencies; delete this line if you add any
+    role: lambdaWithDynamoRole
+    handler: api/api.handler
+    events:
+      - http:
+          path: group/members
+          method: get
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
+          request:
+            parameters:
+              querystrings:
+                group_name: false
+      - http:
+          path: group/messages
+          method: get
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
+          request:
+            parameters:
+              querystrings:
+                group_name: false
+                since: true
+      - http:
+          path: group/messages
+          method: post
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
+          request:
+            parameters:
+              querystrings:
+                group_name: false    
+      - http:
+          path: users/{user_id}
+          method: get
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
+          request:
+            parameters:
+              paths:
+                user_id: true
+      - http:
+          path: users/{user_id}/data
+          method: get
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
+          request:
+            parameters:
+              paths:
+                user_id: true
+              querystrings:
+                start: true
+                end: true
+      - http:
+          path: users/{user_id}/emoji
+          method: post
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
+          request:
+            parameters:
+              paths:
+                user_id: true
+              querystrings:
+                e: true
+      - http:
+          path: users/minutes
+          method: put
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
+          request:
+            parameters:
+              querystrings:
+                date: true
+                minutes: true
+    environment:
+      ADMIN_GROUP: "staff"
+      REGION: ${self:provider.region}
+
+  remind:
+    package:
+      exclude:
+        - verification/**
+        - api/**
+        - reminders/message-loader/**
+        - reminders/test/**
+        - reminders/README.md
+        - reminders/.*
+    role: lambdaWithDynamoRole
+    handler: reminders/remind.handler
+    events:
+      - schedule:
+          rate: cron(00 06 * * ? *)
+          description: Reminds users who haven't yet done their training for the day to do so.
+          input:
+            msgType: train
+      - schedule:
+          rate: cron(4 16 * * ? *)
+          description: Reminds users who haven't reported their training minutes for yesterday to do so.
+          input:
+            msgType: report
+      - schedule:
+          rate: rate(2 hours)
+          description: Informs users in groups with new messages that new messages exist.
+          input:
+            msgType: new_group_msg
+      - schedule:
+          rate: cron(53 0/2 * * ? *)
+          description: Informs users who have recently received emoji of the fact.
+          input:
+            msgType: new_emoji
+#    Define function environment variables here
+    environment:
+      GROUPS_TABLE:
+        Ref: groupsTable
+      REMINDER_MSGS_TABLE:
+        Ref: reminderMessagesTable
+      TARGET_MINUTES_BY_WEEK: "[20,25,30,35,40,40,40]"
+      SES_ENDPOINT: 
+        Fn::Sub: "https://email.${self:provider.region}.amazonaws.com"
+      SNS_ENDPOINT: 
+        Fn::Sub: "https://sns.${self:provider.region}.amazonaws.com"
+      REGION: ${self:provider.region}
+
+# DO NOT CHANGE the name of this function unless you also change it in setup/setup.js
+  messageCustomizer:
+    package:
+      exclude:
+        - api/**
+        - reminders/**
+        - verification/verified.js
+    role: lambdaWithDynamoRole
+    handler: verification/message_customizer.handler
+    environment:
+      REGION: ${self:provider.region}
+
+# DO NOT CHANGE the name of this function unless you also change it in setup/setup.js
+  writeUserOnVerify:
+    package:
+      exclude:
+        - api/**
+        - reminders/**
+        - verification/message_customizer.js
+    role: lambdaWithDynamoRole
+    handler: verification/verified.handler
+    environment:
+      REGION: ${self:provider.region}
+      USERS_TABLE:
+        Ref: usersTable
+
+plugins:
+  - serverless-dynamodb-local
+  - serverless-offline
+
+# you can add CloudFormation resource templates here
+resources:
+  Resources:
+# All of the DynamoDB tables that we need
+    groupsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-groups
+        AttributeDefinitions:
+          - AttributeName: name
+            AttributeType: S
+        KeySchema:
+          - AttributeName: name
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 1
+    groupMessagesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-group-messages
+        AttributeDefinitions:
+          - AttributeName: group
+            AttributeType: S
+          - AttributeName: date
+            AttributeType: N
+        KeySchema:
+          - AttributeName: group
+            KeyType: HASH
+          - AttributeName: date
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 1
+    reminderMessagesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-reminder-msgs
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    usersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-users
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 1
+    userDataTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-user-data
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: date
+            AttributeType: N
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: date
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+
+# role for authorized cognito users
+    cognitoAuthorizedRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument: 
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal: 
+                Federated: "cognito-identity.amazonaws.com"
+              Action: 
+                - "sts:AssumeRoleWithWebIdentity"
+              Condition:
+                StringEquals: 
+                  "cognito-identity.amazonaws.com:aud": 
+                    Fn::ImportValue: ${self:service}-${self:provider.stage}-identityPoolId
+                "ForAnyValue:StringLike":
+                  "cognito-identity.amazonaws.com:amr": authenticated
+        Policies:
+          - PolicyName: "CognitoAuthorizedPolicy"
+            PolicyDocument: 
+              Version: "2012-10-17"
+              Statement: 
+                - Effect: "Allow"
+                  Action:
+                    - "mobileanalytics:PutEvents"
+                    - "cognito-sync:*"
+                    - "cognito-identity:*"
+                  Resource: "*"
+          - PolicyName: "DynamoGroupsReadPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "dynamodb:BatchGetItem"
+                    - "dynamodb:GetItem"
+                    - "dynamodb:Query"
+                    - "dynamodb:Scan"
+                  Resource: { Fn::GetAtt: [groupsTable, Arn] }
+# Assigns the authorized/unauthorized roles to the identity pool
+# and gives staff group members admin privileges
+    cognitoIdPoolRoleMapping:
+      Type: "AWS::Cognito::IdentityPoolRoleAttachment"
+      Properties:
+        IdentityPoolId: 
+          Fn::ImportValue: ${self:service}-${self:provider.stage}-identityPoolId
+        Roles:
+          authenticated: { Fn::GetAtt: [cognitoAuthorizedRole, Arn] }
+          unauthenticated: { Fn::ImportValue: "${self:service}-${self:provider.stage}-cognitoUnauthorizedRole" }
+        RoleMappings: ${file(./rolemappings.yml)}
+
+# policy to allow writing to some hrv dynamodb tables
+    dynamoWriteAccess:
+      Type: "AWS::IAM::ManagedPolicy"
+      Properties:
+        Description: Allows write access to certain tables
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Action:
+                - "dynamodb:PutItem"
+              Resource:
+                - { Fn::GetAtt: [groupMessagesTable, Arn] }
+                - { Fn::GetAtt: [usersTable, Arn] }
+            - Effect: "Allow"
+              Action:
+                - "dynamodb:UpdateItem"
+              Resource:
+                - { Fn::GetAtt: [userDataTable, Arn] }
+                - { Fn::GetAtt: [reminderMessagesTable, Arn] }
+        ManagedPolicyName: { "Fn::Sub": "${self:service}-${self:provider.stage}-dynamo-write" }
+
+# role for lambda functions that need common dynamo access
+    lambdaWithDynamoRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument: 
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal: 
+                Service: 
+                  - "lambda.amazonaws.com"
+              Action: 
+                - "sts:AssumeRole"
+        ManagedPolicyArns:
+          - { Fn::ImportValue: "${self:service}-${self:provider.stage}-cloudwatchWriteAccess" }
+          - { Fn::ImportValue: "${self:service}-${self:provider.stage}-dynamoReadAccess" }
+          - { Ref: dynamoWriteAccess }
