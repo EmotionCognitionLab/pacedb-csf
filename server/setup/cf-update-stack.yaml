@@ -37,6 +37,13 @@ Resources:
       WebsiteConfiguration:
         IndexDocument: index.html
 
+# S3 bucket for storing automatically-uploaded user training data
+  dataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: 
+        Fn::Sub: ${ServiceParam}-${StageParam}-usr-data
+
 # start of cognito setup
 # see https://gist.github.com/singledigit/2c4d7232fa96d9e98a3de89cf6ebe7a5 for example
     # SNS role so that cognito can send SMS messages
@@ -182,6 +189,37 @@ Resources:
       ManagedPolicyName:
         Fn::Sub: "${ServiceParam}-${StageParam}-cloudwatch-write"
 
+# policy to allow reading from the data bucket
+  dataBucketReadAccess:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: Allows reading from the data bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+            Resource: 
+              - Fn::GetAtt: [dataBucket, Arn]
+      ManagedPolicyName:
+        Fn::Sub: "${ServiceParam}-${StageParam}-databucket-read"
+
+# user account for the software on subject machines to upload data
+  dataUploader:
+    Type: "AWS::IAM::User"
+    Properties:
+      Policies:
+        - PolicyName: "dataBucketWrite"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:PutObject"
+                Resource:
+                  - Fn::GetAtt: [dataBucket, Arn]
+
 # role for client app admins
   clientAdminRole:
     Type: "AWS::IAM::Role"
@@ -252,6 +290,11 @@ Outputs:
       Fn::GetAtt: [cognitoUnauthorizedRole, Arn]
     Export:
       Name: !Sub "${ServiceParam}-${StageParam}-cognitoUnauthorizedRole"
+  DataBucketReadAccess:
+    Value:
+      Ref: dataBucketReadAccess
+    Export:
+      Name: !Sub "${ServiceParam}-${StageParam}-dataBucketReadAccess"
   DynamoReadAccess:
     Value:
       Ref: dynamoReadAccess
