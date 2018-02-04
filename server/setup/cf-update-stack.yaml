@@ -13,6 +13,10 @@ Parameters:
   AdminPhotoUrlParam:
     Type: String
     Description: The url of a photo that will be used for the admin user
+  AdminSubjectIdParam:
+    Type: String
+    Default: 1
+    Description: The subject id assigned to the admin user
   CognitoUserPoolIdParam:
     Type: String
     Description: The id of the cognito user pool that will hold all of our users
@@ -119,6 +123,8 @@ Resources:
           Value: !Ref AdminPhotoUrlParam
         - Name: "custom:group"
           Value: !Ref cognitoStaffGroup
+        - Name: "custom:subjectId"
+          Value: !Ref AdminSubjectIdParam
       Username: !Ref AdminEmailParam
       UserPoolId: !Ref CognitoUserPoolIdParam
 

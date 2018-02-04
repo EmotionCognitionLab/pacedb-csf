@@ -28,6 +28,7 @@ function buildUserRecord(event) {
         Item: {
             id: event.request.userAttributes["sub"],
             group: event.request.userAttributes["custom:group"],
+            subjectId: event.request.userAttributes["custom:subjectId"],
             firstName: event.request.userAttributes["given_name"],
             lastName: event.request.userAttributes["family_name"],
             photoUrl: event.request.userAttributes["picture"],

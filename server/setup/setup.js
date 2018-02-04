@@ -70,7 +70,7 @@ function createStack(cfTmplName, bucket, serviceName, stage) {
     return cf.createStack(params).promise();
 }
 
-function updateStack(cfTmplName, bucket, cognitoUserPoolId, adminFirstName, adminLastName, adminEmail, adminPhotoUrl, serviceName, stage) {
+function updateStack(cfTmplName, bucket, cognitoUserPoolId, adminFirstName, adminLastName, adminEmail, adminPhotoUrl, adminSubjectId, serviceName, stage) {
     const params = {
         StackName: serviceName,
         TemplateURL: `https://s3.amazonaws.com/${bucket}/${cfTmplName}`,
@@ -90,6 +90,10 @@ function updateStack(cfTmplName, bucket, cognitoUserPoolId, adminFirstName, admi
             {
                 ParameterKey: "AdminPhotoUrlParam",
                 ParameterValue: adminPhotoUrl
+            },
+            {
+                ParameterKey: "AdminSubjectIdParam",
+                ParameterValue: adminSubjectId
             },
             {
                 ParameterKey: "CognitoUserPoolIdParam",
@@ -283,6 +287,7 @@ async function main() {
         const lastName = await requestGeneral('Admin last name', 'Admin');
         const adminEmail = await requestGeneral('Admin email. (If you haven\'t received a boost to your SES sending rate from AWS this must be an SES-verified email address.)', email, /.+@.+\..+/);
         const adminPhoto = await requestGeneral('URL for photo of admin', '');
+        const adminSubjectId = await requestGeneral('Study subject id for admin account', '1');
         
         console.log('Next we need some information about deploying this to AWS.')
         const serviceName = await requestGeneral('Service name', 'hrv', /[-A-z0-9]{1,128}/);
@@ -308,7 +313,7 @@ async function main() {
         .then((cfUpdateFile) => {
             console.log('Template uploaded');
             process.stdout.write('Updating CloudFormation stack...');
-            return updateStack(cfUpdateFile, bucket, poolId, firstName, lastName, adminEmail, adminPhoto, serviceName, stage);
+            return updateStack(cfUpdateFile, bucket, poolId, firstName, lastName, adminEmail, adminPhoto, adminSubjectId, serviceName, stage);
         })
         .then((updateRes) => waitForCloudFormation('stackUpdateComplete', updateRes.StackId, function(cfOutputs) {
                 deployServerless(serviceName, stage, cfOutputs, adminEmail, accountId, poolId); 
@@ -319,7 +324,7 @@ async function main() {
             // because of https://forums.aws.amazon.com/thread.jspa?threadID=252521
             // the PostConfirmation user trigger that writes the admin user to dynamo
             // doesn't get called; we have to call it ourselves here 
-            writeAdminUserToDynamo(serviceName, stage, adminEmail, firstName, lastName, adminPhoto, cognitoStaffGroup, userInfo.Username);
+            writeAdminUserToDynamo(serviceName, stage, adminEmail, firstName, lastName, adminPhoto, adminSubjectId, cognitoStaffGroup, userInfo.Username);
             console.log('Setup complete.');
         })
         .catch(err => console.log(err)) ;
@@ -398,7 +403,7 @@ async function deployServerless(serviceName, stage, outputs, adminEmail, account
     }
 }
 
-function writeAdminUserToDynamo(serviceName, stage, email, firstName, lastName, photo, staffGroup, id) {
+function writeAdminUserToDynamo(serviceName, stage, email, firstName, lastName, photo, subjectId, staffGroup, id) {
     const lambda = new AWS.Lambda({region: region});
     return lambda.invoke({
         FunctionName: `${serviceName}-${stage}-${cognitoPostConfirmationFunction}`,
@@ -407,6 +412,7 @@ function writeAdminUserToDynamo(serviceName, stage, email, firstName, lastName, 
                 userAttributes: {
                     sub: id,
                     "custom:group": staffGroup,
+                    "custom:subjectId": subjectId,
                     given_name: firstName,
                     family_name: lastName,
                     picture: photo,
