@@ -17,8 +17,8 @@ import { environment } from '../../environments/environment';
 
 @Injectable()
 export class GroupService {
-    static tableName = 'hrv-groups';
-    static msgTableName = 'hrv-group-messages';
+    tableName = environment.groupsTable;
+    msgTableName = environment.groupMsgsTable;
     basePath = environment.apiBasePath;
 
     constructor(private dyno: DynamoService, private authService: AuthService, protected http: Http) {}
@@ -27,7 +27,7 @@ export class GroupService {
         return this.dyno.docClient
         .then((docClient) => {
             return docClient.put({
-            TableName: GroupService.tableName,
+            TableName: this.tableName,
             Item: {
                 'name': newGroup.name,
                 'startDate': newGroup.startDate,
@@ -47,7 +47,7 @@ export class GroupService {
         return this.dyno.docClient
         .then((docClient) => {
             return docClient.get({
-                TableName: GroupService.tableName,
+                TableName: this.tableName,
                 Key: { 'name': name }
             }).promise();
         })
@@ -77,7 +77,7 @@ export class GroupService {
         return this.dyno.docClient
         .then((docClient) => {
             const params = {
-                TableName: GroupService.tableName
+                TableName: this.tableName
             };
             if (lastEvaldKey !== undefined) {
                 params['ExclusiveStartKey'] = lastEvaldKey;
