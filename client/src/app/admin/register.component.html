@@ -70,6 +70,12 @@
         </div>
 
         <div class="form-group">
+            <input type="text" class="form-control short" id="subjectId" 
+            required [(ngModel)]="user.subjectId" name="subjectId" 
+            placeholder="Subject ID" #thesubjId="ngModel">
+        </div>
+
+        <div class="form-group">
             <input type="text" class="form-control short" id="group" 
             required [(ngModel)]="user.group" name="group" placeholder="Group"
             [ngbTypeahead]="groupSearch" />

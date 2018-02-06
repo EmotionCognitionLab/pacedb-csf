@@ -39,7 +39,7 @@ import { UserService } from './service/user.service';
 export class UserComponent implements OnInit, OnDestroy {
     @Input() user: User;
     @Input() group: Group;
-    currentUser = new User('', '', '', '');
+    currentUser = new User('', '', '', '', '');
     emojis: EmojiFeedback[] = [];
     progressClasses: string;
     weeklyMinutesTrained = 0;

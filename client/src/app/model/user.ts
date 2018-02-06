@@ -10,7 +10,7 @@ export class User {
     }
 
     static fromJsonObj(jsObj): User {
-        const result = new User('', '', '', '');
+        const result = new User('', '', '', '', '');
         result.id = ''; // so that it will be populated from jsObj, if it's there
         result.group = ''; // ditto
         for (const prop in jsObj) {
@@ -25,6 +25,7 @@ export class User {
         public lastName: string,
         public photoUrl: string,
         public password: string,
+        public subjectId: string,
         public email?: string,
         public phone?: string
         ) {}

@@ -110,7 +110,7 @@ export class AuthService {
                 return null;
             }
             const token = JWT(session.getIdToken().getJwtToken());
-            const u = new User(token['given_name'], token['family_name'], token['picture'], '');
+            const u = new User(token['given_name'], token['family_name'], token['picture'], '', '');
             u.id = token['sub'];
             return u;
         })
@@ -199,12 +199,17 @@ export class AuthService {
             Value: newuser.group
         };
 
+        const dataSubjectId = {
+            Name: 'custom:subjectId',
+            Value: newuser.subjectId
+        };
+
         const dataPicture = {
             Name: 'picture',
             Value: newuser.photoUrl
         };
 
-        [dataEmail, dataPhone, datafirstName, datalastName, dataGroup, dataPicture].forEach((item) =>
+        [dataEmail, dataPhone, datafirstName, datalastName, dataGroup, dataSubjectId, dataPicture].forEach((item) =>
             attributeList.push(new CognitoUserAttribute(item)));
 
         const username = newuser.username();
