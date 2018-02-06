@@ -38,6 +38,16 @@ Resources:
     Properties:
       BucketName: 
         Fn::Sub: ${ServiceParam}-${StageParam}-usr-imgs
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - "PUT"
+              - "POST"
+            AllowedOrigins:
+              - "*"
+            MaxAge: 3000
       WebsiteConfiguration:
         IndexDocument: index.html
 
@@ -127,6 +137,35 @@ Resources:
           Value: !Ref AdminSubjectIdParam
       Username: !Ref AdminEmailParam
       UserPoolId: !Ref CognitoUserPoolIdParam
+# add the admin user to the cognito group for staff
+# note that the cognito group is used in parallel
+# with the custom:group attribute on the user pool -
+# membership in the cognito group controls whether you are
+# granted admin privileges via IAM, while the setting of
+# the custom:group attribute controls which group of subjects
+# you're a member of
+# TODO this config DOES NOT WORK.
+# The problem is that when we ask clientAdminAccount for the username,
+# it hands back an email address, triggering a "User does not exist" error.
+# I suspect that if it returned the GUID instead of the email all would be well.
+# Possible fixes:
+# 1. Create the user in code and hand the guid back in to cf
+# drawbacks:
+#  - have to move the creation of the staff group and admin role into the cf-create template
+#  - have to manually delete the user on destroy? Or does that happen already in user pool deletion?
+
+#  2. Switch to doing email and phone as aliases and manually assigning GUID at registration
+#  drawbacks:
+#   - have to change client code to assign guids
+#   - requires a lot of manual testing
+#  advantages:
+#   - could stop creating the pool in code
+  # adminIsStaff:
+  #   Type: "AWS::Cognito::UserPoolUserToGroupAttachment"
+  #   Properties:
+  #     GroupName: !Ref cognitoStaffGroup
+  #     Username: !Ref clientAdminAccount
+  #     UserPoolId: !Ref CognitoUserPoolIdParam
 
 # role for unauthorized cognito users
   cognitoUnauthorizedRole:
@@ -266,7 +305,7 @@ Resources:
                   - "s3:PutObject"
                   - "s3:PutObjectAcl"
                 Resource:
-                  - Fn::GetAtt: [imgBucket, Arn]
+                  - Fn::Sub: "arn:aws:s3:::${imgBucket}/*"
 Outputs:
   ClientAdminAccount:
     Value:
