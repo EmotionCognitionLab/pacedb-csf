@@ -335,7 +335,16 @@ async function main() {
     
 }
 
-function installCognitoTriggers(userPoolId, customMessageLambda, postConfirmationLambda) {
+function installCognitoTriggers(accountId, userPoolId, customMessageLambda, postConfirmationLambda) {
+    const makeLambdaInvokePerms = (lambdaArn) => {
+        return {
+            Action: 'lambda:InvokeFunction',
+            Principal: 'cognito-idp.amazonaws.com',
+            SourceArn: `arn:aws:cognito-idp:${region}:${accountId}:userpool/${userPoolId}`,
+            FunctionName: lambdaArn,
+            StatementId: `invoker-${Date.now()}`
+        };
+    };
     // calling updateUserPool without supplying Policies.PasswordPolicy will cause it
     // to change your password policy. To be safe, get everything about the pool and 
     // send it back as part of your update, changing only the things you want to change.
@@ -356,11 +365,19 @@ function installCognitoTriggers(userPoolId, customMessageLambda, postConfirmatio
             CustomMessage: customMessageLambda,
             PostConfirmation: postConfirmationLambda
         };
-        return cognitoIdentityServiceProvider.updateUserPool(params, function(err, data) {
-            if (err) {
-                console.log(err);
-            }
-        });
+        return params;
+    })
+    .then(params => {
+        return cognitoIdentityServiceProvider.updateUserPool(params).promise();
+    })
+    .then(() => {
+        // we have to give cognito invoke permissions on the lambda functions
+        // we've just used as triggers
+        // https://stackoverflow.com/questions/42934361/creating-a-cognito-userpool-with-lambdas-configured-as-triggers
+        return lambda.addPermission(makeLambdaInvokePerms(customMessageLambda)).promise();
+    })
+    .then(() => {
+        return lambda.addPermission(makeLambdaInvokePerms(postConfirmationLambda)).promise();
     });
 }
 
@@ -395,7 +412,7 @@ async function deployServerless(serviceName, stage, outputs, adminEmail, account
         const lambdaFuncs = await lambda.listFunctions().promise();
         const msgCustomizerArn = lambdaArnForName(`${serviceName}-${stage}-${customCognitoMessageFunction}`, lambdaFuncs.Functions);
         const postConfirmationArn = lambdaArnForName(`${serviceName}-${stage}-${cognitoPostConfirmationFunction}`, lambdaFuncs.Functions);
-        await installCognitoTriggers(userPoolId, msgCustomizerArn, postConfirmationArn);
+        await installCognitoTriggers(accountId, userPoolId, msgCustomizerArn, postConfirmationArn);
         await validateAdminAccount(adminEmail, adminUsername, userPoolId, userPoolClientId);
     } catch (err) {
         console.log(err);
