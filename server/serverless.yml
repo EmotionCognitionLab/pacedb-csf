@@ -196,7 +196,7 @@ functions:
         - reminders/**
         - verification/verified.js
     role: lambdaWithDynamoRole
-    handler: verification/message_customizer.handler
+    handler: verification/message-customizer.handler
     environment:
       REGION: ${self:provider.region}
 
