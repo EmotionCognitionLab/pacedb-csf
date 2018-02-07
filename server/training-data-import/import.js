@@ -57,15 +57,23 @@ function importData(date) {
     let promises = [];
     return getActiveGroups(+date.format('YYYYMMDD'))
     .then(groupsRes => {
-        return groupsRes.Items.map(g => g.name)
-    })
-    .then(groupNames => {
+        if (groupsRes.Items.length === 0) {
+            console.log('No active groups found. Exiting.');
+            return;
+        }
+
+        const groupNames = groupsRes.Items.map(g => g.name);
         return getUsersInGroups(groupNames)
-    })
-    .then(usersRes => {
-        usersRes.Items.forEach(u => promises.push(importForUser(u, date).catch(err => console.log(err))))
-    })
-    .then(() => Promise.all(promises));
+        .then(usersRes => {
+            if (usersRes.Items.length === 0) {
+                console.log('Active groups had no members. Exiting.');
+                return;
+            }
+
+            usersRes.Items.forEach(u => promises.push(importForUser(u, date).catch(err => console.log(err))));
+            return Promise.all(promises);
+        });
+    });
 }
 
 function importForUser(user, date) {

@@ -173,13 +173,45 @@ describe('Importing log file data', function() {
             throw(err);
         });
     });
-    it('do nothing if it finds neither a log file nor a sqlite db file', function() {
+    it('should do nothing if it finds neither a log file nor a sqlite db file', function() {
         return runScheduledEvent('today')
         .then(function() {
             return getUserDataForDate(singleLine.users[0].id, todayYMD);
         })
         .then(function(userData) {
             assert.equal(userData.length, 0);
+        });
+    });
+    it('should do nothing if it finds no active groups', function() {
+        return dbSetup.dropTable(groupsTable)
+        .then(function() {
+            return dbSetup.createGroupsTable(groupsTable);
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function(res) {
+            assert.equal(1, 1); // if runScheduledEvent throws an error this won't execute and test will fail
+        })
+        .then(function() {
+            return dbSetup.writeTestData(groupsTable, [activeGroup]);
+        })
+        .catch(function(err) {
+            console.log(err);
+            return dbSetup.writeTestData(groupsTable, [activeGroup])
+            .then(function() {
+                throw err;
+            });
+        });
+    });
+    it('should do nothing if it finds no users in active groups', function() {
+        return runScheduledEvent('today')
+        .then(function() {
+            assert.equal(1, 1); // if runScheduledEvent throws an error this won't execute and test will fail
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw err;
         });
     });
     it('should sum up all of the seconds for all of the lines matching a given date', function() {
