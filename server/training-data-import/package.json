@@ -19,7 +19,8 @@
   "dependencies": {
     "aws-sdk": "^2.188.0",
     "better-sqlite3": "^4.1.0",
-    "csv-parse": "^2.0.0"
+    "csv-parse": "^2.0.0",
+    "moment": "^2.20.1"
   },
   "devDependencies": {
     "assert": "^1.4.1",
