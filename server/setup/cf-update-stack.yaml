@@ -212,7 +212,7 @@ Resources:
               - "dynamodb:Query"
               - "dynamodb:Scan"
             Resource:
-              - "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table:${ServiceParam}-${StageParam}-*"
+              - "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ServiceParam}-${StageParam}-*"
       ManagedPolicyName: 
         Fn::Sub: "${ServiceParam}-${StageParam}-dynamo-read"
 
@@ -295,7 +295,7 @@ Resources:
                   - "dynamodb:Query"
                   - "dynamodb:UpdateItem"
                 Resource:
-                  - "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table:${ServiceParam}-${StageParam}-*"
+                  - "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ServiceParam}-${StageParam}-*"
         - PolicyName: "s3WriteUserImages"
           PolicyDocument:
             Version: "2012-10-17"
