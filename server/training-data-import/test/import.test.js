@@ -6,6 +6,8 @@ const moment = require('moment');
 const dbSetup = require('../../common-test/db-setup.js');
 const dynDocClient = dbSetup.dynDocClient;
 const lambdaLocal = require('lambda-local');
+const sqlite3 = require('better-sqlite3');
+const fs = require('fs');
 
 const assert = require('assert');
 
@@ -26,7 +28,7 @@ const logFile = 'log.csv';
 const sqliteDb = 'emWave.emdb';
 
 
-// test data
+// test data for csv cases
 const scheduledEvent = {
     "account": "123456789012",
     "region": "us-east-1",
@@ -41,6 +43,7 @@ const scheduledEvent = {
 };
 
 const todayYMD = +moment().format('YYYYMMDD');
+const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
 const todayLogFormat = moment().format('MM-DD-YYYY-HH-mm-ss');
 
 const activeGroup = {name: 'active', startDate: +moment().subtract(10, 'days').format('YYYYMMDD'), endDate: +moment().add(10, 'days').format('YYYYMMDD')};
@@ -189,7 +192,7 @@ describe('Importing log file data', function() {
             return runScheduledEvent('today');
         })
         .then(function() {
-            const expectedMinutes = sumMinutes(multiLine.data, (d) => d);
+            const expectedMinutes = sumCsvMinutes(multiLine.data, (d) => d);
             return confirmResult(multiLine.users[0].id, todayYMD, expectedMinutes);
         })
         .catch(function(err) {
@@ -214,11 +217,11 @@ describe('Importing log file data', function() {
             return runScheduledEvent('today');
         })
         .then(function() {
-            const u1ExpectedMin = sumMinutes(multiGroup.data1, (d) => d);
+            const u1ExpectedMin = sumCsvMinutes(multiGroup.data1, (d) => d);
             return confirmResult(multiGroup.users[0].id, todayYMD, u1ExpectedMin);
         })
         .then(function() {
-            const u2ExpectedMin = sumMinutes(multiGroup.data2, (d) => d);
+            const u2ExpectedMin = sumCsvMinutes(multiGroup.data2, (d) => d);
             return confirmResult(multiGroup.users[1].id, todayYMD, u2ExpectedMin);
         })
         .catch(function(err) {
@@ -236,7 +239,7 @@ describe('Importing log file data', function() {
             return runScheduledEvent('today');
         })
         .then(function() {
-            const expectedMin = sumMinutes(multiDate.data, (d) => d.date === todayLogFormat);
+            const expectedMin = sumCsvMinutes(multiDate.data, (d) => d.date === todayLogFormat);
             return confirmResult(multiDate.users[0].id, todayYMD, expectedMin);
         })
         .catch(function(err) {
@@ -269,7 +272,7 @@ describe('Importing log file data', function() {
             assert.equal(userData.length, 0);
         })
         .then(function() {
-            const u2ExpectedMin = sumMinutes(multiGroup.data2, (d) => d);
+            const u2ExpectedMin = sumCsvMinutes(multiGroup.data2, (d) => d);
             return confirmResult(multiGroup.users[1].id, todayYMD, u2ExpectedMin);
         })
         .catch(function(err) {
@@ -277,7 +280,7 @@ describe('Importing log file data', function() {
             throw(err);
         });
     });
-    it('should not record a negative number of seconds', function() {
+    it('should not record a negative number of minutes', function() {
         const data = makeCsvData(negative.data);
         return saveDataToS3(`${negative.users[0].subjectId}/${logFile}`, data)
         .then(function() {
@@ -307,9 +310,9 @@ describe('Importing log file data', function() {
             return runScheduledEvent('yesterday');
         })
         .then(function() {
-            const expected = sumMinutes(yesterday.data, (d) => d.date === yesterdayLogFormat);
+            const expected = sumCsvMinutes(yesterday.data, (d) => d.date === yesterdayLogFormat);
             return confirmResult(yesterday.users[0].id, 
-                +moment().subtract(1, 'days').format('YYYYMMDD'),
+                yesterdayYMD,
                 expected);
         })
         .catch(function(err) {
@@ -370,6 +373,236 @@ describe('Importing log file data', function() {
     })
 });
 
+// test data for sqlite cases
+const basic = {
+    data: [{PulseStartTime: moment().unix(), PulseEndTime: moment().add(190, 'seconds').unix(), ValidStatus: 1}],
+    users: singleLine.users
+};
+
+const invalidStatus = {
+    data: [
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(190, 'seconds').unix(), ValidStatus: 1},
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(500, 'seconds').unix(), ValidStatus: -1}
+    ],
+    users: singleLine.users
+};
+
+const yesterdaySqlite = {
+    data: [
+        {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(190, 'seconds').unix(), ValidStatus: 1}
+    ],
+    users: singleLine.users
+}
+
+const negativeSqlite = {
+    data: [{PulseStartTime: moment().unix(), PulseEndTime: moment().subtract(95, 'seconds').unix(), ValidStatus: 1}],
+    users: singleLine.users
+};
+
+const multiUser = {
+    data: basic.data,
+    users: [
+        {id: 'abd289', subjectId: '5003', group: activeGroup.name},
+        {id: 'abd290', subjectId: '5004', group: activeGroup.name}
+    ]
+};
+
+const multiDay = {
+    data: [
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(350, 'seconds').unix(), ValidStatus: 1},
+        {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(280, 'seconds').unix(), ValidStatus: 1}
+    ],
+    users: singleLine.users
+};
+
+const multiEntry = {
+    data: [
+        {PulseStartTime: moment().startOf('day').unix(), PulseEndTime: moment().startOf('day').add(400, 'seconds').unix(), ValidStatus: 1},
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(290, 'seconds').unix(), ValidStatus: 1}
+    ],
+    users: singleLine.users
+};
+
+const sqliteFname = '/tmp/testdb.sqlite';
+
+describe("Importing sqlite data", function() {
+    before(function() {
+        return dbSetup.dropTable(groupsTable)
+        .then(function() {
+            return dbSetup.createGroupsTable(groupsTable);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(groupsTable, [activeGroup]);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    beforeEach(function() {
+        return dbSetup.dropTable(usersTable)
+        .then(function() {
+            return dbSetup.createUsersTable(usersTable);
+        })
+        .then(function() {
+            return dbSetup.dropTable(userDataTable);
+        })
+        .then(function() {
+            return dbSetup.createUserDataTable(userDataTable);
+        })
+        .then(function() {
+            return ensureEmptyBucketExists();
+        })
+        .then(function() {
+            fs.unlinkSync(sqliteFname);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should record the number of seconds described in the database', function() {
+        makeSqliteData(basic.data, sqliteFname);
+        return saveFileToS3(sqliteFname, emWaveS3Key(basic.users[0].subjectId))
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, basic.users);
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function() {
+            return confirmResult(basic.users[0].id, todayYMD, Math.round((basic.data[0].PulseEndTime - basic.data[0].PulseStartTime) / 60));
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should ignore rows where ValidStatus != 1', function() {
+        makeSqliteData(invalidStatus.data, sqliteFname);
+        return saveFileToS3(sqliteFname, emWaveS3Key(invalidStatus.users[0].subjectId))
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, invalidStatus.users);
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function() {
+            const expectedMin = sumSqliteMinutes(invalidStatus.data, (d) => d.ValidStatus === 1);
+            return confirmResult(invalidStatus.users[0].id, todayYMD, expectedMin);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should process data from yesterday when told to do so', function() {
+        makeSqliteData(yesterdaySqlite.data, sqliteFname);
+        return saveFileToS3(sqliteFname, emWaveS3Key(yesterdaySqlite.users[0].subjectId))
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, yesterdaySqlite.users);
+        })
+        .then(function() {
+            return runScheduledEvent('yesterday');
+        })
+        .then(function() {
+            const expectedMin = sumSqliteMinutes(yesterdaySqlite.data, (d) => d.PulseStartTime >= moment().subtract(1, 'days').startOf('day').unix());
+            return confirmResult(yesterdaySqlite.users[0].id, yesterdayYMD, expectedMin);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should not record a negative number of minutes', function() {
+        makeSqliteData(negativeSqlite.data, sqliteFname);
+        return saveFileToS3(sqliteFname, emWaveS3Key(negativeSqlite.users[0].subjectId))
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, negativeSqlite.users);
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function() {
+            return getUserDataForDate(negativeSqlite.users[0].id, todayYMD);
+        })
+        .then(function(userData) {
+            assert.equal(userData.length, 0);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should import data for other users if it errors on one user', function() {
+        makeSqliteData(multiUser.data, sqliteFname);
+        // intentionally save both a csv file and a sqlite file (both empty) for users[0] to trigger an error
+        return saveDataToS3(`${multiUser.users[0].subjectId}/${logFile}`, '')
+        .then(function() {
+            return saveDataToS3(`${multiUser.users[0].subjectId}/${sqliteDb}`, '');
+        })
+        .then(function() {
+            return saveFileToS3(sqliteFname, emWaveS3Key(multiUser.users[1].subjectId));
+        })
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, multiUser.users);
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function() {
+            return getUserDataForDate(multiUser.users[0].id, todayYMD);
+        })
+        .then(function(userData) {
+            assert.equal(userData.length, 0);
+        })
+        .then(function() {
+            const expectedMin = sumSqliteMinutes(multiUser.data, d => d);
+            return confirmResult(multiUser.users[1].id, todayYMD, expectedMin);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should ignore the seconds for rows matching other dates', function() {
+        makeSqliteData(multiDay.data, sqliteFname);
+        return saveFileToS3(sqliteFname, emWaveS3Key(multiDay.users[0].subjectId))
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, multiDay.users);
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function() {
+            const expectedMin = sumSqliteMinutes(multiDay.data, d => d.PulseStartTime >= moment().startOf('day').unix());
+            return confirmResult(multiDay.users[0].id, todayYMD, expectedMin);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should correctly sum the seconds for multiple rows on the same day', function() {
+        makeSqliteData(multiEntry.data, sqliteFname);
+        return saveFileToS3(sqliteFname, emWaveS3Key(multiEntry.users[0].subjectId))
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, multiEntry.users);
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function() {
+            const expectedMin = sumSqliteMinutes(multiEntry.data, d => d);
+            return confirmResult(multiEntry.users[0].id, todayYMD, expectedMin);
+        })
+        .catch(err => {
+            console.log(err);
+            throw(err);
+        });
+    });
+});
+
 // helper functions
 const csvHeader = "User,Session Name,Time Spent On This Attempt,Attempt,Finish Status,Session Time,Threshold,Date,Ave Calmness,Time Spending for the Session\n";
 
@@ -379,8 +612,28 @@ function makeCsvData(data) {
     return result;
 }
 
+function emWaveS3Key(subjectId) { return `${subjectId}/emWave.emdb`; }
+
+/**
+ * 
+ * @param [{PulseStartTime, PulseEndTime, ValidStatus}] data to write to sqlite db
+ * @param {string} fname name to save db with
+ */
+function makeSqliteData(data, fname) {
+    const db = new sqlite3(fname);
+    db.exec('CREATE TABLE Session (PulseStartTime INTEGER, PulseEndTime INTEGER, ValidStatus INTEGER)');
+    const stmt = db.prepare('INSERT INTO Session VALUES (?, ?, ?)');
+    data.forEach(d => stmt.run([d.PulseStartTime, d.PulseEndTime, d.ValidStatus]));
+    db.close();
+}
+
 function saveDataToS3(key, data) {
     return s3.putObject({Bucket: bucket, Key: key, Body: data}).promise();
+}
+
+function saveFileToS3(src, key) {
+    const data = fs.readFileSync(src);
+    return saveDataToS3(key, data);
 }
 
 function ensureEmptyBucketExists() {
@@ -426,10 +679,16 @@ function runScheduledEvent(whichDay) {
  * @param {array} data 
  * @param {function} filter
  */
-function sumMinutes(data, filterFunc) {
+function sumCsvMinutes(data, filterFunc) {
     let seconds = 0;
-    data.filter(d => filterFunc(d)).forEach(d => seconds += d.seconds);
+    data.filter(filterFunc).forEach(d => seconds += d.seconds);
     return Math.round(seconds / 60);
+}
+
+function sumSqliteMinutes(data, filterFunc) {
+    return Math.round(
+        data.filter(filterFunc).reduce((prev, cur) => prev + (cur.PulseEndTime - cur.PulseStartTime), 0) / 60
+    );
 }
 
 function getUserDataForDate(userId, date) {

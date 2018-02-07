@@ -8,8 +8,8 @@ const bucket = process.env.DATA_BUCKET;
 const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
 const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePathStyle: true});
 
+const sqlite3 = require('better-sqlite3');
 const parse = require('csv-parse');
-
 const moment = require('moment');
 
 const groupsTable = process.env.GROUPS_TABLE;
@@ -72,9 +72,9 @@ function importForUser(user, date) {
     console.log(`importing data for subject ${user.subjectId}`);
     return getDataForUser(user, date)
     .then(seconds => {
-        if (seconds === undefined) {
-            // no file was found for the user. call it quits.
-            console.log(`no log file found for subject ${user.subjectId}`)
+        if (seconds === undefined || seconds === 0) {
+            // no file was found for the user or the file had no data for 'date'. call it quits.
+            console.log(`no log file/sqlite db found (or no entries found for ${date.format('YYYY-MM-DD')}) for subject ${user.subjectId}`)
             return;
         } else {
             return writeDataToDynamo(user, date, seconds)
@@ -110,7 +110,7 @@ function getDataForUser(user, date) {
 }
 
 /**
- * Returns all of the data from the csv file uploaded for the given user on the given date.
+ * Returns the number of seconds of training the given user did on the given date, as recorded in  the csv file their system uploaded.
  * @param {Object} user 
  * @param {Object} date
  */
@@ -134,6 +134,32 @@ function getCsvDataForUser(user, date) {
                 resolve(totalSeconds);
             }
         )});
+    });
+}
+
+/**
+ * Returns the number of seconds of training the given user did on the given date, as recorded in  the sqlite db their system uploaded.
+ * @param {Object} user 
+ * @param {Object} data 
+ */
+function getSqliteDataForUser(user, date) {
+    const params = { Bucket: bucket, Key: `${user.subjectId}/${sqliteDb}` };
+    const fname = `/tmp/${user.subjectId}-${sqliteDb}`;
+    const file = require('fs').createWriteStream(fname);
+    s3.getObject(params).createReadStream().pipe(file);
+    let db;
+    return new Promise((resolve, reject) => {
+        file.on('finish', () => {
+            db = new sqlite3(fname);
+            const dateStart = date.clone().startOf('day');
+            // We credit any sessions begun on the target day to that target day,
+            // regardless of when they ended
+            const stmt = 
+                db.prepare('select SUM(PulseEndTime-PulseStartTime) total from Session where ValidStatus = 1 and PulseStartTime >= ?');
+            const res = stmt.get([dateStart.format('X')]);
+            db.close();
+            resolve(res && res.total > 0 ? res.total : 0);
+        });
     });
 }
 
