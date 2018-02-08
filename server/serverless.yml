@@ -152,6 +152,7 @@ functions:
         - reminders/test/**
         - reminders/README.md
         - reminders/.*
+        - training-data-import/**
     role: lambdaWithDynamoRole
     handler: reminders/remind.handler
     events:
@@ -195,6 +196,7 @@ functions:
         - api/**
         - reminders/**
         - verification/verified.js
+        - training-data-import/**
     role: lambdaWithDynamoRole
     handler: verification/message-customizer.handler
     environment:
@@ -207,6 +209,7 @@ functions:
         - api/**
         - reminders/**
         - verification/message_customizer.js
+        - training-data-import/**
     role: lambdaWithDynamoRole
     handler: verification/verified.handler
     environment:
@@ -214,9 +217,35 @@ functions:
       USERS_TABLE:
         Ref: usersTable
 
+  dataImporter:
+    package:
+      exclude:
+        - api/**
+        - reminders/**
+        - verification/**
+        - training-data-import/test/**
+    role: lambdaWithDynamoRole
+    handler: training-data-import/import.handler
+    events:
+      - schedule:
+          rate: cron(40 05 * * ? *)
+          description: Checks for training data before the reminder to train is sent out.
+          input:
+            day: yesterday
+      - schedule:
+          rate: cron(45 15 * * ? *)
+          description: Checks for training data before the reminder to enter training data is sent out.
+          input:
+            day: yesterday
+    environment:
+      REGION: ${self:provider.region}
+      GROUPS_TABLE:
+        Ref: groupsTable
+
 plugins:
   - serverless-dynamodb-local
   - serverless-offline
+  - npm-rebuild-plugin # see .serverless_plugins
 
 # you can add CloudFormation resource templates here
 resources:
