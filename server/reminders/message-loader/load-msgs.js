@@ -1,5 +1,7 @@
 'use strict'
 
+const tableName = 'hrv-prod-reminder-msgs';
+
 const myArgs = process.argv.slice(2);
 if (myArgs.length !== 2) {
     console.log('Usage: node load-msgs.js region csv-file');
@@ -40,10 +42,10 @@ function(err, csvRecs) {
         // dynamo batchWrite accepts a max of 25 items
         let loaded = 0;
         if (pushed+25 >= items.length) {
-            pushCmd['hrv-reminder-msgs'] = items.slice(pushed);
+            pushCmd[tableName] = items.slice(pushed);
             loaded = items.length - pushed;
         } else {
-            pushCmd['hrv-reminder-msgs'] = items.slice(pushed, pushed+25);
+            pushCmd[tableName] = items.slice(pushed, pushed+25);
             loaded = 25;
         }
         console.log(`Loaded ${loaded} items`);
@@ -54,7 +56,8 @@ function(err, csvRecs) {
                console.log('Failed to process the following items: ');
                console.log(JSON.stringify(result.UnprocessedItems));
            }
-        });
+        })
+        .catch(err => console.log(err));
         pushed += 25;
         
     }
