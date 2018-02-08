@@ -1,13 +1,13 @@
 export const environment = {
   production: true,
-  apiBasePath: 'https://n9ixkogqs4.execute-api.us-east-2.amazonaws.com/Prod',
+  apiBasePath: '',
   identityPoolId: '',
   userPoolId: '',
   userPoolClientId: '',
-  awsRegion: 'us-east-2',
-  dynamoEndpoint: 'https://dynamodb.us-east-2.amazonaws.com',
-  groupsTable: 'hrv-users',
-  groupMsgsTable: 'hrv-group-messages',
+  awsRegion: 'us-west-2',
+  dynamoEndpoint: 'https://dynamodb.us-west-2.amazonaws.com',
+  groupsTable: 'hrv-prod-groups',
+  groupMsgsTable: 'hrv-prod-group-messages',
   groupsWithAdminPerms: ['staff'],
-  usrImgBucket: 'hrv-usr-imgs'
+  usrImgBucket: 'hrv-prod-usr-imgs'
 };
