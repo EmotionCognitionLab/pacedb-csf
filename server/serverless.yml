@@ -177,6 +177,12 @@ functions:
           description: Informs users who have recently received emoji of the fact.
           input:
             msgType: new_emoji
+      - schedule:
+          rate: cron(17 7 ? * 4 *)
+          description: Tells users whether their group is on or off track
+          input:
+            msgType: group_status
+            
 #    Define function environment variables here
     environment:
       GROUPS_TABLE:
