@@ -35,6 +35,7 @@ provider:
     GROUP_MESSAGES_TABLE:
       Ref: groupMessagesTable
     DYNAMO_ENDPOINT: ${self:custom.${self:provider.stage}DynamoEndpoint}
+    REGION: ${self:provider.region}
 
 # you can add packaging information here
 package:
@@ -49,6 +50,7 @@ package:
     - package-lock.json
     - shared-local-instance.db
     - rolemappings.yml.tmpl
+    - rolemappings.yml
     - setup/**
 
 functions:
@@ -141,7 +143,6 @@ functions:
                 minutes: true
     environment:
       ADMIN_GROUP: "staff"
-      REGION: ${self:provider.region}
 
   remind:
     package:
@@ -187,7 +188,6 @@ functions:
         Fn::Sub: "https://email.${self:provider.region}.amazonaws.com"
       SNS_ENDPOINT: 
         Fn::Sub: "https://sns.${self:provider.region}.amazonaws.com"
-      REGION: ${self:provider.region}
 
 # DO NOT CHANGE the name of this function unless you also change it in setup/setup.js
   messageCustomizer:
@@ -199,8 +199,6 @@ functions:
         - training-data-import/**
     role: lambdaWithDynamoRole
     handler: verification/message-customizer.handler
-    environment:
-      REGION: ${self:provider.region}
 
 # DO NOT CHANGE the name of this function unless you also change it in setup/setup.js
   writeUserOnVerify:
@@ -212,10 +210,6 @@ functions:
         - training-data-import/**
     role: lambdaWithDynamoRole
     handler: verification/verified.handler
-    environment:
-      REGION: ${self:provider.region}
-      USERS_TABLE:
-        Ref: usersTable
 
   dataImporter:
     package:
@@ -238,7 +232,6 @@ functions:
           input:
             day: yesterday
     environment:
-      REGION: ${self:provider.region}
       GROUPS_TABLE:
         Ref: groupsTable
 
