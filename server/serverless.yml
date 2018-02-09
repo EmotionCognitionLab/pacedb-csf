@@ -238,9 +238,11 @@ functions:
           input:
             day: yesterday
     environment:
+      # This should reference an export from the cloudformation setup, but it's hardwired into the client code that runs on participant laptops
+      DATA_BUCKET: "hrv-usr-data"
       GROUPS_TABLE:
         Ref: groupsTable
-
+        
 plugins:
   - serverless-dynamodb-local
   - serverless-offline
