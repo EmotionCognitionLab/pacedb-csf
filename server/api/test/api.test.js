@@ -849,7 +849,7 @@ describe('User request', function() {
             });
         });
         it('should reject a request missing the date param', function() {
-            const missingDate = Object.assign({}, putUserMinutes);
+            const missingDate = JSON.parse(JSON.stringify(putUserMinutes));
             delete missingDate.queryStringParameters.date;
             return lambdaLocal.execute({
                 event: missingDate,
@@ -865,7 +865,7 @@ describe('User request', function() {
             });
         });
         it('should reject a request with a data param with more than 8 characters', function() {
-            const longDate = Object.assign({}, putUserMinutes);
+            const longDate = JSON.parse(JSON.stringify(putUserMinutes));
             longDate.queryStringParameters.date = '201700701';
             return lambdaLocal.execute({
                 event: longDate,
@@ -881,7 +881,7 @@ describe('User request', function() {
             });
         });
         it('should reject a request with a date param with fewer than 8 characters', function() {
-            const shortDate = Object.assign({}, putUserMinutes);
+            const shortDate = JSON.parse(JSON.stringify(putUserMinutes));
             shortDate.queryStringParameters.date = '2017701';
             return lambdaLocal.execute({
                 event: shortDate,
@@ -897,7 +897,7 @@ describe('User request', function() {
             });
         })
         it('should reject a request missing the minutes param', function() {
-            const missingMin = Object.assign({}, putUserMinutes);
+            const missingMin = JSON.parse(JSON.stringify(putUserMinutes));
             delete missingMin.queryStringParameters.minutes;
             return lambdaLocal.execute({
                 event: missingMin,
@@ -913,7 +913,7 @@ describe('User request', function() {
             });
         });
         it('should reject a request with a negative minutes param', function() {
-            const negMin = Object.assign({}, putUserMinutes);
+            const negMin = JSON.parse(JSON.stringify(putUserMinutes));
             negMin.queryStringParameters.minutes = -13;
             return lambdaLocal.execute({
                 event: negMin,
@@ -930,8 +930,6 @@ describe('User request', function() {
 
         });
         it('should reject a request where the minutes have already been set automatically by software', function() {
-            putUserMinutes.queryStringParameters.minutes = "10";
-            putUserMinutes.queryStringParameters.date = "20170710";
             return dbSetup.writeTestData(userDataTable, [{ 
                     userId: putUserMinutes.requestContext.authorizer.claims.sub, 
                     date: +putUserMinutes.queryStringParameters.date, 
