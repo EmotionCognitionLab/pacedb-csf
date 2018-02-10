@@ -238,11 +238,12 @@ functions:
           input:
             day: yesterday
     environment:
-      # This should reference an export from the cloudformation setup, but it's hardwired into the client code that runs on participant laptops
-      DATA_BUCKET: "hrv-usr-data"
+      DATA_BUCKET:
+        Fn::Sub: "${self:service}-${self:provider.stage}-usr-data"
       GROUPS_TABLE:
         Ref: groupsTable
-        
+      REGION: us-east-2
+
 plugins:
   - serverless-dynamodb-local
   - serverless-offline
@@ -416,4 +417,5 @@ resources:
         ManagedPolicyArns:
           - { Fn::ImportValue: "${self:service}-${self:provider.stage}-cloudwatchWriteAccess" }
           - { Fn::ImportValue: "${self:service}-${self:provider.stage}-dynamoReadAccess" }
+          - { Fn::ImportValue: "${self:service}-${self:provider.stage}-dataBucketReadAccess" }
           - { Ref: dynamoWriteAccess }
