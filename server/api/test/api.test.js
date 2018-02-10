@@ -820,7 +820,7 @@ describe('User request', function() {
         });
     });
     describe('When storing user minutes', function() {
-        it('should store a properly formatted request', function() {
+        it('should store a properly formatted request, setting "minutesFrom" to "user"', function() {
             return lambdaLocal.execute({
                 event: putUserMinutes,
                 lambdaPath: 'api.js',
@@ -841,6 +841,7 @@ describe('User request', function() {
             })
             .then((result) => {
                 assert.equal(result.Item.minutes, +putUserMinutes.queryStringParameters.minutes);
+                assert.equal(result.Item.minutesFrom, 'user');
             })
             .catch(function(err) {
                 console.log(err);
@@ -927,6 +928,30 @@ describe('User request', function() {
                 throw(err);
             });
 
+        });
+        it('should reject a request where the minutes have already been set automatically by software', function() {
+            putUserMinutes.queryStringParameters.minutes = "10";
+            putUserMinutes.queryStringParameters.date = "20170710";
+            return dbSetup.writeTestData(userDataTable, [{ 
+                    userId: putUserMinutes.requestContext.authorizer.claims.sub, 
+                    date: +putUserMinutes.queryStringParameters.date, 
+                    minutes: 10, 
+                    minutesFrom: 'software'
+            }])
+            .then(function() {
+                return lambdaLocal.execute({
+                    event: putUserMinutes,
+                    lambdaPath: 'api.js',
+                    envile: './test/env.sh'
+                });
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 403);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
         });
     });
     describe('when giving another user an emoji', function() {

@@ -16,8 +16,15 @@
         <form (ngSubmit)="saveMinutes()" #minForm="ngForm">
             <div>
                 <label for="minutes">I did</label>
-                <input id="minutes" name="minutes" type="text" required size="4"
-                pattern="[0-9]{1,4}" #min="ngModel" [(ngModel)]="userMinutes"> minutes.
+                <div *ngIf="minutesFrom === 'software'; else minutesEnabled" style="display: inline-block;" placement="botom" ngbTooltip="Your training minutes were uploaded automatically and can't be changed.">
+                    <input id="minutes" name="minutes" type="text" required size="4"
+                    pattern="[0-9]{1,4}" #min="ngModel" [(ngModel)]="userMinutes" disabled> minutes.
+                </div>
+                <ng-template #minutesEnabled>
+                    <input id="minutes" name="minutes" type="text" required size="4"
+                    pattern="[0-9]{1,4}" #min="ngModel" [(ngModel)]="userMinutes"> minutes.
+                </ng-template>
+
                 <button class="btn" [disabled]="!minForm.form.valid">Submit</button>
             </div>
         </form>

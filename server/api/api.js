@@ -284,18 +284,32 @@ function writeUserMinutes(event) {
     }
     date = +date;
 
-    const updateParams = {
+    // check to make sure minutes haven't already been uploaded automatically
+    // (in which case users aren't allowed to overwrite them)
+    const queryParams = {
         TableName: userDataTable,
-        Key: { 'userId': userId, 'date': date},
-        UpdateExpression: 'set minutes = :minutes',
-        ExpressionAttributeValues: {':minutes': minutes}
+        KeyConditionExpression: 'userId = :userId and #D between :start and :end',
+        ExpressionAttributeNames: { '#D': 'date' },
+        ExpressionAttributeValues: { ':userId': userId, ':start': date, ':end': date }
     }
-    return dynamo.update(updateParams).promise()
-    .then(() => normalResult({}, 204))
+    return dynamo.query(queryParams).promise()
+    .then((result) => {
+        if (result.Items.length > 0 && result.Items[0].minutesFrom === 'software') {
+            return errorResult('403:Your training minutes were uploaded automatically and can\'t be changed.');
+        }
+        const updateParams = {
+            TableName: userDataTable,
+            Key: { 'userId': userId, 'date': date},
+            UpdateExpression: 'set minutes = :minutes, minutesFrom = :minutesFrom',
+            ExpressionAttributeValues: {':minutes': minutes, ':minutesFrom': 'user'}
+        }
+        return dynamo.update(updateParams).promise()
+        .then(() => normalResult({}, 204))
+    })
     .catch((err) => {
         console.log(err);
         return errorResult(err.message);
-    })
+    });
 }
 
 function writeUserEmoji(event) {

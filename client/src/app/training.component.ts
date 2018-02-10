@@ -26,6 +26,7 @@ import * as moment from 'moment';
 export class TrainingComponent implements OnInit, OnDestroy {
     day = moment();
     userMinutes: number;
+    minutesFrom: string;
     validityErr  = '';
     submitErr = '';
     statusMsg = '';
@@ -47,7 +48,13 @@ export class TrainingComponent implements OnInit, OnDestroy {
                 return this.userService.getUserData(user.id, today, today);
             });
         }).subscribe(userData => {
-            this.userMinutes = userData.length === 0 || userData[0].minutes === undefined ? 0 : userData[0].minutes;
+            if (userData.length === 0 || userData[0].minutes === undefined) {
+                this.userMinutes = 0;
+                this.minutesFrom = 'user';
+            } else {
+                this.userMinutes = userData[0].minutes;
+                this.minutesFrom = userData[0].minutesFrom || 'user';
+            }
         });
 
         this._daySubscription = this._daySubject.subscribe(day => this.day = day);
