@@ -1,5 +1,9 @@
 'use strict'
 
+// TODO get admin user added to staff group in cognito (see adminIsStaff in cf-update-stack.yaml)
+// TODO load reminder messages as part of setup
+
+
 const region = 'us-west-2'; // IMPORTANT: This must be a region in which SES exists. As of 1/2018, that means us-east-1 or us-west-2.
 const cfCreateTemplate = 'cf-create-stack.yaml';
 const cfUpdateTemplate = 'cf-update-stack.yaml';
