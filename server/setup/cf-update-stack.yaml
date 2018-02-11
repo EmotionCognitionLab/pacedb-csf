@@ -244,9 +244,14 @@ Resources:
         Statement:
           - Effect: "Allow"
             Action:
-              - "s3:GetObject"
+              - "s3:ListBucket"
             Resource: 
               - Fn::GetAtt: [dataBucket, Arn]
+          - Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+            Resource: 
+              - Fn::Sub: "arn:aws:s3:::${dataBucket}/*"
       ManagedPolicyName:
         Fn::Sub: "${ServiceParam}-${StageParam}-databucket-read"
 
@@ -263,7 +268,7 @@ Resources:
                 Action:
                   - "s3:PutObject"
                 Resource:
-                  - Fn::GetAtt: [dataBucket, Arn]
+                  - Fn::Sub: "arn:aws:s3:::${dataBucket}/*"
 
 # role for client app admins
   clientAdminRole:
