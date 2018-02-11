@@ -226,6 +226,7 @@ functions:
         - training-data-import/test/**
     role: lambdaWithDynamoRole
     handler: training-data-import/import.handler
+    timeout: 120
     events:
       - schedule:
           rate: cron(40 05 * * ? *)
