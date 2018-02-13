@@ -2,10 +2,11 @@
 
 const AWS = require('aws-sdk');
 const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
+const s3Endpoint = process.env.S3_ENDPOINT;
 const region = process.env.REGION;
 const bucket = process.env.DATA_BUCKET;
 const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
-const s3 = new AWS.S3({region: region, apiVersion: '2006-03-01', s3ForcePathStyle: true});
+const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePathStyle: true});
 
 const sqlite3 = require('better-sqlite3');
 const parse = require('csv-parse');

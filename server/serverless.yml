@@ -243,7 +243,7 @@ functions:
         Fn::Sub: "${self:service}-${self:provider.stage}-usr-data"
       GROUPS_TABLE:
         Ref: groupsTable
-      REGION: us-east-2
+      S3_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
 
 plugins:
   - serverless-dynamodb-local
