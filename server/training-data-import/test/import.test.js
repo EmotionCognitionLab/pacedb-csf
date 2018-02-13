@@ -486,7 +486,7 @@ describe("Importing sqlite data", function() {
             return ensureEmptyBucketExists();
         })
         .then(function() {
-            fs.unlinkSync(sqliteFname);
+            if (fs.existsSync(sqliteFname)) fs.unlinkSync(sqliteFname);
         })
         .catch(function(err) {
             console.log(err);
