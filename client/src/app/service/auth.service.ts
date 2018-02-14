@@ -142,12 +142,14 @@ export class AuthService {
         if (user === null) {
             return Promise.reject(new Error('User is not logged in'));
         }
+        const that = this;
         return new Promise<CognitoUserSession>((resolve, reject) =>
             user.getSession(function(err, session) {
                 if (err) {
                     console.log(err.message);
                     reject(err);
                 }
+                that._session = session;
                 resolve(session);
             })
         );
