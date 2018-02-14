@@ -232,7 +232,7 @@ functions:
           rate: cron(40 05 * * ? *)
           description: Checks for training data before the reminder to train is sent out.
           input:
-            day: yesterday
+            day: today
       - schedule:
           rate: cron(45 15 * * ? *)
           description: Checks for training data before the reminder to enter training data is sent out.
@@ -244,6 +244,7 @@ functions:
       GROUPS_TABLE:
         Ref: groupsTable
       S3_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
+      TIMEZONE: "America/Los_Angeles"
 
 plugins:
   - serverless-dynamodb-local

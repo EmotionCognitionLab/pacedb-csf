@@ -10,7 +10,7 @@ const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePa
 
 const sqlite3 = require('better-sqlite3');
 const parse = require('csv-parse');
-const moment = require('moment');
+const moment = require('moment-timezone');
 
 const groupsTable = process.env.GROUPS_TABLE;
 const usersTable = process.env.USERS_TABLE;
@@ -22,11 +22,12 @@ const logFile = 'log.csv';
 const sqliteDb = 'emWave.emdb';
 
 exports.handler = (event, context, callback) => {
+    const localTZ = process.env.TIMEZONE;
     let dataDate;
     if (event.day === 'today') {
-        dataDate = moment();
+        dataDate = moment().tz(localTZ);
     } else if (event.day === 'yesterday') {
-        dataDate = moment().subtract(1, 'days');
+        dataDate = moment().tz(localTZ).subtract(1, 'days');
     } else {
         const errMsg = (`Expected either 'yesterday' or 'today' as the day argument; got '${event.day}'`);
         console.log(errMsg);

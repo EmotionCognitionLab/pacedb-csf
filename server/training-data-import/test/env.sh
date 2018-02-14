@@ -5,3 +5,4 @@ REGION=us-west-2
 GROUPS_TABLE=hrv-groups-test
 USERS_TABLE=hrv-users-test
 USER_DATA_TABLE=hrv-user-data-test
+TIMEZONE=America/Los_Angeles

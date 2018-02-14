@@ -2,7 +2,7 @@
 
 require('dotenv').config({path: './test/env.sh'})
 
-const moment = require('moment');
+const moment = require('moment-timezone');
 const dbSetup = require('../../common-test/db-setup.js');
 const dynDocClient = dbSetup.dynDocClient;
 const lambdaLocal = require('lambda-local');
@@ -373,6 +373,37 @@ describe('Importing log file data', function() {
             throw(err);
         });
     });
+    it('should use the given time zone when calculating which day it is', function() {
+        // Here we load data that has today's date and run the lambda function using
+        // a timezone in which it is already tomorrow. The lambda function should fail
+        // to count the data we loaded.
+        const data = makeCsvData(singleLine.data);
+        return saveDataToS3(`${singleLine.users[0].subjectId}/${logFile}`, data)
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, singleLine.users);
+        })
+        .then(function() {
+            // figure out the offset to a timezone where it's already tomorrow
+            const tomorrowOffset = offsetForTomorrow();
+            const event = Object.assign({}, scheduledEvent);
+            Object.assign(event, {day: 'today'});
+            return lambdaLocal.execute({
+                event: event,
+                lambdaPath: 'import.js',
+                envfile: './test/env.sh',
+                envdestroy: true,
+                environment: { TIMEZONE: `Etc/GMT-${tomorrowOffset}` }, // see https://momentjs.com/timezone/docs/#/zone-object/offset/ 
+                verboseLevel: 0 // set this to 3 to get all lambda-local output
+            });
+        })
+        .then(function() {
+            return confirmResult(singleLine.users[0].id, todayYMD, 0);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
     it('should ignore files from members of inactive groups', function() {
         const data1 = makeCsvData(inactive.data1);
         const data2 = makeCsvData(inactive.data2);
@@ -628,7 +659,35 @@ describe("Importing sqlite data", function() {
             const expectedMin = sumSqliteMinutes(multiEntry.data, d => d);
             return confirmResult(multiEntry.users[0].id, todayYMD, expectedMin);
         })
-        .catch(err => {
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should use the given time zone when calculating the start of the day', function() {
+        makeSqliteData(basic.data, sqliteFname);
+        return saveFileToS3(sqliteFname, emWaveS3Key(basic.users[0].subjectId))
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, basic.users);
+        })
+        .then(function() {
+            // figure out the offset to a timezone where it's already tomorrow
+            const tomorrowOffset = offsetForTomorrow();
+            const event = Object.assign({}, scheduledEvent);
+            Object.assign(event, {day: 'today'});
+            return lambdaLocal.execute({
+                event: event,
+                lambdaPath: 'import.js',
+                envfile: './test/env.sh',
+                envdestroy: true,
+                environment: { TIMEZONE: `Etc/GMT-${tomorrowOffset}` }, // see https://momentjs.com/timezone/docs/#/zone-object/offset/ 
+                verboseLevel: 0 // set this to 3 to get all lambda-local output
+            });
+        })
+        .then(function() {
+            return confirmResult(basic.users[0].id, todayYMD, 0);
+        })
+        .catch(function(err) {
             console.log(err);
             throw(err);
         });
@@ -746,8 +805,21 @@ function getUserDataForDate(userId, date) {
 function confirmResult(userId, date, expectedMinutes) {
     return getUserDataForDate(userId, date)
     .then(function(rows) {
+        if (expectedMinutes === 0 && rows.length === 0) return;
+
         assert.equal(rows.length, 1, `Expected 1 row for userId ${userId} and date ${date}, but found ${rows.length}.`);
         const minutes = rows[0].minutes;
         assert.equal(minutes, expectedMinutes);
     });
 } 
+
+/**
+ * Returns the number of hours until tomorrow starts. Has not been carefully tested when running in
+ * timezones east of UTC.
+ */
+function offsetForTomorrow() {
+    const now = moment();
+    const hoursUntilTomorrow = moment().endOf('day').subtract(now.hours(), 'hours').hours() + 1;
+    const gmtOffsetHours = Math.abs(Math.round(moment.parseZone(moment().format()).utcOffset() / 60));
+    return hoursUntilTomorrow - gmtOffsetHours;
+}
