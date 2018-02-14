@@ -161,11 +161,12 @@ function getSqliteDataForUser(user, date) {
         file.on('finish', () => {
             db = new sqlite3(fname);
             const dateStart = date.clone().startOf('day');
+            const dateEnd = date.clone().endOf('day');
             // We credit any sessions begun on the target day to that target day,
             // regardless of when they ended
             const stmt = 
-                db.prepare('select SUM(PulseEndTime-PulseStartTime) total from Session where ValidStatus = 1 and PulseStartTime >= ?');
-            const res = stmt.get([dateStart.format('X')]);
+                db.prepare('select SUM(PulseEndTime-PulseStartTime) total from Session where ValidStatus = 1 and PulseStartTime >= ? and PulseStartTime <= ?');
+            const res = stmt.get([dateStart.format('X'), dateEnd.format('X')]);
             db.close();
             resolve(res && res.total > 0 ? res.total : 0);
         });

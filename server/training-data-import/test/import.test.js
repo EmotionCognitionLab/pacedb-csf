@@ -486,6 +486,14 @@ const multiEntry = {
     users: singleLine.users
 };
 
+const futureData = {
+    data: [
+        {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(22, 'minutes').unix(), ValidStatus: 1},
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(8, 'minutes').unix(), ValidStatus: 1}
+    ],
+    users: singleLine.users
+}
+
 const sqliteFname = '/tmp/testdb.sqlite';
 
 describe("Importing sqlite data", function() {
@@ -686,6 +694,26 @@ describe("Importing sqlite data", function() {
         })
         .then(function() {
             return confirmResult(basic.users[0].id, todayYMD, 0);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it.only('should ignore future data when summing minutes for a given day', function() {
+        makeSqliteData(futureData.data, sqliteFname);
+        return saveFileToS3(sqliteFname, emWaveS3Key(futureData.users[0].subjectId))
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, futureData.users)
+        })
+        .then(function() {
+            return runScheduledEvent('yesterday');
+        })
+        .then(function() {
+            const yesterdayStart = moment().subtract(1, 'days').startOf('day').unix();
+            const yesterdayEnd = moment().subtract(1, 'days').endOf('day').unix();
+            const expected = sumSqliteMinutes(futureData.data, d => d.PulseStartTime >= yesterdayStart && d.PulseStartTime <= yesterdayEnd);
+            return confirmResult(futureData.users[0].id, yesterdayYMD, expected);
         })
         .catch(function(err) {
             console.log(err);
