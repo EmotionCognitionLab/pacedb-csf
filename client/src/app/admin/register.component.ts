@@ -178,7 +178,8 @@ export class RegisterComponent implements OnInit {
             this.statusMsg = 'Uploading full image...';
             const fname = this.file === undefined ? 'cam.png' : this.file.name;
             const keyFull = `full/${rand}-${fname}`;
-            const body = this.file === undefined ? new Buffer(this.cropper.image.original.currentSrc.replace(/^data:image\/\w+;base64/, ''), 'base64') : this.file ;
+            const body = this.file === undefined ?
+                new Buffer(this.cropper.image.original.currentSrc.replace(/^data:image\/\w+;base64/, ''), 'base64') : this.file ;
             const s3paramsFull = {
                 ACL: 'authenticated-read',
                 Body: body,
