@@ -23,6 +23,10 @@ exports.handler = (event, context, callback) => {
 };
 
 function buildUserRecord(event) {
+    const today = new Date();
+    const month = today.getMonth() + 1 < 10 ? `0${today.getMonth() + 1}` : `${today.getMonth() + 1}`;
+    const day = today.getDate() < 10 ? `0${today.getDate()}` : `${today.getDate()}`;
+    const todayYMD = +`${today.getFullYear()}${month}${day}`;
     let result = {
         TableName: usersTable,
         Item: {
@@ -32,6 +36,7 @@ function buildUserRecord(event) {
             firstName: event.request.userAttributes["given_name"],
             lastName: event.request.userAttributes["family_name"],
             photoUrl: event.request.userAttributes["picture"],
+            dateCreated: todayYMD
         }
     };
     if (event.request.userAttributes["email"]) {
