@@ -4,11 +4,12 @@ import { CanActivate, CanActivateChild, Router, ActivatedRouteSnapshot, RouterSt
 import { Observable } from 'rxjs/Observable';
 
 import { AuthService } from './auth.service';
+import { LoggerService } from './logger.service';
 
 @Injectable()
 export class RouteGuardService implements CanActivate, CanActivateChild {
 
-    constructor(private authService: AuthService, private router: Router) { }
+    constructor(private authService: AuthService, private logger: LoggerService, private router: Router) { }
 
     canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot) {
         const dest = state.url;
@@ -37,7 +38,7 @@ export class RouteGuardService implements CanActivate, CanActivateChild {
             });
         })
         .catch((err) => {
-            console.log(err.message);
+            this.logger.error(err.message, err);
             return false;
         });
     }

@@ -7,11 +7,13 @@ import {
     CognitoUserPool,
     CognitoUserSession
 } from 'amazon-cognito-identity-js';
+
 import * as JWT from 'jwt-decode';
 import 'rxjs/add/operator/toPromise';
 
 import {User} from '../model/user';
 import {environment} from '../../environments/environment';
+import { LoggerService } from './logger.service';
 
 @Injectable()
 export class AuthService {
@@ -24,7 +26,7 @@ export class AuthService {
     private _dest = '/group';
     private _session: CognitoUserSession;
 
-    constructor() {}
+    constructor(private logger: LoggerService) {}
 
     getAccessToken(): Promise<string> {
         if (this._session === undefined || !this._session.isValid()) {
@@ -94,7 +96,7 @@ export class AuthService {
             return isAdmin !== undefined;
         })
         .catch((err) => {
-            console.log(err.message);
+            this.logger.error(err.message, err);
             return false;
         });
     }
@@ -115,7 +117,7 @@ export class AuthService {
             return u;
         })
         .catch((e) => {
-            console.log(e);
+            this.logger.error('Error getting session/decoding token in currentUserInsecure', e);
             return null;
         });
     }
@@ -127,7 +129,7 @@ export class AuthService {
             return session.isValid();
         })
         .catch((err) => {
-            console.log(err.message);
+            this.logger.error('Error getting user session in isLoggedIn', err);
             return false;
         });
     }
@@ -146,7 +148,7 @@ export class AuthService {
         return new Promise<CognitoUserSession>((resolve, reject) =>
             user.getSession(function(err, session) {
                 if (err) {
-                    console.log(err.message);
+                    this.logger.error('Error getting user session', err);
                     reject(err);
                 }
                 that._session = session;
@@ -166,7 +168,7 @@ export class AuthService {
             // if the user was null, return true anyway - they're effectively already logged out
             return true;
         } catch (e) {
-            console.log(e);
+            this.logger.error('Error logging out', e);
             return false;
         }
     }

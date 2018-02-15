@@ -11,6 +11,7 @@ import { Observable } from 'rxjs/Observable';
 
 import * as moment from 'moment';
 import { SimpleChanges } from '@angular/core/src/metadata/lifecycle_hooks';
+import { LoggerService } from './service/logger.service';
 
 @Component({
     selector: 'group-message',
@@ -30,7 +31,8 @@ export class GroupMessageComponent implements OnInit {
     constructor(
         private userService: UserService,
         private authService: AuthService,
-        private groupService: GroupService) { }
+        private groupService: GroupService,
+        private logger: LoggerService) { }
 
     ngOnInit() {
         this.paragraphText();
@@ -39,7 +41,7 @@ export class GroupMessageComponent implements OnInit {
         this.senderPhoto = sender.map(u => u.photoUrl);
         this.hideStaffLabel = sender.map(u => !u.isAdmin);
         this.authService.isAdminInsecure('').then((isAdmin) => this.isAdmin = isAdmin)
-        .catch(err => console.log(err));
+        .catch(err => this.logger.error(err.message, err));
     }
 
     deleteMessage() {
@@ -48,7 +50,7 @@ export class GroupMessageComponent implements OnInit {
             this.msg = res;
             this.paragraphText();
         })
-        .catch(err => console.log(err));
+        .catch(err => this.logger.error(err.message, err));
     }
 
     displayDate(date: number): string {

@@ -12,6 +12,7 @@ import { UserData } from './model/user-data';
 
 import { AuthService } from './service/auth.service';
 import { GroupService } from './service/group.service';
+import { LoggerService } from './service/logger.service';
 import { UserService } from './service/user.service';
 
 @Component({
@@ -48,11 +49,12 @@ export class UserComponent implements OnInit, OnDestroy {
 
     constructor(private authService: AuthService,
             private groupService: GroupService,
+            private logger: LoggerService,
             private userService: UserService) {
                 this.authService.currentUserInsecure()
                 .then(u => this.currentUser = u)
                 .catch(err => {
-                    console.log(err);
+                    this.logger.error('Error getting current user', err);
                 });
             }
 

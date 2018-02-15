@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 
 import { Group } from '../model/group';
 import { GroupService } from '../service/group.service';
+import { LoggerService } from '../service/logger.service';
 
 @Component({
     selector: 'app-groups',
@@ -16,7 +17,7 @@ export class GroupsComponent implements OnInit {
     groups: Group[];
     errMsg: string;
 
-    constructor(private groupService: GroupService) { }
+    constructor(private groupService: GroupService, private logger: LoggerService) { }
 
     ngOnInit() {
         this.groupService.getAllGroups()
@@ -25,7 +26,7 @@ export class GroupsComponent implements OnInit {
             this.sortGroupsByName();
         })
         .catch((e) => {
-            console.log(e.message);
+            this.logger.error(e.message, e);
             this.errMsg = e.message;
         });
     }
@@ -81,7 +82,10 @@ export class GroupsComponent implements OnInit {
                 event.target.dataset.earnings = +event.target.innerText;
                 event.target.blur();
             })
-            .catch(err => console.log(err));
+            .catch(err => {
+                this.errMsg = err.message;
+                this.logger.error(err.message, err);
+            });
         }
     }
 }

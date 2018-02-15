@@ -64,7 +64,6 @@ export class LoginComponent implements OnInit {
         .then((result) => {
             this.statusMsg = result;
             this.pwdRecoveryMode = 'reset';
-            console.log(this.username);
         })
         .catch((err) => {
             this.statusMsg = err.message;

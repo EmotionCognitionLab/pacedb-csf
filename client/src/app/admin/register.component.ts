@@ -13,6 +13,7 @@ import { environment } from '../../environments/environment';
 import { Group } from '../model/group';
 import { GroupService } from '../service/group.service';
 import { User } from '../model/user';
+import { LoggerService } from '../service/logger.service';
 
 @Component({
     selector: 'app-register-form',
@@ -42,6 +43,7 @@ export class RegisterComponent implements OnInit {
         private authService: AuthService,
         private awsConfigService: AwsConfigService,
         private groupService: GroupService,
+        private logger: LoggerService,
         private router: Router
     ) {
         this.cropperSettings = new CropperSettings();
@@ -72,13 +74,13 @@ export class RegisterComponent implements OnInit {
         .then((config) => {
             this._s3 = new S3({region: config.region, credentials: config.credentials});
         })
-        .catch((err) => console.log(err));
+        .catch((err) => this.logger.error('Error getting AWS config', err));
     }
 
     ngOnInit() {
         this.groupService.getAllGroups()
         .then((groups) => this.groups = groups.map((g) => g.name))
-        .catch((e) => console.log(e.message));
+        .catch((e) => this.logger.error(e.message, e));
     }
 
     changeContactPref(someval: boolean) {
@@ -135,7 +137,7 @@ export class RegisterComponent implements OnInit {
 
     onCamError(err) {
         this.errMsg = err.message;
-        console.log(err);
+        this.logger.error('Error using camera', err);
     }
 
     onUseCameraClick($event) {
@@ -198,6 +200,7 @@ export class RegisterComponent implements OnInit {
         .catch((err) => {
             this.statusMsg = '';
             this.errMsg = err.message;
+            this.logger.error('Error registering user', err);
         });
     }
 }

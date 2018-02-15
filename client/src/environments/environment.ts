@@ -14,5 +14,8 @@ export const environment = {
   groupsTable: 'hrv-users',
   groupMsgsTable: 'hrv-group-messages',
   groupsWithAdminPerms: ['staff'],
-  usrImgBucket: 'hrv-usr-imgs'
+  usrImgBucket: 'hrv-usr-imgs',
+  serverLogLevel: 5000, // ERROR - see http://nodejs.jsnlog.com/Documentation/HowTo/NumericSeverities
+  consoleLogLevel: 3000, // INFO
+  loggingUrl: 'https://3grrvvccll.execute-api.us-west-2.amazonaws.com/dev/log'
 };

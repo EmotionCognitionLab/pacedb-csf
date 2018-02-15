@@ -1,0 +1,23 @@
+{
+  "name": "logger",
+  "version": "1.0.0",
+  "description": "Accepts log data from client-side jsnlog and saves it to CloudWatch",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EmotionCognitionLab/hrv-social.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/EmotionCognitionLab/hrv-social/issues"
+  },
+  "homepage": "https://github.com/EmotionCognitionLab/hrv-social#readme",
+  "dependencies": {
+    "jsnlog": "^2.26.1",
+    "jsnlog-nodejs": "^2.26.1"
+  }
+}

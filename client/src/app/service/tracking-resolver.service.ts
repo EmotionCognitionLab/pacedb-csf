@@ -4,12 +4,13 @@ import { Router, Resolve, RouterStateSnapshot,
     ActivatedRouteSnapshot } from '@angular/router';
 
 import { DynamoService } from './dynamo.service';
+import { LoggerService } from './logger.service';
 
 
 @Injectable()
 export class TrackingResolverService implements Resolve<void> {
 
-    constructor(private dynamo: DynamoService, private router: Router) { }
+    constructor(private dynamo: DynamoService, private logger: LoggerService, private router: Router) { }
 
     resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): void {
         const msgId = route.queryParamMap.get('mid');
@@ -38,7 +39,7 @@ export class TrackingResolverService implements Resolve<void> {
         this.dynamo.docClient
         .then(client => client.update(params).promise())
         .catch(err => {
-            console.log(err);
+            this.logger.error(`Error saving msg click. msg_id=${msgId}, channel=${channel}`, err);
         });
     }
 }

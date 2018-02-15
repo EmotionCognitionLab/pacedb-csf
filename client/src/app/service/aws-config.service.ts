@@ -4,12 +4,13 @@ import { CognitoIdentityCredentials, Config } from '../../../node_modules/aws-sd
 
 import { AuthService } from './auth.service';
 import {environment} from '../../environments/environment';
+import { LoggerService } from './logger.service';
 
 @Injectable()
 export class AwsConfigService {
     private _config: Promise<AWS.Config>;
 
-    constructor(private authService: AuthService) { }
+    constructor(private authService: AuthService, private logger: LoggerService) { }
 
     getConfig(reset?: boolean): Promise<AWS.Config> {
         if (this._config === undefined || reset) {
@@ -35,7 +36,7 @@ export class AwsConfigService {
                     region: environment.awsRegion
             }))
             .catch((err) => {
-                console.log(err.message);
+                this.logger.error('Error establishing AWS credentials', err);
                 throw err;
             });
         }

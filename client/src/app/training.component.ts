@@ -12,6 +12,7 @@ import { UserData } from './model/user-data';
 import { UserService } from './service/user.service';
 
 import * as moment from 'moment';
+import { LoggerService } from './service/logger.service';
 
 @Component({
     selector: 'app-training',
@@ -35,6 +36,7 @@ export class TrainingComponent implements OnInit, OnDestroy {
     private _userDataSubscription: Subscription;
 
     constructor(private authService: AuthService,
+        private logger: LoggerService,
         private userService: UserService,
         private router: Router) { }
 
@@ -103,7 +105,7 @@ export class TrainingComponent implements OnInit, OnDestroy {
             },
             (err: HttpErrorResponse) => {
                 if (err.error instanceof Error) {
-                    console.log(err);
+                    this.logger.error(`HTTP ${err.status}: ${err.message}`, err.error);
                     this.submitErr = err.error.message;
                 } else {
                     let errMsg = `An unknown error happened. (Error code ${err.status})`;
@@ -112,8 +114,7 @@ export class TrainingComponent implements OnInit, OnDestroy {
                     } catch (err) {
                         // ignore it
                     }
-                    console.log(`Unexpected response from server on user minutes PUT: ${err.status}`);
-                    console.log(err);
+                    this.logger.error(`Unexpected response from server on user minutes PUT: ${err.status}`, err);
                     this.submitErr = errMsg;
                 }
             }

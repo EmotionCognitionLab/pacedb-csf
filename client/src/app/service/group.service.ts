@@ -10,6 +10,7 @@ import { DynamoDB } from '../../../node_modules/aws-sdk/';
 
 import { AuthService } from './auth.service';
 import { DynamoService } from './dynamo.service';
+import { LoggerService } from './logger.service';
 import { Group } from '../model/group';
 import { GroupMessage } from '../model/group-message';
 import { User } from '../model/user';
@@ -21,7 +22,7 @@ export class GroupService {
     msgTableName = environment.groupMsgsTable;
     basePath = environment.apiBasePath;
 
-    constructor(private dyno: DynamoService, private authService: AuthService, protected http: Http) {}
+    constructor(private dyno: DynamoService, private authService: AuthService, private logger: LoggerService, protected http: Http) {}
 
     addGroup(newGroup: Group): Promise<string> {
         return this.dyno.docClient
@@ -38,7 +39,7 @@ export class GroupService {
         })
         .then(() => 'Added group "' + newGroup.name + '".')
         .catch((err) => {
-            console.log(err);
+            this.logger.error(`Error saving group ${JSON.stringify(newGroup)}`, err);
             throw(err);
         });
     }
@@ -62,7 +63,7 @@ export class GroupService {
             return g;
         })
         .catch((err) => {
-            console.log(err);
+            this.logger.error(`Error getting group ${name}`, err);
             return undefined;
         });
     }
@@ -101,7 +102,7 @@ export class GroupService {
             return result;
         })
         .catch((err) => {
-            console.log(err);
+            this.logger.error('Error getting all groups', err);
             return result;
         });
     }
@@ -194,7 +195,7 @@ export class GroupService {
             return delMsg;
         })
         .catch(err => {
-                console.log(err);
+                this.logger.error(`Error deleting group message ${JSON.stringify(msg)}`, err);
                 return msg;
         });
     }

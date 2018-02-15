@@ -61,6 +61,7 @@ functions:
         - reminders/**
         - api/test/**
         - api/node_modules/** # api function doesn't have any dependencies; delete this line if you add any
+        - logger/**
     role: lambdaWithDynamoRole
     handler: api/api.handler
     events:
@@ -154,6 +155,7 @@ functions:
         - reminders/README.md
         - reminders/.*
         - training-data-import/**
+        - logger/**
     role: lambdaWithDynamoRole
     handler: reminders/remind.handler
     events:
@@ -203,6 +205,7 @@ functions:
         - reminders/**
         - verification/verified.js
         - training-data-import/**
+        - logger/**
     role: lambdaWithDynamoRole
     handler: verification/message-customizer.handler
 
@@ -214,6 +217,7 @@ functions:
         - reminders/**
         - verification/message_customizer.js
         - training-data-import/**
+        - logger/**
     role: lambdaWithDynamoRole
     handler: verification/verified.handler
 
@@ -224,6 +228,7 @@ functions:
         - reminders/**
         - verification/**
         - training-data-import/test/**
+        - logger/**
     role: lambdaWithDynamoRole
     handler: training-data-import/import.handler
     timeout: 120
@@ -246,6 +251,31 @@ functions:
       S3_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
       TIMEZONE: "America/Los_Angeles"
 
+  logger:
+    package:
+      exclude:
+        - api/**
+        - reminders/**
+        - verification/**
+        - training-data-import/**
+    role: lambdaWithDynamoRole
+    handler: logger/index.handler
+    events:
+      - http:
+          path: log
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+              - Json-RequestId
+            allowCredentials: false
+      
 plugins:
   - serverless-dynamodb-local
   - serverless-offline
