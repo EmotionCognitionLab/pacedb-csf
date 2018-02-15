@@ -13,6 +13,7 @@ export const environment = {
   dynamoEndpoint: 'http://localhost:8000',
   groupsTable: 'hrv-users',
   groupMsgsTable: 'hrv-group-messages',
+  reminderMsgsTable: 'hrv-reminder-msgs',
   groupsWithAdminPerms: ['staff'],
   usrImgBucket: 'hrv-usr-imgs',
   serverLogLevel: 5000, // ERROR - see http://nodejs.jsnlog.com/Documentation/HowTo/NumericSeverities

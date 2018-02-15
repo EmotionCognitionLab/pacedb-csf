@@ -5,6 +5,7 @@ import { Router, Resolve, RouterStateSnapshot,
 
 import { DynamoService } from './dynamo.service';
 import { LoggerService } from './logger.service';
+import { environment } from '../../environments/environment';
 
 
 @Injectable()
@@ -30,7 +31,7 @@ export class TrackingResolverService implements Resolve<void> {
             return;
         }
         const params = {
-            TableName: 'hrv-reminder-msgs',
+            TableName: environment.reminderMsgsTable,
             Key: {id: +msgId},
             UpdateExpression: 'ADD clicks.#chan :one',
             ExpressionAttributeNames: {'#chan': channel},

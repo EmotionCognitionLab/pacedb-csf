@@ -8,6 +8,7 @@ export const environment = {
   dynamoEndpoint: 'https://dynamodb.us-west-2.amazonaws.com',
   groupsTable: 'hrv-prod-groups',
   groupMsgsTable: 'hrv-prod-group-messages',
+  reminderMsgsTable: 'hrv-prod-reminder-msgs',
   groupsWithAdminPerms: ['staff'],
   usrImgBucket: 'hrv-prod-usr-imgs',
   serverLogLevel: 5000, // ERROR - see http://nodejs.jsnlog.com/Documentation/HowTo/NumericSeverities

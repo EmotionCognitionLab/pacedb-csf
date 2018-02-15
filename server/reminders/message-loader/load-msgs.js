@@ -1,14 +1,13 @@
 'use strict'
 
-const tableName = 'hrv-prod-reminder-msgs';
-
 const myArgs = process.argv.slice(2);
-if (myArgs.length !== 2) {
-    console.log('Usage: node load-msgs.js region csv-file');
+if (myArgs.length !== 3) {
+    console.log('Usage: node load-msgs.js region table-name csv-file');
     return;
 }
 const region = myArgs[0];
-const csvFile = myArgs[1];
+const tableName = myArgs[1];
+const csvFile = myArgs[2];
 
 const AWS = require('aws-sdk');
 const dynamo = new AWS.DynamoDB.DocumentClient({region: region, apiVersion: '2012-08-10'});

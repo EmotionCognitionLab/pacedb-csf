@@ -1,4 +1,4 @@
-This directory contains the raw data for the various reminder messages as well as a script to load them into the hrv-reminder-messages table. Note that if you want to change the data the following
+This directory contains the raw data for the various reminder messages as well as a script to load them into the hrv-[stage]-reminder-msgs table. Note that if you want to change the data the following
 must be true:
 
  - They must be in csv format
@@ -7,4 +7,4 @@ must be true:
  - They must be in the UTF-8 character set
 
 To run it:
-`node load-msgs.js region csv-file`
+`node load-msgs.js region table-name csv-file`
