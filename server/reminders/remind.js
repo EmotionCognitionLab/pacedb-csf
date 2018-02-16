@@ -6,6 +6,7 @@ const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
 const sesEndpoint = process.env.SES_ENDPOINT;
 const snsEndpoint = process.env.SNS_ENDPOINT;
 const region = process.env.REGION;
+const emailSender = process.env.EMAIL_SENDER;
 const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
 const ses = new AWS.SES({endpoint: sesEndpoint, apiVersion: '2010-12-01', region: region});
 const sns = new AWS.SNS({endpoint: snsEndpoint, apiVersion: '2010-03-31', region: region});
@@ -18,7 +19,6 @@ const groupMsgsTable = process.env.GROUP_MESSAGES_TABLE;
 const usersTable = process.env.USERS_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const reminderMsgsTable = process.env.REMINDER_MSGS_TABLE;
-const emailSender = 'uscemotioncognitionlab@gmail.com';
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
 

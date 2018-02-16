@@ -9,3 +9,4 @@ GROUP_MESSAGES_TABLE=hrv-group-messages-test
 AWS_ACCESS_KEY_ID=accessKey
 AWS_SECRET_ACCESS_KEY=secret
 TARGET_MINUTES_BY_WEEK=[10,10,20,20,30,30]
+EMAIL_SENDER=nobody@example.com

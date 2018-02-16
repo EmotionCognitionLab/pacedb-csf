@@ -201,6 +201,7 @@ functions:
         Fn::Sub: "https://email.${self:provider.region}.amazonaws.com"
       SNS_ENDPOINT: 
         Fn::Sub: "https://sns.${self:provider.region}.amazonaws.com"
+      EMAIL_SENDER: "uscemotioncognitionlab@gmail.com"
 
 # DO NOT CHANGE the name of this function unless you also change it in setup/setup.js
   messageCustomizer:
