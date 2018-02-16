@@ -311,6 +311,36 @@ Resources:
                   - "s3:PutObjectAcl"
                 Resource:
                   - Fn::Sub: "arn:aws:s3:::${imgBucket}/*"
+  snsPublishAccess:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: Allows publishing to SNS
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "sns:Publish"
+            Resource: 
+              - "*"
+      ManagedPolicyName:
+        Fn::Sub: "${ServiceParam}-${StageParam}-sns-publish"
+  sesSendAccess:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: Allows sending email via SES
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "ses:SendEmail"
+              - "ses:SendRawEmail"
+              - "ses:SendTemplatedEmail"
+            Resource: 
+              - "*"
+      ManagedPolicyName:
+        Fn::Sub: "${ServiceParam}-${StageParam}-ses-send"
 Outputs:
   ClientAdminAccount:
     Value:
@@ -353,6 +383,16 @@ Outputs:
       Ref: dynamoReadAccess
     Export:
       Name: !Sub "${ServiceParam}-${StageParam}-dynamoReadAccess"
+  SesSendAccess:
+      Value:
+        Ref: sesSendAccess
+      Export:
+        Name: !Sub "${ServiceParam}-${StageParam}-sesSendAccess"
+  SnsPublishAccess:
+      Value:
+        Ref: snsPublishAccess
+      Export:
+        Name: !Sub "${ServiceParam}-${StageParam}-snsPublishAccess"
   UserPoolClientId:
     Value: 
       Ref: cognitoUserPoolClient
