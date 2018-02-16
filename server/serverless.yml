@@ -191,7 +191,7 @@ functions:
         Ref: groupsTable
       REMINDER_MSGS_TABLE:
         Ref: reminderMessagesTable
-      TARGET_MINUTES_BY_WEEK: "[20,25,30,35,40,40,40]"
+      TARGET_MINUTES_BY_WEEK: "[20,20,30,40,40,40,40]"
       SES_ENDPOINT: 
         Fn::Sub: "https://email.${self:provider.region}.amazonaws.com"
       SNS_ENDPOINT: 
