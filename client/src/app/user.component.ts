@@ -11,7 +11,6 @@ import { User } from './model/user';
 import { UserData } from './model/user-data';
 
 import { AuthService } from './service/auth.service';
-import { GroupService } from './service/group.service';
 import { LoggerService } from './service/logger.service';
 import { UserService } from './service/user.service';
 
@@ -48,7 +47,6 @@ export class UserComponent implements OnInit, OnDestroy {
     private _userDataSubscription: Subscription;
 
     constructor(private authService: AuthService,
-            private groupService: GroupService,
             private logger: LoggerService,
             private userService: UserService) {
                 this.authService.currentUserInsecure()

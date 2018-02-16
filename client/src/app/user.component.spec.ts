@@ -8,7 +8,6 @@ import * as moment from 'moment';
 
 import { AuthService } from './service/auth.service';
 import { UserService } from './service/user.service';
-import { GroupService } from './service/group.service';
 import { LoggerService } from './service/logger.service';
 
 import { EmojiPickerComponent } from './emoji-picker.component';
@@ -51,7 +50,6 @@ describe('UserComponent (inline template)', () => {
         providers: [
             {provide: AuthService, useValue: authServiceStub},
             {provide: UserService, useValue: userServiceStub},
-            {provide: GroupService, useValue: {}},
             {provide: LoggerService, useValue: new MockLoggerService()}
         ]
       }).compileComponents();
