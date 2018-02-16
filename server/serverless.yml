@@ -156,7 +156,7 @@ functions:
         - reminders/.*
         - training-data-import/**
         - logger/**
-    role: lambdaWithDynamoRole
+    role: reminderRole
     handler: reminders/remind.handler
     events:
       - schedule:
@@ -279,7 +279,7 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
               - X-Amz-User-Agent
-              - Json-RequestId
+              - JSNLog-RequestId
             allowCredentials: false
       
 plugins:
@@ -436,7 +436,6 @@ resources:
                 - "dynamodb:UpdateItem"
               Resource:
                 - { Fn::GetAtt: [userDataTable, Arn] }
-                - { Fn::GetAtt: [reminderMessagesTable, Arn] }
         ManagedPolicyName: { "Fn::Sub": "${self:service}-${self:provider.stage}-dynamo-write" }
 
 # role for lambda functions that need common dynamo access
@@ -457,3 +456,31 @@ resources:
           - { Fn::ImportValue: "${self:service}-${self:provider.stage}-dynamoReadAccess" }
           - { Fn::ImportValue: "${self:service}-${self:provider.stage}-dataBucketReadAccess" }
           - { Ref: dynamoWriteAccess }
+
+# role for the reminder lambda function
+    reminderRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Service:
+                  - "lambda.amazonaws.com"
+              Action:
+                - "sts:AssumeRole"
+        ManagedPolicyArns:
+          - { Fn::ImportValue: "${self:service}-${self:provider.stage}-cloudwatchWriteAccess" }
+          - { Fn::ImportValue: "${self:service}-${self:provider.stage}-dynamoReadAccess" }
+          - { Fn::ImportValue: "${self:service}-${self:provider.stage}-sesSendAccess"}
+          - { Fn::ImportValue: "${self:service}-${self:provider.stage}-snsPublishAccess"}
+        Policies:
+          - PolicyName: "DynamoReminderMsgsWritePolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "dynamodb:UpdateItem"
+                  Resource: { Fn::GetAtt: [reminderMessagesTable, Arn] }
