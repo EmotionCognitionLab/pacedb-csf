@@ -25,7 +25,7 @@ const DEFAULT_TARGET_MINUTES = 20;
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
 const NEW_EMOJI_MINUTES = 120; //emojis younger than this are new
 
-const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji'];
+const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji', 'survey'];
 
 exports.handler = (event, context, callback) => {
     const msgType = event.msgType;
@@ -63,6 +63,9 @@ exports.handler = (event, context, callback) => {
         case 'new_emoji': {
             getRecipients = getUsersWithNewEmoji;
             break;
+        }
+        case 'survey': {
+            getRecipients = getActiveUsersForSurvey;
         }
     }
     
@@ -303,6 +306,20 @@ function getUsersWithNewEmoji() {
     })
 }
 
+/**
+ * Returns a Promise<[{msg: msg obj, recipients: [user obj]}]> 
+ * where msg is of type 'survey' and recipients are all the users in active groups.
+ */
+function getActiveUsersForSurvey() {
+    let userMap;
+    return getActiveGroupsAndUsers()
+    .then((result) => {
+        userMap = result.userMap;
+        return getRandomMsgForType('survey');
+    })
+    .then((msg) => [{ msg: msg, recipients: Array.from(userMap.values()) }]);
+}
+
 
 /**
  * Given the params, returns a Promise<{onTarget: [user obj], offTarget: [user obj]> of users where:
@@ -459,7 +476,7 @@ function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
 
 /**
  * 
- * @param {Map} userMap user id -> user contact (email or phone) map
+ * @param {Map} userMap user id -> user object map
  * @param {Map} groupMap group id -> group object map
  */
 function getUsersWithoutReports(userMap, groupMap) {

@@ -69,6 +69,7 @@ const reminderMsgs = [
     {id: 6, active: true, msgType: 'new_emoji', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 0, sms: 0}},
     {id: 7, active: true, msgType: 'group_behind', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 1, sms: 2}},
     {id: 8, active: true, msgType: 'group_ok', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 3, sms: 4}},
+    {id: 9, active: true, msgType: 'survey', subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
 ];
 
 const userData = [
@@ -498,7 +499,7 @@ describe('sending notifications to users who have received new emoji', function(
             await dbSetup.writeTestData(userDataTable, userData);
         }
     });
-})
+});
 
 describe('sending group status notifications', function() {
     before(function() {
@@ -673,6 +674,35 @@ describe('sending group status notifications', function() {
             assert.equal(emailSends, expectedEmailSends);
             assert.equal(phoneSends, expectedPhoneSends);
         });
+    });
+});
+
+describe('sending survey', function() {
+    before(function() {
+        return prepTestEnv();
+    });       
+    it('should get all users in active groups', function() {
+        return runScheduledEvent({msgType: 'survey'}, function(body) {
+            assert(body.length > 0);
+            const activeGroups = groups.filter(g => g.startDate <= todayYMD && g.endDate >= todayYMD).map(g => g.name);
+            const activeUsers = users.filter(u => activeGroups.includes(u.group)).map(u => u.email || u.phone);
+            body.forEach(entry => assert(activeUsers.includes(entry.recip)));
+        });
+    });
+    it('should ignore users who are not in active groups', function() {
+        return runScheduledEvent({msgType: 'survey', function(body) {
+            assert(body.length > 0);
+            const inactiveGroups = groups.filter(g => g.startDate >= todayYMD || g.endDate <= today.YMD).map(g => g.name);
+            const inactiveUsers = users.filter(u => inactiveGroups.includes(u.group)).map(u => u.email || u.phone);
+            body.forEach(entry => assert(!inactiveUsers.includes(entry.recip)));
+        }});
+    });
+    it('should send only messages of type survey', function() {
+        return runScheduledEvent({msgType: 'survey', function(body) {
+            assert(body.length > 0);
+            const surveyMsgs = messages.filter(m => m.msgType === 'survey').map(m.id);
+            body.forEach(entry => assert(surveyMsgs.includes(entry.msg)));
+        }})
     });
 });
 

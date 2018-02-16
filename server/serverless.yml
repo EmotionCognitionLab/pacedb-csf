@@ -170,6 +170,11 @@ functions:
           input:
             msgType: report
       - schedule:
+          rate: cron(00 16 * * ? *)
+          description: Asks users to complete the daily survey
+          input:
+            msgType: survey
+      - schedule:
           rate: rate(2 hours)
           description: Informs users in groups with new messages that new messages exist.
           input:
