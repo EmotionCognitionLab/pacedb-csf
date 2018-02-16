@@ -3,7 +3,7 @@ import * as moment from 'moment';
 export class Group {
     // number of minutes per day participants should aim to practice in a given week
     // week 1 == TARGET_MINUTES[0], week 2 == TARGET_MINUTES[1], etc.
-    private static TARGET_MINUTES = [20, 25, 30, 35, 40, 40, 40];
+    static TARGET_MINUTES = [20, 25, 30, 35, 40, 40, 40];
     // we use this as target minutes if something goes wrong and we can't figure out the actual target
     private static DEFAULT_TARGET_MINUTES = 40;
 

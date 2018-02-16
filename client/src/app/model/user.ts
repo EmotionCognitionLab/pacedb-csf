@@ -2,7 +2,7 @@ export class User {
     id: string;
     group: string;
     isAdmin = false;
-    dateCreated: Date;
+    dateCreated: number;
 
     static fromJsonString(json: string): User {
         const jsObj = JSON.parse(json);

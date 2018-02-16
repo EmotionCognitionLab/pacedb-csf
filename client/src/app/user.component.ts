@@ -71,9 +71,17 @@ export class UserComponent implements OnInit, OnDestroy {
                     this.weeklyMinutesTrained += ud.minutes;
                 }
             });
-            const weeklyMinutesTarget = this.group.dailyMinutesTarget() * 7;
+            let daysInWeek = 7;
+            let weekDay = this.group.dayOfWeek();
+            if (this.group.weekNum() === 0 && weekBoundaries[1] > this.user.dateCreated) {
+                // The first week is special: Not everyone starts on the same day, so the later in the week
+                // you started the lower your target is
+                daysInWeek = weekBoundaries[1] - this.user.dateCreated;
+                weekDay = moment().diff(moment(this.user.dateCreated.toString()), 'days');
+            }
+            const weeklyMinutesTarget = this.group.dailyMinutesTarget() * daysInWeek;
             const trainingPercentDone = this.weeklyMinutesTrained / weeklyMinutesTarget;
-            this.progressClasses = this.percentToCSS(trainingPercentDone);
+            this.progressClasses = this.percentToCSS(trainingPercentDone, weekDay);
         });
     }
 
@@ -91,7 +99,7 @@ export class UserComponent implements OnInit, OnDestroy {
      * Converts the trainingPercentDone into a string of css classes to style the progress bar.
      * @param percentOfWeekDone percentage of the week's training goal the user has accomplished so far
      */
-    private percentToCSS(percentOfWeekDone: number): string {
+    private percentToCSS(percentOfWeekDone: number, weekDay: number): string {
         const numberWords = ['none', 'ten', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety', 'one-hundred'];
         const roundedTrainingPercent = Math.min(Math.round(percentOfWeekDone  * 10), 10);
         if (roundedTrainingPercent < 0 || roundedTrainingPercent > numberWords.length - 1) {
@@ -103,7 +111,6 @@ export class UserComponent implements OnInit, OnDestroy {
         // behind 1 day -> status == iffy
         // not behind -> status == good
         let status = 'bad';
-        const weekDay = this.group.dayOfWeek();
         const dailyTarget = this.group.dailyMinutesTarget();
         const targetToDate = dailyTarget * weekDay;
         const trainingToDate = Math.round(percentOfWeekDone * dailyTarget * 7);
