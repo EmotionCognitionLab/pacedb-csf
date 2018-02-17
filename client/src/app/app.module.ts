@@ -60,7 +60,7 @@ JL().setOptions({'appenders': [ajaxAppender, consoleAppender]});
   ],
   providers: [AuthService, AwsConfigService, GroupService, DynamoService, LoggerService, RouteGuardService, UserService,
      { provide: ErrorHandler, useClass: LoggerService },
-     { provide: 'JSNLOG', useValue: JL }],
+     ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

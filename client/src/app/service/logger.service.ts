@@ -44,11 +44,9 @@ export class MiniAuthService {
 
 @Injectable()
 export class LoggerService implements ErrorHandler {
-    JL: JL.JSNLog;
     authService: MiniAuthService;
 
-    constructor(@Inject('JSNLOG') jslogger: JL.JSNLog) {
-        this.JL = jslogger;
+    constructor() {
         this.authService = new MiniAuthService();
     }
 
@@ -61,31 +59,31 @@ export class LoggerService implements ErrorHandler {
     }
 
     handleError(error: any) {
-        this.JL().fatalException(this.formatMsg('FATAL_EXCEPTION', error.msg), error);
+        JL().fatalException(this.formatMsg('FATAL_EXCEPTION', error.msg), error);
     }
 
     public trace(msg) {
-        this.JL().trace(this.formatMsg('TRACE', msg));
+        JL().trace(this.formatMsg('TRACE', msg));
     }
 
     public debug(msg) {
-        this.JL().debug(this.formatMsg('DEBUG', msg));
+        JL().debug(this.formatMsg('DEBUG', msg));
     }
 
     public info(msg) {
-        this.JL().info(this.formatMsg('INFO', msg));
+        JL().info(this.formatMsg('INFO', msg));
     }
 
     public warn(msg) {
-        this.JL().warn(this.formatMsg('WARN', msg));
+        JL().warn(this.formatMsg('WARN', msg));
     }
 
     public error(msg, err?) {
-        this.JL().log(this.JL.getErrorLevel(), this.formatMsg('ERROR', msg), err);
+        JL().log(JL.getErrorLevel(), this.formatMsg('ERROR', msg), err);
     }
 
     public fatal(msg, err?) {
-        this.JL().log(this.JL.getFatalLevel(), this.formatMsg('FATAL', msg), err);
+        JL().log(JL.getFatalLevel(), this.formatMsg('FATAL', msg), err);
     }
 
 }
