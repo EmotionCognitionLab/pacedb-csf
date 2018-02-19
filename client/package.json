@@ -9,7 +9,10 @@
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",
-    "e2e": "ng e2e"
+    "e2e": "ng e2e",
+    "predeploy": "ng test --single-run && node scripts/pre-deploy.js && ng build --prod && git checkout -- src/environments/environment.prod.ts",
+    "deploy": "npm version:patch && git tag node scripts/deploy.js",
+    "preversion": ""
   },
   "private": true,
   "dependencies": {
