@@ -39,6 +39,7 @@ testem.log
 
 # local config info
 environment.local.ts
+scripts/deploy-env.sh
 
 # System Files
 .DS_Store
