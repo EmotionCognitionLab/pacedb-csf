@@ -30,7 +30,7 @@ function getCurGitVersion() {
     return git.stdout.toString().split('\n').filter(f => f !== '').pop();
 }
 
-function incrememtVersion(curVersion, whichPart) {
+function incrementVersion(curVersion, whichPart) {
     if (whichPart !== 'major' && whichPart !== 'minor' && whichPart !== 'patch') throw new Error(`Expected one of 'major', 'minor' or 'patch', but got ${whichPart}.`);
 
     const parts = curVersion.split('.');
@@ -103,7 +103,7 @@ function requestYesNo(msg) {
 
 const curPkgVersion = process.argv[2];
 console.log(`Current package version is ${curPkgVersion}`);
-const patchedPkgVersion = incrememtVersion(curPkgVersion, 'patch');
+const patchedPkgVersion = incrementVersion(curPkgVersion, 'patch');
 requestVersion(curPkgVersion, patchedPkgVersion)
 .then(nextPkgVersion => {
     const npmBump = spawnSync('npm',['version', nextPkgVersion]);
@@ -141,7 +141,7 @@ requestVersion(curPkgVersion, patchedPkgVersion)
 })
 .then(() => {
     const curGitVersion = getCurGitVersion();
-    const patch = incrememtVersion(curGitVersion, 'patch');
+    const patch = incrementVersion(curGitVersion, 'patch');
     console.log(`Current git version is ${curGitVersion}`);
     return requestVersion(curGitVersion, patch)
 })
