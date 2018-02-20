@@ -80,11 +80,10 @@ function requestVersion(curVersion, suggestedVersion) {
 
 const curPkgVersion = process.argv[2];
 console.log(`Current package version is ${curPkgVersion}`);
-let nextPkgVersion;
 const patchedPkgVersion = incrememtVersion(curPkgVersion, 'patch');
 requestVersion(curPkgVersion, patchedPkgVersion)
-.then(res => {
-    const npmBump = spawnSync('npm',['version', patchedPkgVersion]);
+.then(nextPkgVersion => {
+    const npmBump = spawnSync('npm',['version', nextPkgVersion]);
     if (npmBump.status !== 0 || npmBump.error) {
         const npmErr = `npm version exited with status ${npmBump.status}`
         console.log(npmBump.stderr);
