@@ -10,9 +10,9 @@
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e",
-    "predeploy": "ng test --single-run && node scripts/pre-deploy.js && ng build --prod && git checkout -- src/environments/environment.prod.ts",
-    "deploy": "npm version:patch && git tag node scripts/deploy.js",
-    "preversion": ""
+    "predeploy:prod": "node scripts/pre-deploy.js && ng test --single-run && ng build --prod",
+    "deploy:prod": "npm run version:deploy",
+    "version:deploy": "git checkout -- src/environments/environment.prod.ts && node scripts/version-deploy.js $npm_package_version"
   },
   "private": true,
   "dependencies": {
@@ -59,6 +59,7 @@
     "karma-jasmine": "~1.1.0",
     "karma-jasmine-html-reporter": "^0.2.2",
     "patch-package": "^4.0.0",
+    "prompt": "^1.0.0",
     "protractor": "~5.1.2",
     "ts-node": "~3.2.0",
     "tslint": "~5.7.0",
