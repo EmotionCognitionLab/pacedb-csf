@@ -21,14 +21,22 @@ const siteBucket = process.env.SITE_BUCKET;
 const cfDistributionId = process.env.CF_DISTRIBUTION_ID;
 
 function gzipAssets() {
+    function gzipPromise(writer, filename) {
+        return new Promise((resolve, reject) => {
+            writer.on('error', (err) => reject(err));
+            writer.on('finish', () => resolve(filename));
+        });
+    }
+
     const distDirEntries = fs.readdirSync(distDir);
     const bundles = distDirEntries.filter(e => e.endsWith('.bundle.js') || e.endsWith('.bundle.css'));
-    bundles.forEach(b => {
+    return bundles.map(b => {
         const gzip = zlib.createGzip();
         const inFile = fs.createReadStream(`${distDir}/${b}`);
         const outFile = fs.createWriteStream(`${distDir}/${b}.gz`);
         console.log(`gzipping ${b}...`);
         inFile.pipe(gzip).pipe(outFile);
+        return gzipPromise(outFile, b);
     });
 }
 
@@ -99,7 +107,7 @@ function invalidateCloudFrontDistribution() {
     const params = {
         DistributionId: cfDistributionId,
         InvalidationBatch: {
-            CallerReference: Date.now(),
+            CallerReference: Date.now().toString(),
             Paths: {
                 Quantity: 1,
                 Items: [
@@ -117,9 +125,9 @@ if (siteBucket === undefined || siteBucket === '') {
     process.exit(1);
 }
 
-gzipAssets();
-const gzips = renameGzipFiles();
-uploadAssetsToS3(gzips)
+Promise.all(gzipAssets())
+.then(() => renameGzipFiles())
+.then(gzips => uploadAssetsToS3(gzips))
 .then(() => console.log('S3 uploading complete'))
 .then(() => invalidateCloudFrontDistribution())
 .then(invalidationResult => {
