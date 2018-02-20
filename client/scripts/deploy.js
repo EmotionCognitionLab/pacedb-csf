@@ -15,6 +15,7 @@ const cloudFront = new AWS.CloudFront();
 const fs = require('fs');
 const zlib = require('zlib');
 const mime = require('mime');
+const { spawnSync } = require('child_process');
 
 const distDir = 'dist';
 const siteBucket = process.env.SITE_BUCKET;
@@ -51,7 +52,7 @@ function renameGzipFiles() {
     return result;
 }
 
-function uploadAssetsToS3(gzipped) {
+function uploadAssetsToS3(gzipped, gitVer) {
     const promises = [];
 
     function recurse(dir, pushed) {
@@ -63,7 +64,10 @@ function uploadAssetsToS3(gzipped) {
                 // TODO worry about symlinks?
                 const key = fullPath.replace(`${distDir}/`, '')
                 const contentType = mime.lookup(key);
-                const params = { ContentType: contentType }
+                const params = { 
+                    ContentType: contentType,
+                    Tagging: `version=${gitVer}`
+                }
                 if (gzipped.includes(key)) params['ContentEncoding'] = 'gzip';
                 pushed.push(uploadFileToS3(key, siteBucket, params));
             } else if (stats.isDirectory()) {
@@ -119,15 +123,22 @@ function invalidateCloudFrontDistribution() {
     return cloudFront.createInvalidation(params).promise();
 }
 
+function getCurGitVersion() {
+    const git = spawnSync('git', ['tag', '-l', '--sort=v:refname', '[0-9]*']);
+    if (git.stdout.toString() === '') return '0.0.0';
+    return git.stdout.toString().split('\n').filter(f => f !== '').pop();
+}
+
 
 if (siteBucket === undefined || siteBucket === '') {
     console.log('Please be sure that the SITE_BUCKET environment variable is set.');
     process.exit(1);
 }
 
+const gitVer = getCurGitVersion();
 Promise.all(gzipAssets())
 .then(() => renameGzipFiles())
-.then(gzips => uploadAssetsToS3(gzips))
+.then(gzips => uploadAssetsToS3(gzips, gitVer))
 .then(() => console.log('S3 uploading complete'))
 .then(() => invalidateCloudFrontDistribution())
 .then(invalidationResult => {
