@@ -66,7 +66,6 @@ function requestVersion(curVersion, suggestedVersion) {
     return new Promise((resolve, reject) => {
         prompt.get(schema, function(err, result) {
             if (err) {
-                console.log('hit the err block');
                 reject(err);
             } else {
                 if (result.version === '') {
