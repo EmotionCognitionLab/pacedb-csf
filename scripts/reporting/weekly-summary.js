@@ -18,7 +18,7 @@ function sqliteReport(filePath, startDate, endDate) {
         // We credit any sessions begun on the target day to that target day,
         // regardless of when they ended
         const stmt = 
-            db.prepare('select (PulseEndTime-PulseStartTime) duration, AvgCoherence from Session where ValidStatus = 1 and PulseStartTime >= ? and PulseStartTime <= ?');
+            db.prepare('select (PulseEndTime-PulseStartTime) duration, AvgCoherence from Session where ValidStatus = 1 and PulseStartTime >= ? and PulseStartTime <= ? order by AvgCoherence desc');
         const rows = stmt.all([startDate.format('X'), endDate.format('X')]);
         db.close();
         if (rows.length === 0) {
@@ -36,14 +36,14 @@ function sqliteReport(filePath, startDate, endDate) {
 
 function csvReport(filePath, startDate, endDate) {
     const parser = parse({trim: true, columns: true, auto_parse: true, skip_empty_lines: true, skip_lines_with_empty_values: false});
-    let results = '';
+    let results = [];
 
     parser.on('readable', function() {
         let r;
         while(r = parser.read()) {
             if (moment(r.Date, 'MM-DD-YYYY-HH-mm-ss').isBetween(startDate, endDate, '[]')) {
                 const duration = Math.round(r['Time Spent On This Attempt'] / 60);
-                results += `${duration},,${r['Ave Calmness']}\n`;
+                results.push({duration: duration, calmness: r['Ave Calmness']});
             }
         }
     });
@@ -56,7 +56,8 @@ function csvReport(filePath, startDate, endDate) {
             if (results === '') {
                 resolve('No data found');
             } else {
-                resolve(results);
+                results.sort((a,b) => b.calmness - a.calmness);
+                resolve(results.map(r => `${r.duration},,${r.calmness}`).join('\n'));
             }
         });
     });

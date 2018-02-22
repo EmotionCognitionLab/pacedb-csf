@@ -70,5 +70,5 @@ Start date for report [20180215]: 20180101
 End date for report [20180221]: 
 Duration, Target Score (empty), Calmness
 1,,9.46364115413022
-5,,8.21332142175613
 5,,9.09329217070952
+5,,8.21332142175613
