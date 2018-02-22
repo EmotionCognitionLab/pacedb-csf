@@ -15,13 +15,11 @@ const validDataFileExtensions = ['csv', 'emdb'];
 function sqliteReport(filePath, startDate, endDate) {
     return new Promise((resolve, reject) => {
         const db = new sqlite3(filePath);
-        const dateStart = moment(startDate).tz('America/Los_Angeles').startOf('day');
-        const dateEnd = moment(endDate).tz('America/Los_Angeles').endOf('day');
         // We credit any sessions begun on the target day to that target day,
         // regardless of when they ended
         const stmt = 
             db.prepare('select (PulseEndTime-PulseStartTime) duration, AvgCoherence from Session where ValidStatus = 1 and PulseStartTime >= ? and PulseStartTime <= ?');
-        const rows = stmt.all([dateStart.format('X'), dateEnd.format('X')]);
+        const rows = stmt.all([startDate.format('X'), endDate.format('X')]);
         db.close();
         if (rows.length === 0) {
             resolve('No data found');
@@ -37,15 +35,13 @@ function sqliteReport(filePath, startDate, endDate) {
 }
 
 function csvReport(filePath, startDate, endDate) {
-    const dateStart = moment(startDate).tz('America/Los_Angeles').startOf('day');
-    const dateEnd = moment(endDate).tz('America/Los_Angeles').endOf('day');
     const parser = parse({trim: true, columns: true, auto_parse: true, skip_empty_lines: true, skip_lines_with_empty_values: false});
     let results = '';
 
     parser.on('readable', function() {
         let r;
         while(r = parser.read()) {
-            if (moment(r.Date, 'MM-DD-YYYY-HH-mm-ss').isBetween(dateStart, dateEnd, '[]')) {
+            if (moment(r.Date, 'MM-DD-YYYY-HH-mm-ss').isBetween(startDate, endDate, '[]')) {
                 const duration = Math.round(r['Time Spent On This Attempt'] / 60);
                 results += `${duration},,${r['Ave Calmness']}\n`;
             }
@@ -144,11 +140,12 @@ function main() {
         return requestDate('Start date for report', startDate);
     })
     .then(start => {
-        startDate = start;
+        startDate = moment(start).tz('America/Los_Angeles').startOf('day');
         let end = moment().subtract(1, 'days').format('YYYYMMDD')
         return requestDate('End date for report', end);
     })
-    .then(endDate => {
+    .then(end => {
+        const endDate = moment(end).tz('America/Los_Angeles').endOf('day');
         if (dataFile.endsWith('.csv')) {
             return csvReport(dataFile, startDate, endDate)
         } else if (dataFile.endsWith('.emdb')) {
