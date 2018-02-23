@@ -39,6 +39,12 @@ You will need to install the Mac build tools to run this on a Mac.
 To run the script, type `node weekly-summary.js` at your command prompt. You should see:
 
 ```
+Daily training minutes target [40]:
+```
+Type in the number of minutes the subject was supposed to train each day. The number in [] is a suggestion.
+If you want to use that just hit enter.
+
+```
 Data file to analyze:
 ```
 
@@ -53,7 +59,7 @@ Next you'll be asked to enter a start date for the analysis:
 ```
 Start date for report [20180215]:
 ```
-The date in [] is a suggestion. If you want to use that date, just hit enter. If not, then enter another date in YYYYMMDD format.
+As with the training minutes, the date in [] is a suggestion that you can accept by hitting enter. Otherwise enter another date in YYYYMMDD format.
 
 And finally you'll be asked for an end date:
 
@@ -64,11 +70,17 @@ End date for report [20180221]:
 Once you enter the end date you'll get the results. Putting it all together you should see something like this:
 
 ```
-$ node weekly-summary.js 
+$ node weekly-summary.js
+Daily training minutes target [40]: 20
 Data file to analyze: /Data/Subjects/101/log.csv
-Start date for report [20180215]: 20180101
-End date for report [20180221]: 
-Duration, Target Score (empty), Calmness
-1,,9.46364115413022
-5,,9.09329217070952
-5,,8.21332142175613
+Start date for report [20180216]: 20180101
+End date for report [20180222]: 
+Total training minutes from 20180101 to 20180222: 21
+Average calmness for the top sessions >= 10 minutes long with the highest calmness: 9.09329217070952
+Date/Time,Minutes,Calmness
+2018-02-11 21:51:41,10,9.09329217070952
+.
+.
+.
+etc.
+```

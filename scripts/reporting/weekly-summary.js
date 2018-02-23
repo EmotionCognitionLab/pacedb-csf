@@ -10,6 +10,7 @@ const sqlite3 = require('better-sqlite3');
 const parse = require('csv-parse');
 
 const validDataFileExtensions = ['csv', 'emdb'];
+const localTz = 'America/Los_Angeles';
 
 
 function sqliteReport(filePath, startDate, endDate) {
@@ -18,19 +19,15 @@ function sqliteReport(filePath, startDate, endDate) {
         // We credit any sessions begun on the target day to that target day,
         // regardless of when they ended
         const stmt = 
-            db.prepare('select (PulseEndTime-PulseStartTime) duration, AvgCoherence from Session where ValidStatus = 1 and PulseStartTime >= ? and PulseStartTime <= ? order by AvgCoherence desc');
+            db.prepare('select PulseStartTime, (PulseEndTime-PulseStartTime) duration, AvgCoherence from Session where ValidStatus = 1 and PulseStartTime >= ? and PulseStartTime <= ?');
         const rows = stmt.all([startDate.format('X'), endDate.format('X')]);
         db.close();
-        if (rows.length === 0) {
-            resolve('No data found');
-        } else {
-            let results = '';
-            rows.forEach(r => {
-                const minutes = Math.round(r.duration / 60);
-                results += `${minutes},,${r.AvgCoherence}\n`;
-            });
-            resolve(results);
-        }
+        let results = [];
+        rows.forEach(r => {
+            const startTime = moment.unix(r.PulseStartTime).tz(localTz);
+            results.push({time: startTime, duration: r.duration, calmness: r.AvgCoherence});
+        });
+        resolve(results);
     });
 }
 
@@ -41,9 +38,9 @@ function csvReport(filePath, startDate, endDate) {
     parser.on('readable', function() {
         let r;
         while(r = parser.read()) {
-            if (moment(r.Date, 'MM-DD-YYYY-HH-mm-ss').isBetween(startDate, endDate, '[]')) {
-                const duration = Math.round(r['Time Spent On This Attempt'] / 60);
-                results.push({duration: duration, calmness: r['Ave Calmness']});
+            const start = moment(r.Date, 'MM-DD-YYYY-HH-mm-ss').tz(localTz);
+            if (start.isBetween(startDate, endDate, '[]')) {
+                results.push({time: start, duration: r['Time Spent On This Attempt'], calmness: r['Ave Calmness']});
             }
         }
     });
@@ -53,12 +50,7 @@ function csvReport(filePath, startDate, endDate) {
     return new Promise((resolve, reject) => {
         parser.on('error', err => reject(err));
         parser.on('finish', () => {
-            if (results === '') {
-                resolve('No data found');
-            } else {
-                results.sort((a,b) => b.calmness - a.calmness);
-                resolve(results.map(r => `${r.duration},,${r.calmness}`).join('\n'));
-            }
+            resolve(results);
         });
     });
 }
@@ -74,8 +66,6 @@ function requestDate(msg, suggestedDate) {
                         const today = moment().startOf('day');
                         return date.isBefore(today);
                     } catch (err) {
-                        console.log('date did not parse')
-                        console.log(err);
                         return false;
                     }
                 },
@@ -132,21 +122,74 @@ function requestFilePath(msg) {
     });  
 }
 
+function requestPositiveNumber(msg, suggested) {
+    const schema = {
+        properties: {
+            number: {
+                pattern: /^[0-9]+$/,
+                message: `Please enter a positive number`,
+                description: `${msg} [${suggested}]:`,
+                required: false
+            }
+        }
+    };
+    return new Promise((resolve, reject) => {
+        prompt.get(schema, function(err, result) {
+            if (err) {
+                reject(err);
+            } else {
+                if (result.number === '') {
+                    resolve(suggested);
+                } else {
+                    resolve(+result.number);
+                }
+            }
+        });
+    });
+}
+
+function formatResults(results, startDate, endDate, targetMinutes) {
+    const totalSeconds = results.reduce((a, cur) => a + cur.duration, 0);
+    const totalMinutes = Math.round(totalSeconds / 60);
+    const cutoffMinutes = targetMinutes / 2;
+
+    const top10 = results
+    .filter(r => Math.round(r.duration / 60) >= cutoffMinutes) // average calmness calculation and top 10 only use sessions that meet at least half the target
+    .sort((a,b) => b.calmness - a.calmness)
+    .slice(0, 10);
+    let formatted = `Total training minutes from ${startDate.format('YYYYMMDD')} to ${endDate.format('YYYYMMDD')}: ${totalMinutes}\n`;
+    if (top10.length > 0) {
+        const aveCalmness = top10.reduce((a, cur) => a + cur.calmness, 0) / top10.length;
+        const top10Str = top10.map(r => `${r.time.format('YYYY-MM-DD HH:mm:ss')},${Math.round(r.duration / 60)},${r.calmness}`).join('\n');
+        formatted += `Average calmness for the top${top10.length === 10 ? '10 ': ' '}sessions >= ${cutoffMinutes} minutes long with the highest calmness: ${aveCalmness}\n`;
+        formatted += 'Date/Time,Minutes,Calmness\n';
+        formatted += top10Str;
+    } else {
+        formatted += `There were no sessions >= ${cutoffMinutes} minutes long; average calmness not calculated.`
+    }
+    return formatted;
+}
+
 function main() {
     let dataFile;
     let startDate = moment().subtract(7, 'days').format('YYYYMMDD');
-    requestFilePath('Data file to analyze:')
+    let endDate = moment().subtract(1, 'days').format('YYYYMMDD');
+    let targetMinutes;
+    requestPositiveNumber('Daily training minutes target', 40)
+    .then((target) =>{
+        targetMinutes = target;
+        return requestFilePath('Data file to analyze:');
+    })
     .then(filePath => {
         dataFile = filePath;
         return requestDate('Start date for report', startDate);
     })
     .then(start => {
-        startDate = moment(start).tz('America/Los_Angeles').startOf('day');
-        let end = moment().subtract(1, 'days').format('YYYYMMDD')
-        return requestDate('End date for report', end);
+        startDate = moment(start).tz(localTz).startOf('day');
+        return requestDate('End date for report', endDate);
     })
     .then(end => {
-        const endDate = moment(end).tz('America/Los_Angeles').endOf('day');
+        endDate = moment(end).tz(localTz).endOf('day');
         if (dataFile.endsWith('.csv')) {
             return csvReport(dataFile, startDate, endDate)
         } else if (dataFile.endsWith('.emdb')) {
@@ -156,8 +199,7 @@ function main() {
         }
     })
     .then(results => {
-        console.log('Duration, Target Score (empty), Calmness');
-        console.log(results);
+        console.log(formatResults(results, startDate, endDate, targetMinutes));
     })
     .catch(err => console.log(err));
 }
