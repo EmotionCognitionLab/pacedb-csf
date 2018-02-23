@@ -8,6 +8,7 @@ const fs = require('fs');
 const moment = require('moment-timezone');
 const sqlite3 = require('better-sqlite3');
 const parse = require('csv-parse');
+const path = require('path');
 
 const validDataFileExtensions = ['csv', 'emdb'];
 const localTz = 'America/Los_Angeles';
@@ -148,6 +149,17 @@ function requestPositiveNumber(msg, suggested) {
     });
 }
 
+function saveOutput(output, infilePath, endDate) {
+    const dirName = path.dirname(infilePath);
+    const outfilePath = path.join(dirName, `${endDate.format('YYYYMMDD')}.txt`);
+    try {
+        fs.writeFileSync(outfilePath, output, {encoding: 'utf-8', flag: 'wx'});
+    } catch (err) {
+        console.log(`Failed to write output to ${outfilePath}. OUTPUT HAS NOT BEEN SAVED.`);
+        console.log(err);
+    }
+}
+
 function formatResults(results, startDate, endDate, targetMinutes) {
     const totalSeconds = results.reduce((a, cur) => a + cur.duration, 0);
     const totalMinutes = Math.round(totalSeconds / 60);
@@ -199,7 +211,9 @@ function main() {
         }
     })
     .then(results => {
-        console.log(formatResults(results, startDate, endDate, targetMinutes));
+        const formatted = formatResults(results, startDate, endDate, targetMinutes);
+        console.log(formatted);
+        saveOutput(formatted, dataFile, endDate);
     })
     .catch(err => console.log(err));
 }
