@@ -32,6 +32,9 @@ export class AuthService {
         if (this._session === undefined || !this._session.isValid()) {
             return this.getUserSession() // renews the session
             .then((session) => {
+                if (session === null) {
+                    throw new Error('User session not established');
+                }
                 this._session = session;
                 return this._session.getIdToken().getJwtToken();
             });
@@ -84,7 +87,7 @@ export class AuthService {
         this._dest = dest;
         return this.getUserSession()
         .then((session) => {
-            if (!session.isValid()) {
+            if (session === null || !session.isValid()) {
                 return false;
             }
             const token = JWT(session.getIdToken().getJwtToken());
@@ -108,7 +111,7 @@ export class AuthService {
     currentUserInsecure(): Promise<User> {
         return this.getUserSession()
         .then((session) => {
-            if (!session.isValid()) {
+            if (session === null || !session.isValid()) {
                 return null;
             }
             const token = JWT(session.getIdToken().getJwtToken());
@@ -126,6 +129,9 @@ export class AuthService {
         this._dest = dest;
         return this.getUserSession()
         .then((session) => {
+            if (session === null) {
+                return false;
+            }
             return session.isValid();
         })
         .catch((err) => {
@@ -142,7 +148,7 @@ export class AuthService {
         const userPool = new CognitoUserPool(AuthService.poolData);
         const user = userPool.getCurrentUser();
         if (user === null) {
-            return Promise.reject(new Error('User is not logged in'));
+            return Promise.resolve(null);
         }
         const that = this;
         return new Promise<CognitoUserSession>((resolve, reject) =>

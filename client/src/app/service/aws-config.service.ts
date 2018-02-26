@@ -16,6 +16,9 @@ export class AwsConfigService {
         if (this._config === undefined || reset) {
             this._config = this.authService.getUserSession()
             .then((session) => {
+                if (session === null) {
+                    throw new Error('Cannot establish credentials without session');
+                }
                 const credentials = new CognitoIdentityCredentials({
                     IdentityPoolId: environment.identityPoolId,
                     Logins: {
