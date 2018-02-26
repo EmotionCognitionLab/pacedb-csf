@@ -74,12 +74,15 @@ export class UserComponent implements OnInit, OnDestroy {
             if (this.group.weekNum() === 0 && weekBoundaries[1] > this.user.dateCreated) {
                 // The first week is special: Not everyone starts on the same day, so the later in the week
                 // you started the lower your target is
-                daysInWeek = weekBoundaries[1] - this.user.dateCreated;
+                daysInWeek = weekBoundaries[1] - this.user.dateCreated; // TODO use moment - this won't work across month boundaries
                 weekDay = moment().diff(moment(this.user.dateCreated.toString()), 'days');
             }
             const weeklyMinutesTarget = this.group.dailyMinutesTarget() * daysInWeek;
             const trainingPercentDone = this.weeklyMinutesTrained / weeklyMinutesTarget;
-            this.progressClasses = this.percentToCSS(trainingPercentDone, weekDay);
+
+            const percentClass = this.percentToCSS(trainingPercentDone);
+            const onTrackClass = this.getStatusCSS(weekDay, this.weeklyMinutesTrained);
+            this.progressClasses = `${percentClass} ${onTrackClass}`;
         });
     }
 
@@ -97,21 +100,23 @@ export class UserComponent implements OnInit, OnDestroy {
      * Converts the trainingPercentDone into a string of css classes to style the progress bar.
      * @param percentOfWeekDone percentage of the week's training goal the user has accomplished so far
      */
-    private percentToCSS(percentOfWeekDone: number, weekDay: number): string {
+    private percentToCSS(percentOfWeekDone: number): string {
         const numberWords = ['none', 'ten', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety', 'one-hundred'];
         const roundedTrainingPercent = Math.min(Math.round(percentOfWeekDone  * 10), 10);
         if (roundedTrainingPercent < 0 || roundedTrainingPercent > numberWords.length - 1) {
             // should never happen
             return 'none bad';
         }
+        return `${numberWords[roundedTrainingPercent]}`;
+    }
 
+    private getStatusCSS(weekDay: number, trainingToDate: number) {
         // behind > 1 day -> status == bad
         // behind 1 day -> status == iffy
         // not behind -> status == good
         let status = 'bad';
         const dailyTarget = this.group.dailyMinutesTarget();
         const targetToDate = dailyTarget * weekDay;
-        const trainingToDate = Math.round(percentOfWeekDone * dailyTarget * 7);
         if (trainingToDate >= targetToDate) {
             status = 'good';
         } else if (trainingToDate < targetToDate && trainingToDate >= (targetToDate - dailyTarget)) {
@@ -119,7 +124,7 @@ export class UserComponent implements OnInit, OnDestroy {
         } else {
             status = 'bad';
         }
-        return `${numberWords[roundedTrainingPercent]} ${status}`;
+        return status;
     }
 
     /**
