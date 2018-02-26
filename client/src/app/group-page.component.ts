@@ -68,6 +68,12 @@ export class GroupPageComponent implements OnInit, OnDestroy {
     ngOnInit() {
         this.route.data
         .flatMap((data: { groupInfo: GroupPage }) => {
+            if (!data.groupInfo.members || !data.groupInfo.group) {
+                // If you use the back button after your session has expired you can
+                // somehow end up here with no groupInfo
+                this.router.navigate(['/login']);
+                return;
+            }
             // push all the members into the user cache so we don't re-fetch them
             // when displaying messages
             data.groupInfo.members.forEach(m => this.userService.cacheSet(m.id, m));
