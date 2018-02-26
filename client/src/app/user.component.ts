@@ -74,8 +74,9 @@ export class UserComponent implements OnInit, OnDestroy {
             if (this.group.weekNum() === 0 && weekBoundaries[1] > this.user.dateCreated) {
                 // The first week is special: Not everyone starts on the same day, so the later in the week
                 // you started the lower your target is
-                daysInWeek = weekBoundaries[1] - this.user.dateCreated; // TODO use moment - this won't work across month boundaries
-                weekDay = moment().diff(moment(this.user.dateCreated.toString()), 'days');
+                const createdMoment = moment(this.user.dateCreated.toString());
+                daysInWeek = moment(weekBoundaries[1].toString()).diff(createdMoment, 'days');
+                weekDay = moment().diff(createdMoment, 'days');
             }
             const weeklyMinutesTarget = this.group.dailyMinutesTarget() * daysInWeek;
             const trainingPercentDone = this.weeklyMinutesTrained / weeklyMinutesTarget;

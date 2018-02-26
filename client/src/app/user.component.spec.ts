@@ -162,6 +162,24 @@ describe('UserComponent (inline template)', () => {
         testProgressBar(['fifty', 'good']);
     }));
 
+    it('should pro-rate the the first week correctly when the end of the week and the user start date are in different months', fakeAsync(() => {
+        group = new Group(
+            'test',
+            20180128,
+            20180305
+        );
+        targetUser.dateCreated = 20180130;
+        comp.currentUser = targetUser;
+        userData = [DataFactory.makeUserData(20180130, Group.TARGET_MINUTES[0])];
+        const realNow = Date.now;
+        Date.now = () => 1517472964000; // mock Date to always return 2018-02-01
+        try {
+            testProgressBar(['thirty', 'iffy']);
+        } finally {
+            Date.now = realNow;
+        }
+    }));
+
     it('should take into account the week the group is in when calculating the weekly target', fakeAsync(() => {
         group = new Group(
             'test',
