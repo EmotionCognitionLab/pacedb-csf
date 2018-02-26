@@ -13,6 +13,8 @@ export class User {
         const result = new User('', '', '', '', '');
         result.id = ''; // so that it will be populated from jsObj, if it's there
         result.group = ''; // ditto
+        result.isAdmin = false; // ditto
+        result.dateCreated = 0; // ditto
         for (const prop in jsObj) {
             if (result.hasOwnProperty(prop)) {
                 result[prop] = jsObj[prop];
