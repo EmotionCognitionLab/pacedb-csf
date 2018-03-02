@@ -4,6 +4,7 @@ require('dotenv').config({path: './test/env.sh'})
 
 const moment = require('moment-timezone');
 const dbSetup = require('../../common-test/db-setup.js');
+const s3Setup = require('../../common-test/s3-setup.js');
 const dynDocClient = dbSetup.dynDocClient;
 const lambdaLocal = require('lambda-local');
 const sqlite3 = require('better-sqlite3');
@@ -133,7 +134,7 @@ describe('Importing log file data', function() {
             return dbSetup.createUserDataTable(userDataTable);
         })
         .then(function() {
-            return ensureEmptyBucketExists();
+            return s3Setup.ensureEmptyBucketExists(bucket);
         })
         .catch(err => console.log(err));
     });
@@ -522,7 +523,7 @@ describe("Importing sqlite data", function() {
             return dbSetup.createUserDataTable(userDataTable);
         })
         .then(function() {
-            return ensureEmptyBucketExists();
+            return s3Setup.ensureEmptyBucketExists(bucket);
         })
         .then(function() {
             if (fs.existsSync(sqliteFname)) fs.unlinkSync(sqliteFname);
@@ -700,7 +701,7 @@ describe("Importing sqlite data", function() {
             throw(err);
         });
     });
-    it.only('should ignore future data when summing minutes for a given day', function() {
+    it('should ignore future data when summing minutes for a given day', function() {
         makeSqliteData(futureData.data, sqliteFname);
         return saveFileToS3(sqliteFname, emWaveS3Key(futureData.users[0].subjectId))
         .then(function() {
@@ -753,28 +754,6 @@ function saveDataToS3(key, data) {
 function saveFileToS3(src, key) {
     const data = fs.readFileSync(src);
     return saveDataToS3(key, data);
-}
-
-function ensureEmptyBucketExists() {
-    return s3.listBuckets().promise()
-    .then(bucketInfo => {
-        if (bucketInfo.Buckets.findIndex(b => b.Name === bucket) === -1) {
-            return s3.createBucket({Bucket: bucket}).promise();
-        } else {
-            return emptyBucket();
-        }
-    });
-}
-
-function emptyBucket() {
-    let objects;
-    return s3.listObjectsV2({Bucket: bucket}).promise()
-    .then(listRes => {
-        objects = listRes.Contents.map(i=> { return {Key: i.Key} });
-    })
-    .then(() => {
-        return s3.deleteObjects({Bucket: bucket, Delete: {Objects: objects}}).promise();
-    })
 }
 
 /**
