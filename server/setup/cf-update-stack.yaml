@@ -58,6 +58,26 @@ Resources:
       BucketName: 
         Fn::Sub: ${ServiceParam}-${StageParam}-usr-data
 
+
+# S3 bucket for report-related info
+  reportingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: ${ServiceParam}-${StageParam}-reporting
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - "PUT"
+              - "POST"
+            AllowedOrigins:
+              - "*"
+            MaxAge: 3000
+      WebsiteConfiguration:
+        IndexDocument: index.html
+
 # start of cognito setup
 # see https://gist.github.com/singledigit/2c4d7232fa96d9e98a3de89cf6ebe7a5 for example
     # SNS role so that cognito can send SMS messages
@@ -383,6 +403,11 @@ Outputs:
       Ref: dynamoReadAccess
     Export:
       Name: !Sub "${ServiceParam}-${StageParam}-dynamoReadAccess"
+  ReportingBucketArn:
+    Value:
+      Fn::GetAtt: [reportingBucket, Arn]
+    Export:
+      Name: !Sub "${ServiceParam}-${StageParam}-reportingBucketARN"
   SesSendAccess:
       Value:
         Ref: sesSendAccess
