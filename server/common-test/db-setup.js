@@ -149,6 +149,29 @@ exports.createGroupMsgsTable = function(tableName) {
     return dynClient.createTable(params).promise();
 }
 
+exports.createStatusReportTable = function(tableName) {
+    const params = {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "reportDate",
+                "AttributeType": "S"
+            }
+        ],
+        "TableName": tableName,
+        "KeySchema": [
+            {
+                "AttributeName": "reportDate",
+                "KeyType": "HASH"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "ReadCapacityUnits": 1,
+            "WriteCapacityUnits": 1
+        }
+    };
+    return dynClient.createTable(params).promise();
+}
+
 exports.writeTestData = function(tableName, data) {
     const items = [];
     data.forEach(d => {
