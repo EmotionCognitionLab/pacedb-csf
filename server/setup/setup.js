@@ -271,6 +271,35 @@ function requestGeneral(msg, defaultResp, pattern = /.*/) {
     });
 }
 
+function requestJsonArray(msg) {
+    const schema = {
+        properties: {
+            jsArray: {
+                description: msg,
+                message: 'You must enter a JSON array, e.g. ["a", "b", "c"]',
+                conform: function(maybeJsArr) {
+                    try {
+                        const arr = JSON.parse(maybeJsArr);
+                        return (typeof(arr) === 'object' && arr.hasOwnProperty('length'));
+                        return 
+                    } catch (err) {
+                        return false;
+                    }
+                }
+            }
+        }
+    };
+    return new Promise((resolve, reject) => {
+        prompt.get(schema, function(err, result) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(result.jsArray);
+            }
+        });
+    });
+}
+
 async function main() { 
     try {
         prompt.start();
@@ -292,6 +321,7 @@ async function main() {
         const adminEmail = await requestGeneral('Admin email. (If you haven\'t received a boost to your SES sending rate from AWS this must be an SES-verified email address.)', email, /.+@.+\..+/);
         const adminPhoto = await requestGeneral('URL for photo of admin', '');
         const adminSubjectId = await requestGeneral('Study subject id for admin account', '1');
+        const statusReportRecipients = await requestJsonArray('Array of email addresses of status report recipients (e.g. ["somebody@example.com", "someone-else@example.com"]');
         
         console.log('Next we need some information about deploying this to AWS.')
         const serviceName = await requestGeneral('Service name', 'hrv', /[-A-z0-9]{1,128}/);
@@ -320,7 +350,7 @@ async function main() {
             return updateStack(cfUpdateFile, bucket, poolId, firstName, lastName, adminEmail, adminPhoto, adminSubjectId, serviceName, stage);
         })
         .then((updateRes) => waitForCloudFormation('stackUpdateComplete', updateRes.StackId, function(cfOutputs) {
-                deployServerless(serviceName, stage, cfOutputs, adminEmail, accountId, poolId); 
+                deployServerless(serviceName, stage, cfOutputs, adminEmail, accountId, poolId, statusReportRecipients); 
                 cognitoStaffGroup = cfOutputValueForKey('CognitoStaffGroup', cfOutputs);
                 return cognitoIdentityServiceProvider.adminGetUser({UserPoolId: poolId, Username: adminEmail}).promise();
             })
@@ -401,14 +431,14 @@ function cfOutputValueForKey(key, outputs) {
     return outputs[idx].OutputValue;
 }
 
-async function deployServerless(serviceName, stage, outputs, adminEmail, accountId, userPoolId) {
+async function deployServerless(serviceName, stage, outputs, adminEmail, accountId, userPoolId, statusReportRecipients) {
     try {
         const userPoolArn = `arn:aws:cognito-idp:${region}:${accountId}:userpool/${userPoolId}`;
         const userPoolClientId = cfOutputValueForKey('UserPoolClientId', outputs);
         const poolClientKey = `cognito-idp.${region}.amazonaws.com/${userPoolId}:${userPoolClientId}`;
         const adminUsername = cfOutputValueForKey('ClientAdminAccount', outputs);
         mergeTemplateWithData(roleMappingTemplate, {"ID_POOL_KEY": poolClientKey}, roleMappingTemplate.replace('.tmpl', ''));
-        spawnSync('sls', ['deploy', '--cognitoUserPoolArn', userPoolArn, '--region', region, '--stage', stage, '--service', serviceName], {
+        spawnSync('sls', ['deploy', '--cognitoUserPoolArn', userPoolArn, '--region', region, '--stage', stage, '--service', serviceName, '--statusReportRecipients', statusReportRecipients], {
             stdio: 'inherit',
             cwd: '..'
         });

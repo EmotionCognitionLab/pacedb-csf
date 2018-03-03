@@ -4,6 +4,7 @@
 * [npm](https://www.npmjs.org)
 * An email address you want automated emails to be sent from (you must be able to receive email at this address as well)
 * An email address and a photo url for the administrator account
+* A list of email addresses for people who should receive weekly status reports from the system
 
 # Quick Start Setup
 1. npm install
@@ -53,7 +54,7 @@ Note that you must run the regular setup before running the offline setup. Once 
 but it would be best to put it somewhere where it won't accidentally get checked in.
 2. In the server directory, run `sls dynamodb start --migrate`. This will create all of the dynamodb tables defined in the serverless.yml file.
 3. Once all of the tables have been created, use Ctrl-C to stop the local dynamodb process.
-4. Run (from the server directory) `sls offline start --service [service name] --stage local --region [region] --cognitoUserPoolArn [arn of your cognito user pool] .
+4. Run (from the server directory) `sls offline start --service [service name] --stage local --region [region] --cognitoUserPoolArn [arn of your cognito user pool] --statusReportRecipients '["someone@example.com"]'.
 
 You'll get some warnings about offline mode not supporting local authorizers, but you can ignore those. At this point, you should have a local dynamodb with all of your tables on port 8000, and a simulated AWS API Gateway and AWS Lambda running on port 3000. That is *all* you will have - you do not have simulated or local SES, SNS, Cognito, etc. Anything that the client app does with those will continue call AWS directly.
 

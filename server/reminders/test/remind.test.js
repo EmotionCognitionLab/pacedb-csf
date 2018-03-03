@@ -5,15 +5,19 @@ require('dotenv').config({path: './test/env.sh'})
 const lambdaLocal = require('lambda-local');
 const moment = require('moment');
 const dbSetup = require('../../common-test/db-setup.js');
+const s3Setup = require('../../common-test/s3-setup.js');
 const dynDocClient = dbSetup.dynDocClient;
 const dynClient = dbSetup.dynClient;
 const assert = require('assert');
+const nock = require('nock');
 
 const usersTable = process.env.USERS_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const groupsTable = process.env.GROUPS_TABLE;
 const reminderMsgsTable = process.env.REMINDER_MSGS_TABLE;
 const groupMsgsTable = process.env.GROUP_MESSAGES_TABLE;
+const statusReportsTable = process.env.STATUS_REPORTS_TABLE;
+const chartBucket = process.env.CHART_BUCKET;
 
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
@@ -21,6 +25,8 @@ const DEFAULT_TARGET_MINUTES = 20;
 const sesEndpoint = process.env.SES_ENDPOINT;
 const AWS = require('aws-sdk');
 const ses = new AWS.SES({endpoint: sesEndpoint, apiVersion: '2010-12-01', region: 'us-east-1'});
+const s3Endpoint = process.env.S3_ENDPOINT;
+const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePathStyle: true});
 
 // Keeps the tests from erroring out with an 'email not verified' error
 ses.verifyEmailIdentity({EmailAddress: 'uscemotioncognitionlab@gmail.com'}).promise()
@@ -70,6 +76,7 @@ const reminderMsgs = [
     {id: 7, active: true, msgType: 'group_behind', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 1, sms: 2}},
     {id: 8, active: true, msgType: 'group_ok', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 3, sms: 4}},
     {id: 9, active: true, msgType: 'survey', subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 10, active: true, msgType: 'status_report', subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
 ];
 
 const userData = [
@@ -78,12 +85,17 @@ const userData = [
 ]
 const NEW_EMOJI_MINUTES = 120; //emoji younger than this are new
 
+const statusReportData = [
+    {reportDate: '1970-01-01', offTargetCount: 9, offTargetPercent: .12, totalMinuteTarget: 100, totalMinutesTrained: 80, offTargetUsers: []}
+];
+
 const dbInfo = [
     { name: groupsTable, data: groups, createFn: dbSetup.createGroupsTable },
     { name: reminderMsgsTable, data: reminderMsgs, createFn: dbSetup.createReminderMsgsTable },
     { name: groupMsgsTable, data: groupMsgs, createFn: dbSetup.createGroupMsgsTable },
     { name: usersTable, data: users, createFn: dbSetup.createUsersTable },
-    { name: userDataTable, data: userData, createFn: dbSetup.createUserDataTable }
+    { name: userDataTable, data: userData, createFn: dbSetup.createUserDataTable },
+    { name: statusReportsTable, data: statusReportData, createFn: dbSetup.createStatusReportTable }
 ];
 
 const targetMinutesByGroup = groups.reduce((acc, cur) => {
@@ -704,6 +716,145 @@ describe('sending survey', function() {
             body.forEach(entry => assert(surveyMsgs.includes(entry.msg)));
         }})
     });
+});
+
+describe('sending status report', function() {
+    const chartName = 'newchart.png';
+    const validGroups = groups.filter(g => 
+        g.startDate <= todayYMD && g.endDate >= todayYMD && !isFirstDayOfWeek(g.startDate)
+    );
+
+    const validUsers = users.filter(u => validGroups.findIndex(g => g.name === u.group) !== -1);
+
+    before(function() {
+        return prepTestEnv();
+    });
+    beforeEach(function() {
+        nock('http://export.highcharts.com')
+        .post(() => true)
+        .reply(200, chartName);
+
+        nock('http://export.highcharts.com')
+        .get(`/${chartName}`)
+        .reply(200, 'in real life this would be binary png data');
+        
+        return dbSetup.dropTable(userDataTable)
+        .then(function() {
+            return dbSetup.createUserDataTable(userDataTable);
+        })
+        .then(function() {
+            return dbSetup.dropTable(statusReportsTable);
+        })
+        .then(function() {
+            return dbSetup.createStatusReportTable(statusReportsTable);
+        })
+        .then(function() {
+            return s3Setup.ensureEmptyBucketExists(chartBucket);
+        });
+    })
+    it('should generate report data and save it to db', function() {
+        
+        const ud = validUsers.map(u => {
+            return {userId: u.id, date: yesterdayYMD, minutes: 0}
+        });
+        const totalTargetMinutes = validUsers.reduce((acc, cur) => {
+            const g = validGroups.filter(vg => vg.name === cur.group)[0];
+            const weekDay = dayOfWeek(g.startDate);
+            return acc + (weekDay * getTargetMinutes(g.startDate));
+        }, 0);
+        const offTargetUsers = validUsers.map(vu => {
+            const g = validGroups.filter(vg => vg.name === vu.group)[0];
+            const weekDay = dayOfWeek(g.startDate);
+            const targetMin = weekDay * getTargetMinutes(g.startDate);
+            return {firstName: vu.firstName, lastName: vu.lastName, trained: 0, group: vu.group, target: targetMin};
+        })
+        return runScheduledEvent({msgType: 'status_report'}, function() {
+            const params = {
+                TableName: statusReportsTable,
+                Key: { reportDate: moment().format('YYYY-MM-DD')}
+            };
+            return dynDocClient.get(params).promise()
+            .then((result) => {
+                const item = result.Item;
+                const expectedDate = moment().format('YYYY-MM-DD');
+                assert(item.offTargetCount === ud.length, `Expected the status report to include ${ud.length} users off-track; found ${item.offTargetCount}`);
+                assert(item.offTargetPercent === 100, `Expected 100 percent of the users to be off-track; ${item.offTargetPercent} were`);
+                assert(item.totalMinutesTrained === 0, `Expected 0 total minutes trained; found ${item.totalMinutesTrained}`);
+                assert(item.reportDate === expectedDate, `Expected the date of the status report to be ${expectedDate}; it was ${item.date}`);
+                assert(item.totalMinutesTarget === totalTargetMinutes, `Expected the total target minutes to be ${totalTargetMinutes}; found ${item.totalMinutesTarget}`);
+                assert(offTargetUsers.length === item.offTargetUsers.length, `Expected ${offTargetUsers.length} off-target users to be returned, but ${item.offTargetUsers.length} were`)
+                
+                offTargetUsers.forEach(ot => assert(item.offTargetUsers.filter(itot => 
+                    ot.firstName === itot.firstName &&
+                    ot.lastName === itot.lastName &&
+                    ot.group === itot.group &&
+                    ot.trained === itot.trained &&
+                    ot.target === itot.target).length === 1, `Expected user ${ot.firstName} ${ot.lastName} to be returned; they weren't`));
+            })
+        }, null, ud);
+
+    });
+    it('should generate a chart and save it to s3', function() {
+        const todayStr = moment().format('YYYY-MM-DD');
+        return runScheduledEvent({msgType: 'status_report'})
+        .then(() => {
+            const params = {
+                Bucket: chartBucket,
+                Prefix: 'status-charts'
+            };
+            return s3.listObjectsV2(params).promise() 
+        })
+        .then((s3Resp) => {
+            assert(s3Resp.Contents.length === 1, `Expected one and only one chart to be saved to s3. Found ${s3Resp.Contents.length}.`);
+            const chartFile = s3Resp.Contents[0].Key;
+            assert(chartFile.endsWith('.png'), `Expected ${chartFile} to end with '.png'.`);  
+            assert(chartFile.startsWith(`status-charts/${todayStr}`), `Expected ${chartFile} to start with status-charts/${todayStr}.`)
+        });
+    });
+    it('should exclude members of the staff group from the statistics', function() {
+        const staffGroup = {
+            name: process.env.ADMIN_GROUP,
+            startDate: +moment().subtract(9, 'days').format('YYYYMMDD'),
+            endDate: +moment().add(3, 'weeks').format('YYYYMMDD')
+        };
+        return dbSetup.writeTestData(groupsTable, [staffGroup])
+        .then(() => {
+            let allUserData = [];
+            validUsers.forEach(u => {
+                const start = validGroups.filter(g => g.name === u.group)[0].startDate;
+                const targetMinutes = getTargetMinutes(start);
+                const weekDay = dayOfWeek(start);
+                allUserData.push({userId: u.id, date: yesterdayYMD, minutes: weekDay * targetMinutes})
+            });
+            const totalMinutesTrained = allUserData.reduce((acc, cur) => acc + cur.minutes, 0);
+
+            const staffUsers = validUsers.map((u, idx) => {
+                return {id: u.id+"1a", firstName: "Staff", lastName: idx.toString(), group: staffGroup.name, email: `staff-${idx}@example.com` }
+            });
+            staffUsers.forEach(su => allUserData.push({userId: su.id, date: yesterdayYMD, minutes: 0}));
+
+            return runScheduledEvent({msgType: 'status_report'}, function() {
+                const params = {
+                    TableName: statusReportsTable,
+                    Key: { reportDate: moment().format('YYYY-MM-DD')}
+                };
+                return dynDocClient.get(params).promise()
+                .then((result) => {
+                    const item = result.Item;
+                    const expectedDate = moment().format('YYYY-MM-DD');
+                    assert(item.offTargetCount === 0, `Expected the status report to include no users off-track; found ${item.offTargetCount}`);
+                    assert(item.offTargetPercent === 0, `Expected 0 percent of the users to be off-track; ${item.offTargetPercent} were`);
+                    assert(item.totalMinutesTrained === totalMinutesTrained, `Expected ${totalMinutesTrained} total minutes trained; found ${item.totalMinutesTrained}`);
+                    assert(item.reportDate === expectedDate, `Expected the date of the status report to be ${expectedDate}; it was ${item.date}`);
+                })
+            }, staffUsers, allUserData);
+
+        });
+    });
+    // testing these requires replacing moto_ses with something that allows us to examine sent emails
+    it('should have a chart in the email');
+    it('should have the off-track users in the email');
+    it('should say "All users are on track" in the email when no users are off-track')
 });
 
 function cleanDb() {

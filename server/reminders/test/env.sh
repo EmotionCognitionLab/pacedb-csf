@@ -1,6 +1,7 @@
 DYNAMO_ENDPOINT=http://localhost:8000
 SES_ENDPOINT=http://localhost:4579
 SNS_ENDPOINT=http://localhost:4575
+S3_ENDPOINT=http://localhost:4583
 USERS_TABLE=hrv-users-test
 GROUPS_TABLE=hrv-groups-test
 USER_DATA_TABLE=hrv-user-data-test
@@ -10,3 +11,7 @@ AWS_ACCESS_KEY_ID=accessKey
 AWS_SECRET_ACCESS_KEY=secret
 TARGET_MINUTES_BY_WEEK=[10,10,20,20,30,30]
 EMAIL_SENDER=nobody@example.com
+STATUS_REPORT_RECIPIENTS=["nobody@example.com"]
+STATUS_REPORTS_TABLE=hrv-status-reports-test
+CHART_BUCKET=hrv-reporting-test
+ADMIN_GROUP=staff

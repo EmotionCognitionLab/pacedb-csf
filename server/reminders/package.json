@@ -20,7 +20,8 @@
     "assert": "^1.4.1",
     "dotenv": "^4.0.0",
     "lambda-local": "^1.4.4",
-    "mocha": "^4.0.1"
+    "mocha": "^4.0.1",
+    "nock": "^9.2.3"
   },
   "dependencies": {
     "aws-sdk": "^2.145.0",

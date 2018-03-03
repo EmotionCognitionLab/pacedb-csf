@@ -5,13 +5,22 @@ const AWS = require('aws-sdk');
 const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
 const sesEndpoint = process.env.SES_ENDPOINT;
 const snsEndpoint = process.env.SNS_ENDPOINT;
+const s3Endpoint = process.env.S3_ENDPOINT;
 const region = process.env.REGION;
 const emailSender = process.env.EMAIL_SENDER;
+const statusReportRecipients = JSON.parse(process.env.STATUS_REPORT_RECIPIENTS)
+.map(email => {
+    return { email: email };
+});
+const chartBucket = process.env.CHART_BUCKET;
+
 const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
 const ses = new AWS.SES({endpoint: sesEndpoint, apiVersion: '2010-12-01', region: region});
 const sns = new AWS.SNS({endpoint: snsEndpoint, apiVersion: '2010-03-31', region: region});
+const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePathStyle: true});
 
 const moment = require('moment');
+const http = require('http');
 const todayYMD = +moment().format('YYYYMMDD');
 
 const groupsTable = process.env.GROUPS_TABLE;
@@ -19,13 +28,14 @@ const groupMsgsTable = process.env.GROUP_MESSAGES_TABLE;
 const usersTable = process.env.USERS_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const reminderMsgsTable = process.env.REMINDER_MSGS_TABLE;
+const statusReportsTable = process.env.STATUS_REPORTS_TABLE;
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
 
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
 const NEW_EMOJI_MINUTES = 120; //emojis younger than this are new
 
-const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji', 'survey'];
+const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji', 'survey', 'status_report'];
 
 exports.handler = (event, context, callback) => {
     const msgType = event.msgType;
@@ -66,6 +76,11 @@ exports.handler = (event, context, callback) => {
         }
         case 'survey': {
             getRecipients = getActiveUsersForSurvey;
+            break;
+        }
+        case 'status_report': {
+            getRecipients = getWeeklyStatusReport;
+            break;
         }
     }
     
@@ -347,7 +362,7 @@ function filterGroupsByTarget(userMap, groupMap) {
     const result = { onTarget: [], offTarget: [] };
     const targetCheckPromises = [];
     for (let [group, users] of usersByGroup.entries()) {
-        const prom = allUsersOnTarget(group.startDate, users)
+        const prom = allOnTarget(group.startDate, users)
         .then((allOnTarget) => {
             if (allOnTarget) {
                 result.onTarget.push(...users);
@@ -392,13 +407,16 @@ function getActiveGroupsAndUsers() {
     });
 }
 
-// Returns a promise of scan output with names of groups whose startDate is on or before today
-// and whose endDate is on or after_today
-function getActiveGroups() {
+/**
+ * Returns a promise of scan output with names of groups whose startDate is on or before asOfDate
+ * and whose endDate is on or after asOfDate.
+ */
+function getActiveGroups(asOfDate) {
+    const asOf = asOfDate || todayYMD;
     const params = {
         TableName: groupsTable,
         ExpressionAttributeValues: {
-            ':td': todayYMD
+            ':td': asOf
         },
         FilterExpression: "startDate <= :td AND endDate >= :td"
     }
@@ -511,7 +529,45 @@ function isFirstDayOfWeek(startDate) {
  * @param {number} startDate of the group the users are in, in YYYYMMDD format
  * @param {[user obj]} users All of the users in the group
  */
-function allUsersOnTarget(startDate, users) {
+function allOnTarget(startDate, users) {
+    return usersWithTargetAndTrained(startDate, users) 
+    .then(userInfo => userInfo.reduce((acc, curVal) => curVal.trained >= curVal.target ? acc : false, true));
+}
+
+/**
+ * Returns Promise<[{firstName, lastName, group, target, trained}]> of all of the 
+ * training minutes that the users have done for the week to date (not including the current day).
+ * @param {number} startDate of the group the users are in, in YYYYMMDD format
+ * @param {[user obj]} users All of the users in the group
+ */
+function usersWithTargetAndTrained(startDate, users) {
+    const today = moment().day();
+    const start = moment(startDate.toString()).day();
+    const dayOfWeek = today >= start ? today - start : 7 - (start - today);
+
+    return getMinutesByUser(startDate, users)
+    .then(minutesByUser => {
+        const dailyTarget = getDailyTargetMinutes(startDate);
+        const target = dayOfWeek * dailyTarget;
+        return users.map(u => {
+            return {
+                'firstName': u.firstName,
+                'lastName': u.lastName,
+                'group': u.group,
+                'target': target,
+                'trained': minutesByUser[u.id] || 0
+            };
+        });
+    });
+}
+
+/**
+ * Returns Promise<{userId: minutes}> of the minutes that each user in users
+ * has done so far this week.
+ * @param {number} startDate of the group the users are in, in YYYYMMDD format
+ * @param {[user obj]} users All of the users in the group
+ */
+function getMinutesByUser(startDate, users) {
     const today = moment().day();
     const start = moment(startDate.toString()).day();
     const dayOfWeek = today >= start ? today - start : 7 - (start - today);
@@ -537,7 +593,7 @@ function allUsersOnTarget(startDate, users) {
         return dynamo.query(params).promise()
         .then((result) => result.Items)
         .catch(err => {
-            console.log(`Error querying userData in allUsersOnTarget for user id ${user.id}: ${JSON.stringify(err)}`);
+            console.log(`Error querying userData in getMinutesByUser for user id ${user.id}: ${JSON.stringify(err)}`);
             return {};
         });
     });
@@ -545,7 +601,7 @@ function allUsersOnTarget(startDate, users) {
     return Promise.all(promises)
     .then((udRecordsArr) => {
         const udRecords = [].concat(...udRecordsArr); // flatten 2D records array that Promise.all returns
-        const minutesByUser = udRecords.reduce((acc, cur) => {
+        return udRecords.reduce((acc, cur) => {
             // if a query failed above we return {} - check for that and skip it 
             if (Object.keys(cur).length === 0 && cur.constructor === Object) return acc;
 
@@ -553,19 +609,6 @@ function allUsersOnTarget(startDate, users) {
             acc[cur.userId] = minSoFar + cur.minutes;
             return acc;
         }, {});
-
-        const dailyTarget = getDailyTargetMinutes(startDate);
-        const target = dayOfWeek * dailyTarget;
-        let result = true;
-        if (Object.keys(minutesByUser).length > 0) {
-            Object.keys(minutesByUser).forEach(userId => {
-                if (minutesByUser[userId] < target) result = false;
-            });
-        } else {
-            // there were no user data records for this group at all, so they're not on target
-            result = false;
-        }
-        return result;
     });
 }
 
@@ -620,4 +663,238 @@ function saveSendData(data) {
     });
     return Promise.all(promises);
 
+}
+
+/** Generates weekly status report that is emailed to staff showing how well users are keeping
+ * up with their training goals.
+ */
+function getWeeklyStatusReport() {
+    let offTargetUsers = [];
+    let s3ChartUrl = '';
+    const adminGroup = process.env.ADMIN_GROUP;
+    const reportDate = moment().format('YYYY-MM-DD');
+
+    return getActiveGroupsAndUsers()
+    .then((groupsAndUsers) => {
+        const userMap = groupsAndUsers.userMap;
+        const groupMap = groupsAndUsers.groupMap;
+        const usersByStartDate = new Map(); // Map<startDate:number, [User obj]>
+        for (let user of userMap.values()) {
+            const startDate = groupMap.get(user.group).startDate;
+            // exclude first day of week groups because if today is the first day of the week you're not expected to have done anything yet
+            // and exclude the admins because they aren't real participants and would skew the results
+            if (isFirstDayOfWeek(startDate) || user.group === adminGroup) continue; 
+
+            const usersWithStartDate = usersByStartDate.get(startDate) || [];
+            usersWithStartDate.push(user);
+            usersByStartDate.set(startDate, usersWithStartDate);
+        }
+        const allPromises = [];
+        for (let [startDate, users] of usersByStartDate.entries()) {
+            const p = usersWithTargetAndTrained(startDate, users)
+            // we intentionally dont catch here - if one start date fails the whole report should fail
+            allPromises.push(p);
+        }
+        return Promise.all(allPromises);
+    })
+    .then((targetAndTrainingArr) => {
+        let totalMinutesTarget = 0, totalMinutesTrained = 0;
+        const userInfo = [].concat(...targetAndTrainingArr); // flatten 2D records array that Promise.all returns
+        if (userInfo.length === 0) {
+            throw new Error('Unable to generate weekly status report - no active users found');
+        }
+        userInfo.forEach(u => {
+            if (u.target > u.trained) {
+                offTargetUsers.push(u);
+            }
+            totalMinutesTarget += u.target;
+            totalMinutesTrained += u.trained;
+        })
+
+        const results = {
+            reportDate: reportDate,
+            offTargetCount: offTargetUsers.length, 
+            offTargetPercent: Math.round((offTargetUsers.length / userInfo.length) * 100),
+            totalMinutesTarget: totalMinutesTarget,
+            totalMinutesTrained: totalMinutesTrained,
+            offTargetUsers: offTargetUsers
+        };
+        const params = {
+            TableName: statusReportsTable,
+            Item: results
+        };
+        return dynamo.put(params).promise()
+    })
+    .then(() => {
+        return saveStatusReportChartToS3(6);
+    })
+    .then((chartUrl) => {
+        s3ChartUrl = chartUrl;
+        return getRandomMsgForType('status_report');
+    })
+    .then((msg) => {
+        let offTargetHtml = '<thead>\n<tr><th>User</th><th>Minutes/Target</th><th>Team</th></tr>\n</thead>\n<tbody>';
+        let offTargetText = '';
+        if (offTargetUsers.length === 0) {
+            offTargetHtml = '<b>All participants are on track!</b>';
+            offTargetText = 'All participants are on track!';
+        } else {
+            offTargetUsers.forEach(u => {
+                offTargetHtml += 
+                `<tr><td>${u.firstName} ${u.lastName.slice(0, 1)}.</td><td>${u.trained}/${u.target}</td><td><a href='http://mindbodystudy.org/group?group_name=${u.group}'>${u.group}</a></td></tr>`
+                offTargetText +=
+                `${u.firstName} ${u.lastName.slice(0, 1)}\t${u.trained}/${u.target}\t${u.group}\n`;
+            });
+            offTargetHtml += '</tbody>';
+        }
+
+        msg.html = msg.html.replace('%%CHART_URL%%', s3ChartUrl).replace('%%DATE%%', reportDate).replace('%%OFF_TRACK_USERS%%', offTargetHtml);
+        msg.text = msg.text.replace('%%CHART_URL%%', s3ChartUrl).replace('%%OFF_TRACK_USERS%%', offTargetText);
+        msg.sms = msg.sms.replace('%%CHART_URL%%', s3ChartUrl);
+
+        return [{msg: msg, recipients: statusReportRecipients}];
+    });
+}
+
+/**
+ * Generates a chart covering the last numWeeks weeks for the status report,
+ * saves it to s3 and returns the url for it.
+ * @param {number} numWeeks 
+ */
+function saveStatusReportChartToS3(numWeeks) {
+    let s3ChartUrl = '';
+
+    const today = moment().format('YYYY-MM-DD');
+    const startDate = moment().subtract(numWeeks, 'weeks').format('YYYY-MM-DD');
+    const params = {
+        TableName: statusReportsTable,
+        FilterExpression: '#D between :start and :end',
+        ExpressionAttributeNames: { '#D': 'reportDate' },
+        ExpressionAttributeValues: { ':start': startDate, ':end': today },
+        ConsistentRead: true
+    };
+
+    return dynamo.scan(params).promise()
+    .then((result) => {
+        const countSeries = [];
+        const pctSeries = [];
+        const dates = [];
+        result.Items.sort((a, b) => a.date > b.date).forEach(i => {
+            let radius = 4;
+            if (i.totalMinutesTrained <= 0) {
+                radius = 40;
+            } else {
+                radius = Math.min((i.totalMinutesTarget / i.totalMinutesTrained) * 1.5 * 4, 40);  // the more training minutes have been missed, the larger the radius, within reason
+            }
+            countSeries.push(
+                {
+                    y: i.offTargetCount,
+                    pctMinMissed: (i.totalMinutesTarget - i.totalMinutesTrained) / i.totalMinutesTarget,
+                    marker: {
+                        radius: radius
+                    } 
+                }
+            );
+            pctSeries.push(i.offTargetPercent);
+            dates.push(i.reportDate);
+        });
+
+        if (countSeries.length === 0 || pctSeries.length === 0 || dates === 0) {
+            throw new Error(`No status report data found for period ${startDate} to ${today}`);
+        }
+        
+        const chartOptions = {
+            "title": {"text": "Weekly Status Report"},
+            "subtitle": { "text": `${startDate} to ${today}` },
+            "xAxis": [{
+                "categories": dates
+            }],
+            "yAxis": [{ 
+                "labels": {
+                    "format": "{value}%"
+                },
+                "title": {
+                    "text": "% of Participants Off-Track"
+                },
+                "opposite": true
+            },
+            {
+                "title": {
+                    "text": "# of Participants Off-Track"
+                }
+            }],
+            
+            "series": [{
+                "name": "Count",
+                "type": "line",
+                "data": countSeries,
+                "yAxis": 1
+            }, {
+                "name": "Percentage",
+                "data": pctSeries
+            }]
+        };
+
+        // "tooltip": { 
+        //     "formatter": function() {
+        //         var noun = 'subject';
+        //         if (this.y > 1) noun = 'subjects';
+        //         return this.x+'<br/>'+ this.y+' '+noun +' ('+this.points[1].y+'%) off-track<br/>'+this.points[0].point.pctMinMissed+'% of training minutes missed';
+        //     },
+        //     "shared": true
+        // },
+
+        // POST the chart data and options to highcharts...
+        const postData = encodeURI(`async=true&width=700&options=${JSON.stringify(chartOptions)}`);
+        const httpOptions = {
+            hostname: 'export.highcharts.com',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Length': Buffer.byteLength(postData)
+            }
+        };
+        return new Promise((resolve, reject) => {
+            let result = '';
+            const req = http.request(httpOptions, (res) => {
+                res.setEncoding('utf8');
+                res.on('data', (chunk) => result += chunk);
+                res.on('end', () => resolve(result));
+            });
+            req.on('error', (e) => reject(e))
+            req.write(postData);
+            req.end();
+        });
+    })
+    //...from the POST they return a relative URL which we do a GET on...
+    .then((chartUrl) => {
+        return new Promise((resolve, reject) => {
+            const fullChartUrl = `http://export.highcharts.com/${chartUrl}`;
+            http.get(fullChartUrl, (res) => {
+                const { statusCode } = res;
+                if (statusCode !== 200) {
+                    res.resume();
+                    reject(new Error(`Failed to GET ${fullChartUrl} - status code ${statusCode}`))
+                }
+                resolve(res);
+            });
+        });
+    })
+    //...which returns the PNG data for the chart image...
+    .then((getChartResp) => {
+        s3ChartUrl = `status-charts/${today}-${Date.now()}.png`;
+        const params = {
+            Body: getChartResp,
+            Key: s3ChartUrl,
+            Bucket: chartBucket,
+            ACL: 'public-read',
+            Metadata: {'Content-Type': 'image/png'}
+        };
+    //...that we then upload to s3...
+        return s3.upload(params).promise();
+    })
+    //...and finally we return the s3 url for the chart PNG
+    .then(() => {
+        return `https://${chartBucket}.s3.${region}.amazonaws.com/${s3ChartUrl}`;
+    }); //intentionally omit catch - this should bubble up and cause the status report to fail
 }

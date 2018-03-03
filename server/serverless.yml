@@ -189,6 +189,11 @@ functions:
           description: Tells users whether their group is on or off track
           input:
             msgType: group_status
+      - schedule:
+          rate: cron(22 8 ? * SUN *)
+          description: Sends out the weekly status report
+          input:
+            msgType: status_report
             
 #    Define function environment variables here
     environment:
@@ -201,7 +206,14 @@ functions:
         Fn::Sub: "https://email.${self:provider.region}.amazonaws.com"
       SNS_ENDPOINT: 
         Fn::Sub: "https://sns.${self:provider.region}.amazonaws.com"
+      S3_ENDPOINT: "https://s3.${self:provider.region}.amazonaws.com"
       EMAIL_SENDER: "uscemotioncognitionlab@gmail.com"
+      CHART_BUCKET:
+         Fn::Sub: "${self:service}-${self:provider.stage}-reporting"
+      STATUS_REPORT_RECIPIENTS: ${opt:statusReportRecipients}
+      STATUS_REPORTS_TABLE:
+        Ref: statusReportsTable
+      ADMIN_GROUP: "staff"
 
 # DO NOT CHANGE the name of this function unless you also change it in setup/setup.js
   messageCustomizer:
@@ -330,6 +342,19 @@ resources:
             AttributeType: N
         KeySchema:
           - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    statusReportsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-status-reports
+        AttributeDefinitions:
+          - AttributeName: reportDate
+            AttributeType: S
+        KeySchema:
+          - AttributeName: reportDate
             KeyType: HASH
         ProvisionedThroughput:
           ReadCapacityUnits: 1
@@ -484,3 +509,24 @@ resources:
                   Action:
                     - "dynamodb:UpdateItem"
                   Resource: { Fn::GetAtt: [reminderMessagesTable, Arn] }
+          - PolicyName: "DynamoStatusReportsWritePolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "dynamodb:PutItem"
+                  Resource: { Fn::GetAtt: [statusReportsTable, Arn] }
+          - PolicyName: "ReportingBucketWritePolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "s3:PutObject"
+                    - "s3:PutObjectAcl"
+                  Resource:
+                    Fn::Join: 
+                      - "/"
+                      - - Fn::ImportValue: "${self:service}-${self:provider.stage}-reportingBucketARN"
+                        - "*"
