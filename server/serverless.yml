@@ -190,7 +190,7 @@ functions:
           input:
             msgType: group_status
       - schedule:
-          rate: cron(22 8 ? * SUN *)
+          rate: cron(22 16 ? * SUN *)
           description: Sends out the weekly status report
           input:
             msgType: status_report
