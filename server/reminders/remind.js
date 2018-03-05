@@ -779,7 +779,7 @@ function saveStatusReportChartToS3(numWeeks) {
         const countSeries = [];
         const pctSeries = [];
         const dates = [];
-        result.Items.sort((a, b) => a.date > b.date).forEach(i => {
+        result.Items.sort((a, b) => a.reportDate > b.reportDate).forEach(i => {
             let radius = 4;
             if (i.totalMinutesTrained <= 0) {
                 radius = 40;
