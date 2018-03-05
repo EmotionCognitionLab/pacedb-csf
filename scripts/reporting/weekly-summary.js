@@ -41,7 +41,20 @@ function csvReport(filePath, startDate, endDate) {
         while(r = parser.read()) {
             const start = moment(r.Date, 'MM-DD-YYYY-HH-mm-ss').tz(localTz);
             if (start.isBetween(startDate, endDate, '[]')) {
-                results.push({time: start, duration: r['Time Spent On This Attempt'], calmness: r['Ave Calmness']});
+                const dupeIdx = results.findIndex(a => a.sessName === r['Session Name']);
+                if (dupeIdx === -1) {
+                    // this isn't a duplicate entry; add it to results
+                    results.push({time: start, duration: r['Time Spent On This Attempt'], calmness: r['Ave Calmness'], sessName: r['Session Name'], timeSpending: r['Time Spending for the Session']});
+                } else {
+                    // it's a dupe; figure out whether to discard it or the copy of it we read earlier
+                    const dupeRow = results[dupeIdx];
+                    if (r['Time Spending for the Session'] < dupeRow.timeSpending) {
+                        // we always keep the dupe copy with the shortest 'time spending for the session' value
+                        // so replace the one we read previously with this one
+                        results.splice(dupeIdx, 1, {time: start, duration: r['Time Spent On This Attempt'], calmness: r['Ave Calmness'], sessName: r['Session Name'], timeSpending: r['Time Spending for the Session']})
+                    }
+                }
+                
             }
         }
     });
@@ -218,4 +231,12 @@ function main() {
     .catch(err => console.log(err));
 }
 
-main();
+module.exports = {
+    csvReport: csvReport,
+    sqliteReport: sqliteReport
+}
+
+if (require.main === module) {
+    //we're being called directly, do our thing
+    main();
+}
