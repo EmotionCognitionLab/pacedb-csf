@@ -49,23 +49,23 @@ const todayLogFormat = moment().format('MM-DD-YYYY-HH-mm-ss');
 
 const activeGroup = {name: 'active', startDate: +moment().subtract(10, 'days').format('YYYYMMDD'), endDate: +moment().add(10, 'days').format('YYYYMMDD')};
 const singleLine = {
-    data: [{subjectId: '5017', seconds: 181, date: todayLogFormat}],
+    data: [{subjectId: '5017', sessName: 1, seconds: 181, date: todayLogFormat, timeSpending: 181}],
     users: [{id: 'abc123', subjectId: '5017', group: activeGroup.name}]
 };
 
 const multiLine = {
     data: [
-        {subjectId: '5002', seconds: 90, date: todayLogFormat},
-        {subjectId: '5002', seconds: 177, date: todayLogFormat},
-        {subjectId: '5002', seconds: 32, date: todayLogFormat}
+        {subjectId: '5002', sessName: 1, seconds: 90, date: todayLogFormat, timeSpending: 90},
+        {subjectId: '5002', sessName: 2, seconds: 177, date: todayLogFormat, timeSpending: 177},
+        {subjectId: '5002', sessName: 3, seconds: 32, date: todayLogFormat, timeSpending: 32}
     ],
     users: [{id: 'def456', subjectId: '5002', group: activeGroup.name}]
 }
 
 const activeGroup2 = {name: 'active2', startDate: +moment().subtract(10, 'days').format('YYYYMMDD'), endDate: +moment().add(10, 'days').format('YYYYMMDD')};
 const multiGroup = {
-    data1: [{subjectId: '5003', seconds: 240, date: todayLogFormat}],
-    data2: [{subjectId: '5004', seconds: 300, date: todayLogFormat}],
+    data1: [{subjectId: '5003', sessName: 1, seconds: 240, date: todayLogFormat, timeSpending: 240}],
+    data2: [{subjectId: '5004', sessName: 1, seconds: 300, date: todayLogFormat, timeSpending: 300}],
     users: [
         {id: 'abd289', subjectId: '5003', group: activeGroup.name},
         {id: 'abd290', subjectId: '5004', group: activeGroup2.name}
@@ -75,18 +75,18 @@ const multiGroup = {
 const oldLogFormat = moment().subtract(92, 'days').format('MM-DD-YYYY-HH-mm-ss');
 const multiDate = {
     data: [
-        {subjectId: '5005', seconds: 117, date: todayLogFormat},
-        {subjectId: '5005', seconds: 98, date: todayLogFormat},
-        {subjectId: '5005', seconds: 382, date: oldLogFormat},
-        {subjectId: '5005', seconds: 229, date: oldLogFormat}
+        {subjectId: '5005', sessName: 1, seconds: 117, date: todayLogFormat, timeSpending: 117},
+        {subjectId: '5005', sessName: 2, seconds: 98, date: todayLogFormat, timeSpending: 98},
+        {subjectId: '5005', sessName: 3, seconds: 382, date: oldLogFormat, timeSpending: 382},
+        {subjectId: '5005', sessName: 4, seconds: 229, date: oldLogFormat, timeSpending: 229}
     ],
     users: [{id: 'bec482', subjectId: '5005', group: activeGroup.name}]
 };
 
 const negative = {
     data: [ 
-        {subjectId: '5006', seconds: 20, date: todayLogFormat},
-        {subjectId: '5006', seconds: -30, date: todayLogFormat}
+        {subjectId: '5006', sessName: 1, seconds: 20, date: todayLogFormat, timeSpending: 20},
+        {subjectId: '5006', sessName: 2, seconds: -30, date: todayLogFormat, timeSpending: -30}
      ],
      users: [{id: 'cdb123', subjectId: '5006', group: activeGroup.name}]
 };
@@ -94,19 +94,41 @@ const negative = {
 const yesterdayLogFormat = moment().subtract(1, 'days').format('MM-DD-YYYY-HH-mm-ss');
 const yesterday = {
     data: [
-        {subjectId: '5007', seconds: 229, date: todayLogFormat},
-        {subjectId: '5007', seconds: 300, date: yesterdayLogFormat}
+        {subjectId: '5007', sessName: 1, seconds: 229, date: todayLogFormat, timeSpending: 229},
+        {subjectId: '5007', sessName: 2, seconds: 300, date: yesterdayLogFormat, timeSpending: 300}
     ],
     users: [{id: 'fff888', subjectId: '5007', group: activeGroup.name}]
 };
 
 const inactiveGroup = {name: 'inactive', startDate: 20170923, endDate: 20171023};
 const inactive = {
-    data1: [ {subjectId: '5008', seconds: 382, date: todayLogFormat} ],
-    data2: [ {subjectId: '5009', seconds: 294, date: todayLogFormat} ] ,
+    data1: [ {subjectId: '5008', sessName: 1, seconds: 382, date: todayLogFormat, timeSpending: 382} ],
+    data2: [ {subjectId: '5009', sessName: 1, seconds: 294, date: todayLogFormat, timeSpending: 294} ] ,
     users:  [
         {id: 'def902', subjectId: '5008', group: activeGroup.name},
         {id: 'cde238', subjectId: '5009', group: inactiveGroup.name}
+    ]
+};
+
+const dupeSessionLowFirst = {
+    data: [
+        {subjectId: '5009', sessName: 1, seconds: 20, date: todayLogFormat, timeSpending: 20},
+        {subjectId: '5009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 30},
+        {subjectId: '5009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 61}
+    ],
+    users: [
+        {id: 'cab000', subjectId: '5009', group: activeGroup.name}
+    ]
+};
+
+const dupeSessionHighFirst = {
+    data: [
+        {subjectId: '5009', sessName: 1, seconds: 20, date: todayLogFormat, timeSpending: 20},
+        {subjectId: '5009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 61},
+        {subjectId: '5009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 30}
+    ],
+    users: [
+        {id: 'cab000', subjectId: '5009', group: activeGroup.name}
     ]
 };
 
@@ -433,8 +455,67 @@ describe('Importing log file data', function() {
         .catch(function(err) {
             console.log(err);
             throw(err);
+        });
+    });
+
+    function expectedMinWithDupeSessions(data) {
+        const filtered = data.reduce((acc, cur) => {
+            const dupeIdx = acc.findIndex(a => a.sessName === cur.sessName);
+            if (dupeIdx === -1) {
+                acc.push(cur);
+            } else {
+                const dupeRow = acc[dupeIdx];
+                if (dupeRow.timeSpending > cur.timeSpending) {
+                    acc.splice(dupeIdx, 1, cur);
+                }
+            }
+            return acc;
+        }, []);
+        return Math.round(filtered.reduce((acc, cur) => acc + cur.seconds, 0) / 60);
+    }
+
+    it('should filter out rows that have duplicate session names, keeping the one with the lowest Time Spending for the Session value', function() {
+        const data = makeCsvData(dupeSessionLowFirst.data);
+        return saveDataToS3(`${dupeSessionLowFirst.users[0].subjectId}/${logFile}`, data)
+        .then(function() {
+            return dbSetup.writeTestData(groupsTable, [activeGroup]);
         })
-    })
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, dupeSessionLowFirst.users);
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function() {
+            const expectedMin = expectedMinWithDupeSessions(dupeSessionLowFirst.data);
+            return confirmResult(dupeSessionLowFirst.users[0].id, todayYMD, expectedMin);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should filter out rows that have duplicate session names, even if the one with the highest Time Spending for the Session value comes first', function() {
+        const data = makeCsvData(dupeSessionHighFirst.data);
+        return saveDataToS3(`${dupeSessionHighFirst.users[0].subjectId}/${logFile}`, data)
+        .then(function() {
+            return dbSetup.writeTestData(groupsTable, [activeGroup]);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, dupeSessionHighFirst.users);
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function() {
+            const expectedMin = expectedMinWithDupeSessions(dupeSessionHighFirst.data);
+            return confirmResult(dupeSessionHighFirst.users[0].id, todayYMD, expectedMin);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
 });
 
 // test data for sqlite cases
@@ -728,7 +809,7 @@ const csvHeader = "User,Session Name,Time Spent On This Attempt,Attempt,Finish S
 
 function makeCsvData(data) {
     let result = csvHeader;
-    data.forEach(d => result = result + `${d.subjectId},1,${d.seconds},0,Finished,180,5,${d.date},10.0474598204924,181\n`);
+    data.forEach(d => result = result + `${d.subjectId},${d.sessName},${d.seconds},0,Finished,180,5,${d.date},10.0474598204924,${d.timeSpending}\n`);
     return result;
 }
 

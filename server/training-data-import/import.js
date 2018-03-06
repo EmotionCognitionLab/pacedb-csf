@@ -125,7 +125,7 @@ function getDataForUser(user, date) {
  */
 function getCsvDataForUser(user, date) {
     const logFileDate = date.format('MM-DD-YYYY');
-    let totalSeconds = 0;
+    const rowsRead = [];
     return s3.getObject({
         Bucket: bucket,
         Key: `${user.subjectId}/${logFile}`
@@ -137,9 +137,20 @@ function getCsvDataForUser(user, date) {
                 if (err) {
                     reject(err);
                 }
-                csvRecs.filter(r => r.Date.startsWith(logFileDate)).forEach(r => {
-                    totalSeconds = totalSeconds + r['Time Spent On This Attempt'];
+                csvRecs.forEach(r => {
+                    if (!r.Date.startsWith(logFileDate)) return;
+                    const dupeIdx = rowsRead.findIndex(a => a.sessName === r['Session Name']);
+                    if (dupeIdx === -1) {
+                        rowsRead.push({sessName: r['Session Name'], timeSpending: r['Time Spending for the Session'], seconds: r['Time Spent On This Attempt']});
+                    } else {
+                        // we have a dupe - keep the one with the lowest 'Time Spending for the Session' value
+                        const dupeRow = rowsRead[dupeIdx];
+                        if (dupeRow.timeSpending > r['Time Spending for the Session']) {
+                            rowsRead.splice(dupeIdx, 1, {sessName: r['Session Name'], timeSpending: r['Time Spending for the Session'], seconds: r['Time Spent On This Attempt']});
+                        }
+                    }
                 });
+                const totalSeconds = rowsRead.reduce((acc, cur) => acc + cur.seconds, 0);
                 resolve(totalSeconds);
             }
         )});
