@@ -61,6 +61,7 @@ functions:
         - reminders/**
         - api/test/**
         - api/node_modules/** # api function doesn't have any dependencies; delete this line if you add any
+        - training-data-import/**
         - logger/**
     role: lambdaWithDynamoRole
     handler: api/api.handler
