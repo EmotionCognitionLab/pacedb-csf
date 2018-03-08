@@ -6,10 +6,16 @@ const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
 const region = process.env.REGION;
 const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: region});
 
-const usersTable = process.env.USERS_TABLE;
 const groupMessagesTable = process.env.GROUP_MESSAGES_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
+
+const DynUtils = require('../common/dynamo');
+const db = new DynUtils.HrvDb({
+    groupsTable: process.env.GROUPS_TABLE,
+    usersTable: process.env.USERS_TABLE,
+    userDataTable: process.env.USER_DATA_TABLE
+});
 
 exports.handler = (event, context, callback) => {
     const path = event.path;
@@ -113,13 +119,7 @@ function groupForRequest(event) {
 function getGroupMembers(event) {
     return groupForRequest(event)
     .then((groupName) => {
-        const params = {
-            TableName: usersTable,
-            FilterExpression: '#G = :theGroup',
-            ExpressionAttributeNames: { '#G': 'group' },
-            ExpressionAttributeValues: { ':theGroup': groupName }
-        }
-        return dynamo.scan(params).promise();
+        return db.getUsersInGroups([groupName]);
     })
     .then((memberQueryResult) => {
         return normalResult(memberQueryResult.Items)
@@ -161,12 +161,7 @@ function callerIsAdmin(callerCognitoGroups) {
 }
 
 function callersGroup(callerId) {
-    var params = {
-        TableName: usersTable,
-        FilterExpression: 'id = :callerId',
-        ExpressionAttributeValues: { ':callerId': callerId }
-    }
-    return dynamo.scan(params).promise()
+    return db.getUser(callerId)
     .then((data) => {
         if (data.Items.length === 0) return undefined
         if (data.Items.length > 1) throw new Error('Found more than 1 user with id ' + callerId);
@@ -217,23 +212,13 @@ function getUser(event) {
         return errorResult('400:No user_id provided')
     }
 
-    return userFromDynamo(userId)
+    return db.getUser(userId)
     .then((data) => {
         if (data.Items.length === 0) {
             return errorResult('404:No such user')
         }
         return normalResult(data.Items[0]);
     });
-}
-
-function userFromDynamo(userId) {
-    const params = {
-        TableName: usersTable,
-        KeyConditionExpression: 'id = :userId',
-        ExpressionAttributeValues: { ':userId': userId },
-        ProjectionExpression: 'id, firstName, lastName, isAdmin, photoUrl'
-    };
-    return dynamo.query(params).promise();
 }
 
 /**
@@ -252,13 +237,7 @@ function getUserData(event) {
         return Promise.resolve(errorResult('400:Start date must be less than or equal to end date.'))
     }
     // TODO prevent users from getting info about users in another group (unless they're an admin)
-    const queryParams = {
-        TableName: userDataTable,
-        KeyConditionExpression: 'userId = :userId and #D between :start and :end',
-        ExpressionAttributeNames: { '#D': 'date' },
-        ExpressionAttributeValues: { ':userId': userId, ':start': +start, ':end': +end }
-    }
-    return dynamo.query(queryParams).promise()
+    return db.getUserDataForUser(userId, +start, +end)
     .then((result) => normalResult(result.Items))
     .catch((err) => {
         console.log(err);
@@ -286,24 +265,12 @@ function writeUserMinutes(event) {
 
     // check to make sure minutes haven't already been uploaded automatically
     // (in which case users aren't allowed to overwrite them)
-    const queryParams = {
-        TableName: userDataTable,
-        KeyConditionExpression: 'userId = :userId and #D between :start and :end',
-        ExpressionAttributeNames: { '#D': 'date' },
-        ExpressionAttributeValues: { ':userId': userId, ':start': date, ':end': date }
-    }
-    return dynamo.query(queryParams).promise()
+    return db.getUserDataForUser(userId, date, date)
     .then((result) => {
         if (result.Items.length > 0 && result.Items[0].minutesFrom === 'software') {
             return errorResult('403:Your training minutes were uploaded automatically and can\'t be changed.');
         }
-        const updateParams = {
-            TableName: userDataTable,
-            Key: { 'userId': userId, 'date': date},
-            UpdateExpression: 'set minutes = :minutes, minutesFrom = :minutesFrom',
-            ExpressionAttributeValues: {':minutes': minutes, ':minutesFrom': 'user'}
-        }
-        return dynamo.update(updateParams).promise()
+        return db.writeTrainingMinutes(userId, date, minutes, 'user')
         .then(() => normalResult({}, 204))
     })
     .catch((err) => {
@@ -335,7 +302,7 @@ function writeUserEmoji(event) {
     let day = today.getDate();
     day = day < 10 ? `0${day}` : day.toString();
     const todayYMD = `${today.getFullYear()}${month}${day}`;
-    return userFromDynamo(senderId)
+    return db.getUser(senderId)
     .then(senderResult => {
         const sender = senderResult.Items.length === 1 ? senderResult.Items[0] : {firstName: 'Unknown', lastName: 'U'};
         const senderName = `${sender.firstName} ${sender.lastName.slice(0,1)}.`; 

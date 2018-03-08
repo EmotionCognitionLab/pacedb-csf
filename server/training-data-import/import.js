@@ -12,9 +12,13 @@ const sqlite3 = require('better-sqlite3');
 const parse = require('csv-parse');
 const moment = require('moment-timezone');
 
-const groupsTable = process.env.GROUPS_TABLE;
-const usersTable = process.env.USERS_TABLE;
-const userDataTable = process.env.USER_DATA_TABLE;
+const DynUtils = require('../common/dynamo');
+const db = new DynUtils.HrvDb({
+    groupsTable: process.env.GROUPS_TABLE,
+    usersTable: process.env.USERS_TABLE,
+    userDataTable: process.env.USER_DATA_TABLE
+});
+
 
 // Data from subjects in the control group will be in logFile
 const logFile = 'log.csv';
@@ -56,7 +60,7 @@ exports.handler = (event, context, callback) => {
 
 function importData(date) {
     let promises = [];
-    return getActiveGroups(+date.format('YYYYMMDD'))
+    return db.getActiveGroups(+date.format('YYYYMMDD'))
     .then(groupsRes => {
         if (groupsRes.Items.length === 0) {
             console.log('No active groups found. Exiting.');
@@ -64,7 +68,7 @@ function importData(date) {
         }
 
         const groupNames = groupsRes.Items.map(g => g.name);
-        return getUsersInGroups(groupNames)
+        return db.getUsersInGroups(groupNames)
         .then(usersRes => {
             if (usersRes.Items.length === 0) {
                 console.log('Active groups had no members. Exiting.');
@@ -86,7 +90,8 @@ function importForUser(user, date) {
             console.log(`no log file/sqlite db found (or no entries found for ${date.format('YYYY-MM-DD')}) for subject ${user.subjectId}`)
             return;
         } else {
-            return writeDataToDynamo(user, date, seconds)
+            const minutes = Math.round(seconds / 60);
+            return db.writeTrainingMinutes(user, date, minutes, 'software');
         }
     });
 }
@@ -182,57 +187,4 @@ function getSqliteDataForUser(user, date) {
             resolve(res && res.total > 0 ? res.total : 0);
         });
     });
-}
-
-
-function writeDataToDynamo(user, date, seconds) {
-    if (seconds < 0) {
-        return Promise.reject(new Error(`Expected the number of seconds trained to be >= 0, but it was ${seconds}.`));
-    }
-    const minutes = Math.round(seconds / 60);
-    const updateParams = {
-        TableName: userDataTable,
-        Key: { 'userId': user.id, 'date': +date.format('YYYYMMDD')},
-        UpdateExpression: 'set minutes = :minutes, minutesFrom = :minFrom',
-        ExpressionAttributeValues: {':minutes': minutes, ':minFrom': 'software'}
-    }
-    return dynamo.update(updateParams).promise()
-}
-
-// Returns a promise of scan output with names of groups whose startDate is on or before today
-// and whose endDate is on or after_today
-// TODO make a db module so that remind.js and import.js can share this
-function getActiveGroups(todayDate) {
-    const params = {
-        TableName: groupsTable,
-        ExpressionAttributeValues: {
-            ':td': todayDate
-        },
-        FilterExpression: "startDate <= :td AND endDate >= :td"
-    }
-    return dynamo.scan(params).promise();
-}
-
-// Given a list of groups, returns promise of scan output with users
-// who are members of those groups
-// TODO handle >100 groups
-// TODO make a db module so that remind.js and import.js can share this
-function getUsersInGroups(groups) {
-    if (groups.length === 0) return Promise.resolve([]);
-    if (groups.length > 100) throw new Error('Too many groups! No more than 100 are allowed.');
-    const attrVals = {}
-    groups.forEach((g, idx) => {
-        attrVals[':val'+idx] = g;
-    });
-    const groupConstraint = '#G in (' + Object.keys(attrVals).join(', ') + ')';
-    const params = {
-        TableName: usersTable,
-        ExpressionAttributeNames: {
-            '#G': 'group'
-        },
-        ExpressionAttributeValues: attrVals,
-        FilterExpression: groupConstraint,
-        ProjectionExpression: 'id, email, #G, phone, firstName, lastName, subjectId'
-    }
-    return dynamo.scan(params).promise();
 }

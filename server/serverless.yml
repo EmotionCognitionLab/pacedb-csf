@@ -224,6 +224,7 @@ functions:
         - verification/verified.js
         - training-data-import/**
         - logger/**
+        - common/**
     role: lambdaWithDynamoRole
     handler: verification/message-customizer.handler
 
@@ -236,6 +237,7 @@ functions:
         - verification/message_customizer.js
         - training-data-import/**
         - logger/**
+        - common/**
     role: lambdaWithDynamoRole
     handler: verification/verified.handler
 
@@ -276,6 +278,7 @@ functions:
         - reminders/**
         - verification/**
         - training-data-import/**
+        - common/**
     role: lambdaWithDynamoRole
     handler: logger/index.handler
     events:

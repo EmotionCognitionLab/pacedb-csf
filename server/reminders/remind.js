@@ -23,14 +23,19 @@ const moment = require('moment');
 const http = require('http');
 const todayYMD = +moment().format('YYYYMMDD');
 
-const groupsTable = process.env.GROUPS_TABLE;
 const groupMsgsTable = process.env.GROUP_MESSAGES_TABLE;
 const usersTable = process.env.USERS_TABLE;
-const userDataTable = process.env.USER_DATA_TABLE;
 const reminderMsgsTable = process.env.REMINDER_MSGS_TABLE;
 const statusReportsTable = process.env.STATUS_REPORTS_TABLE;
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
+
+const DynUtils = require('../common/dynamo');
+const db = new DynUtils.HrvDb({
+    groupsTable: process.env.GROUPS_TABLE,
+    usersTable: usersTable,
+    userDataTable: process.env.USER_DATA_TABLE
+});
 
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
 const NEW_EMOJI_MINUTES = 120; //emojis younger than this are new
@@ -237,7 +242,7 @@ function getGroupStatus() {
  */
 function getUsersInGroupsWithNewMessages() {
     let users;
-    return getActiveGroups()
+    return db.getActiveGroups()
     .then((groupsResult) => groupsResult.Items.map(g => g.name))
     .then((activeGroups) => {
         if (activeGroups.length > 100) throw new Error('Too many groups! No more than 100 are allowed.');
@@ -264,7 +269,7 @@ function getUsersInGroupsWithNewMessages() {
     .then((groupsWithNewMsgsResult) => {
         if (groupsWithNewMsgsResult.Items.length === 0) return Promise.reject([]); // no groups have new messages; just return
           
-        return getUsersInGroups(groupsWithNewMsgsResult.Items.map(gm => gm.group));  
+        return db.getUsersInGroups(groupsWithNewMsgsResult.Items.map(gm => gm.group));  
     })
     .then(usersResult => {
         users = usersResult.Items;
@@ -284,13 +289,7 @@ function getUsersInGroupsWithNewMessages() {
 function getUsersWithNewEmoji() {
     // TODO restrict query to users in active groups
     let users;
-    const params = {
-        TableName: userDataTable,
-        FilterExpression: '#D = :today and attribute_exists(emoji)',
-        ExpressionAttributeNames: { '#D': 'date' },
-        ExpressionAttributeValues: { ':today': todayYMD }
-    }
-    return dynamo.scan(params).promise()
+    return db.getUserDataForDate(todayYMD, ['emoji'])
     .then((results) => {
         const newEmojiLimit = +moment().subtract(NEW_EMOJI_MINUTES, 'minutes').format('x');
         const users = new Set();
@@ -390,13 +389,13 @@ function getActiveGroupsAndUsers() {
     // map of user id -> user object
     const userMap = new Map();
 
-    return getActiveGroups()
+    return db.getActiveGroups()
     .then((groupsResult) => {
         groupsResult.Items.forEach((g) => groupMap.set(g.name, g));
         return Array.from(groupMap.keys());
     })
     .then((groupNames) => {
-        return getUsersInGroups(groupNames)
+        return db.getUsersInGroups(groupNames)
     })
     .then((usersResult) => {
         usersResult.Items.forEach((u) => {
@@ -406,45 +405,6 @@ function getActiveGroupsAndUsers() {
         return { userMap: userMap, groupMap: groupMap };
     });
 }
-
-/**
- * Returns a promise of scan output with names of groups whose startDate is on or before asOfDate
- * and whose endDate is on or after asOfDate.
- */
-function getActiveGroups(asOfDate) {
-    const asOf = asOfDate || todayYMD;
-    const params = {
-        TableName: groupsTable,
-        ExpressionAttributeValues: {
-            ':td': asOf
-        },
-        FilterExpression: "startDate <= :td AND endDate >= :td"
-    }
-    return dynamo.scan(params).promise();
-}
-
-// Given a list of groups, returns promise of scan output with users
-// who are members of those groups
-// TODO handle >100 groups
-function getUsersInGroups(groups) {
-    if (groups.length > 100) throw new Error('Too many groups! No more than 100 are allowed.');
-    const attrVals = {}
-    groups.forEach((g, idx) => {
-        attrVals[':val'+idx] = g;
-    });
-    const groupConstraint = '#G in (' + Object.keys(attrVals).join(', ') + ')';
-    const params = {
-        TableName: usersTable,
-        ExpressionAttributeNames: {
-            '#G': 'group'
-        },
-        ExpressionAttributeValues: attrVals,
-        FilterExpression: groupConstraint,
-        ProjectionExpression: 'id, email, #G, phone, firstName, lastName'
-    }
-    return dynamo.scan(params).promise();
-}
-
 
 /**
  * Given a start date, returns the number of minutes that a user in a 
@@ -465,19 +425,7 @@ function getDailyTargetMinutes(startDate) {
 // completed their training for today
 function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
     // pull training data for today
-    const params = {
-        TableName: userDataTable,
-        ExpressionAttributeNames: {
-            '#D': 'date'
-        },
-        ExpressionAttributeValues: {
-            ':today': todayYMD
-        },
-        FilterExpression: '#D = :today',
-        ProjectionExpression: 'userId, minutes'
-    }
-
-    return dynamo.scan(params).promise()
+    return db.getUserDataForDate(todayYMD)
     .then(userData => {
         userData.Items.forEach(ud => {
             const activeUser = userMap.get(ud.userId);
@@ -499,14 +447,8 @@ function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
  */
 function getUsersWithoutReports(userMap, groupMap) {
     const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
-    const params = {
-        TableName: userDataTable,
-        ExpressionAttributeNames: { '#D': 'date' },
-        ExpressionAttributeValues: { ':yesterday': yesterdayYMD },
-        FilterExpression: '#D = :yesterday and attribute_exists(minutes)',
-    }
 
-    return dynamo.scan(params).promise()
+    return db.getUserDataForDate(yesterdayYMD, ['minutes'])
     .then(userData => {
         userData.Items.forEach(ud => {
             userMap.delete(ud.userId);
@@ -575,22 +517,10 @@ function getMinutesByUser(startDate, users) {
     const yesterday = moment().subtract(1, 'days');
     const startOfWeek = moment().subtract(dayOfWeek, 'days');
 
-    const params = {
-        TableName: userDataTable,
-        KeyConditionExpression: "userId = :userId and #D between :start and :end",
-        ExpressionAttributeValues: {
-            ':start': +startOfWeek.format('YYYYMMDD'),
-            ':end': +yesterday.format('YYYYMMDD')
-        },
-        ExpressionAttributeNames: {
-            '#D': 'date'
-        },
-        FilterExpression: "attribute_exists(minutes)"
-    };
-
+    const startNum = +startOfWeek.format('YYYYMMDD');
+    const yesterdayNum = +yesterday.format('YYYYMMDD');
     const promises = users.map(user => {
-        params.ExpressionAttributeValues[':userId'] = user.id;
-        return dynamo.query(params).promise()
+        return db.getUserDataForUser(user.id, startNum, yesterdayNum, ['minutes'])
         .then((result) => result.Items)
         .catch(err => {
             console.log(`Error querying userData in getMinutesByUser for user id ${user.id}: ${JSON.stringify(err)}`);
