@@ -395,6 +395,24 @@ resources:
           WriteCapacityUnits: 5
 
 # role for authorized cognito users
+    dynamoClickTrackingWriteAccess:
+      Type: "AWS::IAM::ManagedPolicy"
+      Properties:
+        Description: Allows write access to clicks column of reminder-msgs dynamodb table
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Action:
+                - "dynamodb:UpdateItem"
+              Resource: { Fn::GetAtt: [reminderMessagesTable, Arn] }
+              Condition:
+                "ForAllValues:StringEquals":
+                  "dynamodb:Attributes":
+                    - "clicks"
+        ManagedPolicyName: 
+          Fn::Sub: "${self:service}-${self:provider.stage}-dynamo-reminder-msgs-write"
+
     cognitoAuthorizedRole:
       Type: "AWS::IAM::Role"
       Properties:
@@ -412,6 +430,8 @@ resources:
                     Fn::ImportValue: ${self:service}-${self:provider.stage}-identityPoolId
                 "ForAnyValue:StringLike":
                   "cognito-identity.amazonaws.com:amr": authenticated
+        ManagedPolicyArns:
+          - { Ref: dynamoClickTrackingWriteAccess }
         Policies:
           - PolicyName: "CognitoAuthorizedPolicy"
             PolicyDocument: 
