@@ -60,8 +60,7 @@ HrvDb.prototype.getUsersInGroups = function(groups) {
             '#G': 'group'
         },
         ExpressionAttributeValues: attrVals,
-        FilterExpression: groupConstraint,
-        ProjectionExpression: 'id, email, #G, phone, firstName, lastName, subjectId'
+        FilterExpression: groupConstraint
     }
     return dynamo.scan(params).promise();
 }
