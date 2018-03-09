@@ -18,8 +18,8 @@ const adminGroupName = process.env.ADMIN_GROUP;
 
 // test data
 const groups = ['group1', 'group1', 'group2', 'special-group'];
-const users = [ {id: '1a', group: groups[0], firstName: 'One', lastName: 'Eh'},
-                {id: '1b', group: groups[1], firstName: 'One', lastName: 'Bee'},
+const users = [ {id: '1a', group: groups[0], firstName: 'One', lastName: 'Eh', photoUrl: 'http://example.com/picture-eh.jpg', isAdmin: false},
+                {id: '1b', group: groups[1], firstName: 'One', lastName: 'Bee', photoUrl: 'http://example.com/picture-bee.jpg', isAdmin: true},
                 {id: '2b', group: groups[2], firstName: 'Two', lastName: 'Bee'},
                 {id: 'ad9', group: groups[3], firstName: 'Ad', lastName: 'Nine'}
             ];
@@ -589,6 +589,30 @@ describe('Group members request', function() {
                 console.log(err);
                 throw(err);
             })
+        });
+        it('should include data necessary to display the user on the group page', function() {
+            return lambdaLocal.execute({
+                event: noGroupName,
+                lambdaPath: 'api.js',
+                envfile: './test/env.sh',
+                verboseLevel: 0
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 200);
+                const result = JSON.parse(done.body);
+                assert.equal(result.length, 2);
+                result.forEach((item) => {
+                    assert(item.id !== null && item.id !== undefined);
+                    assert(item.firstName !== null && item.firstName !== undefined);
+                    assert(item.lastName !== null && item.lastName !== undefined);
+                    assert(item.isAdmin !== null && item.isAdmin !== undefined); // actually, it can be ok if this one is missing, but let's make sure it's returned when it exists
+                    assert(item.photoUrl !== null && item.photoUrl !== undefined);
+                });
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
         });
     });
     describe('group_name provided, caller is admin', function() {
