@@ -255,12 +255,12 @@ functions:
     timeout: 120
     events:
       - schedule:
-          rate: cron(40 05 * * ? *)
+          rate: cron(40 04 * * ? *)
           description: Checks for training data before the reminder to train is sent out.
           input:
             day: today
       - schedule:
-          rate: cron(45 15 * * ? *)
+          rate: cron(45 14 * * ? *)
           description: Checks for training data before the reminder to enter training data is sent out.
           input:
             day: yesterday
