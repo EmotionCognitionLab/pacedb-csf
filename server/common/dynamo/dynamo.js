@@ -150,3 +150,20 @@ HrvDb.prototype.writeTrainingMinutes = function(user, date, minutes, from) {
     }
     return dynamo.update(updateParams).promise()
 }
+
+/**
+ * Incrememnts the count of times a user has visited his or her group page.
+ * The date of the visit count is always the date this function is called.
+ * @param {string|object} user 
+ */
+HrvDb.prototype.incrementGroupPageVisitCount = function(user) {
+    const userId = typeof(user) === 'string' ? user : user.id;
+    const updateParams = {
+        TableName: this.userDataTable,
+        Key: { 'userId': userId, 'date': todayYMD },
+        UpdateExpression: 'add groupPageVisits :one',
+        ExpressionAttributeValues: { ':one': 1 }
+    }
+    
+    return dynamo.update(updateParams).promise();
+}

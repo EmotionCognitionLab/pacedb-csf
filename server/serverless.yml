@@ -96,7 +96,7 @@ functions:
           request:
             parameters:
               querystrings:
-                group_name: false    
+                group_name: false
       - http:
           path: users/{user_id}
           method: get
@@ -132,6 +132,12 @@ functions:
                 user_id: true
               querystrings:
                 e: true
+      - http:
+          path: users/groupvisit
+          method: post
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
       - http:
           path: users/minutes
           method: put

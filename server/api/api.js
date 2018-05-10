@@ -69,6 +69,13 @@ exports.handler = (event, context, callback) => {
             console.log(err);
             return callback(null, errorResult(err.message));
         });
+    } else if (path === '/users/groupvisit') {
+        writeGroupPageVisit(event)
+        .then((result) => callback(null, result))
+        .catch((err) => {
+            console.log(err);
+            return callback(null, errorResult(err.message))
+        });
     } else if (path === '/users/minutes' && event.httpMethod === 'PUT') {
         writeUserMinutes(event)
         .then((result) => callback(null, result))
@@ -196,6 +203,16 @@ function writeGroupMessage(event) {
     .then((data) => {
         return normalResult(msg);
     })
+    .catch((err) => {
+        console.log(err);
+        return errorResult(err.message);
+    });
+}
+
+function writeGroupPageVisit(event) {
+    const visitorId = event.requestContext.authorizer.claims.sub;
+    return db.incrementGroupPageVisitCount(visitorId)
+    .then(() => normalResult({}, 204))
     .catch((err) => {
         console.log(err);
         return errorResult(err.message);

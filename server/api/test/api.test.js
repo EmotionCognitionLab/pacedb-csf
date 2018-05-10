@@ -16,6 +16,9 @@ const groupMessagesTable = process.env.GROUP_MESSAGES_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
 
+const moment = require('moment');
+const todayYMD = +moment().format('YYYYMMDD');
+
 // test data
 const groups = ['group1', 'group1', 'group2', 'special-group'];
 const users = [ {id: '1a', group: groups[0], firstName: 'One', lastName: 'Eh', photoUrl: 'http://example.com/picture-eh.jpg', isAdmin: false},
@@ -372,6 +375,19 @@ const postUserEmoji = {
     "queryStringParameters": {e: "🏅"}
 }
 
+const visitGroupPage = {
+    "httpMethod": "POST",
+    requestContext: {
+        "authorizer": {
+            "claims": {
+                "sub": users[0].id,
+                "cognito:groups": ""
+            }
+        }
+    },
+    "path": "/users/groupvisit"
+}
+
 describe('Request to get messages for a group', function() {
     before(function() {
         return dbSetup.dropTable(groupMessagesTable)
@@ -685,6 +701,42 @@ describe('Group members request', function() {
         });
     });
 });
+
+describe('Visiting a group page', function() {
+    before(function() {
+        return dbSetup.dropTable(userDataTable)
+        .then(function() {
+            return dbSetup.createUserDataTable(userDataTable);
+        })
+    });
+    it('should increment the count of visits to the group page by that user', function() {
+        return lambdaLocal.execute({
+            event: visitGroupPage,
+            lambdaPath: 'api.js',
+            envfile: './test/env.sh'
+        })
+        .then(function(done) {
+            assert.equal(done.statusCode, 204);
+        })
+        .then(() => {
+            const queryParams = {
+                TableName: userDataTable,
+                Key: {
+                    userId: visitGroupPage.requestContext.authorizer.claims.sub,
+                    date: todayYMD
+                }
+            }
+            return dynDocClient.get(queryParams).promise();
+        })
+        .then((result) => {
+            assert.equal(result.Item.groupPageVisits, 1);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+})
 
 describe('User request', function() {
     before(function() {
