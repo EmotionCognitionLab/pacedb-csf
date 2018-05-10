@@ -297,6 +297,43 @@ export class UserService {
         });
     }
 
+    public addGroupPageVisit(extraHttpRequestParams?: any): Observable<{}> {
+        return this.addGroupPageVisitWithHttpInfo(extraHttpRequestParams)
+        .map((response: Response) => {
+            if (response.status === 204) {
+                return undefined;
+            } else {
+                return response.json() || {};
+            }
+        });
+    }
+
+    public addGroupPageVisitWithHttpInfo(extraHttpRequestParams?: any): Observable<Response> {
+        const path = this.basePath + '/users/groupvisit';
+
+        const queryParameters = new URLSearchParams();
+        const headers = new Headers();
+
+        let requestOptions: RequestOptionsArgs = new RequestOptions({
+            method: RequestMethod.Post,
+            headers: headers,
+            search: queryParameters,
+            withCredentials: false
+        });
+        // https://github.com/swagger-api/swagger-codegen/issues/4037
+        if (extraHttpRequestParams) {
+            requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
+        }
+
+        const tokenPromise = this.authService.getAccessToken();
+        return Observable.fromPromise(tokenPromise).flatMap((accessToken) => {
+            headers.set('Authorization', accessToken);
+            requestOptions.headers = headers;
+            return this.http.request(path, requestOptions);
+        });
+    }
+
+
 
     private cacheGet(userId: string): Observable<User> | Subject<any> | undefined {
         if (this._userCache.has(userId)) {

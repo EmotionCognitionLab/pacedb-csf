@@ -101,6 +101,8 @@ export class GroupPageComponent implements OnInit, OnDestroy {
         debounceTime.call(this._status, 10000).subscribe(() => this.statusMsg = null);
         // make sure any new status messages are displayed
         this._status.subscribe(status => this.statusMsg = status);
+        // record the fact that the user visited the group page
+        this.userService.addGroupPageVisit().subscribe();
     }
 
     ngOnDestroy() {
