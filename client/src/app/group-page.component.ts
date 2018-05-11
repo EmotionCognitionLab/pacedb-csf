@@ -14,8 +14,10 @@ import { GroupMessage } from './model/group-message';
 import { GroupPage } from './model/group-page';
 import { User } from './model/user';
 
+import { AuthService } from './service/auth.service';
 import { GroupService } from './service/group.service';
 import { UserService } from './service/user.service';
+import { LoggerService } from './service/logger.service';
 
 @Component({
     selector: 'app-group-page',
@@ -59,11 +61,20 @@ export class GroupPageComponent implements OnInit, OnDestroy {
     private _msgsLastFetched: number;
     private _msgRefresher: Subscription;
     private _msgRefreshInterval = 10000; // milliseconds
+    private _currentUser: User;
 
-    constructor(private groupService: GroupService,
+    constructor(private authService: AuthService,
+        private groupService: GroupService,
+        private logger: LoggerService,
         private userService: UserService,
         private route: ActivatedRoute,
-        private router: Router) { }
+        private router: Router) {
+            this.authService.currentUserInsecure()
+                .then(u => this._currentUser = u)
+                .catch(err => {
+                    this.logger.error('Error getting current user', err);
+                });
+        }
 
     ngOnInit() {
         this.route.data
@@ -78,6 +89,11 @@ export class GroupPageComponent implements OnInit, OnDestroy {
             // when displaying messages
             data.groupInfo.members.forEach(m => this.userService.cacheSet(m.id, m));
             this.members = data.groupInfo.members;
+            // if the user is a member of the group,
+            // record the fact that the user visited the group page
+            if (this.members.map(m => m.id).includes(this._currentUser.id)) {
+                this.userService.addGroupPageVisit().subscribe();
+            }
             this.group = data.groupInfo.group;
             this.weekDay = this.getDayOfWeek();
             return this.groupService.getGroupMessages(0, data.groupInfo.group.name);
@@ -101,8 +117,6 @@ export class GroupPageComponent implements OnInit, OnDestroy {
         debounceTime.call(this._status, 10000).subscribe(() => this.statusMsg = null);
         // make sure any new status messages are displayed
         this._status.subscribe(status => this.statusMsg = status);
-        // record the fact that the user visited the group page
-        this.userService.addGroupPageVisit().subscribe();
     }
 
     ngOnDestroy() {
