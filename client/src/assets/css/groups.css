@@ -5,11 +5,6 @@ body {
   width: 100%;
   background-color: #f3f3f3;
 }
-.table-fixed tbody {
-  height: 200px;
-  overflow-y: auto;
-  width: 100%;
-}
 .table-fixed thead, .table-fixed tbody, .table-fixed td, .table-fixed th {
   display: block;
 }
