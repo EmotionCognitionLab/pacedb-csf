@@ -13,6 +13,18 @@
     height: auto;
     margin-right: 7px;
 }
+#user-image-container:hover > #user-pic {
+    opacity: 0.5;
+}
+#disable {
+    position: absolute;
+    top: 92px;
+    left: 143px;
+    opacity: 0;
+}
+#user-image-container:hover > #disable {
+    opacity: 1.0;
+}
 #progress-container {
     text-align: left;
     float: left;

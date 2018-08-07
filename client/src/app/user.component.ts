@@ -18,7 +18,14 @@ import { UserService } from './service/user.service';
     selector: 'app-user',
     template: `
         <div class="user">
-            <img class="small-user" src="{{user.photoUrl}}" />
+            <div id="user-image-container">
+                <div id="user-pic">
+                    <img src="{{user.photoUrl}}" />
+                </div>
+                <div *ngIf="this.isAdmin" id="disable">
+                    <img src="/assets/img/disable.png" />
+                </div>
+            </div>
             <div id="progress-container">
                 {{user.name()}}
                 <div>
@@ -43,6 +50,7 @@ export class UserComponent implements OnInit, OnDestroy {
     emojis: EmojiFeedback[] = [];
     progressClasses: string;
     weeklyMinutesTrained = 0;
+    isAdmin = false;
     private _userData: UserData[];
     private _userDataSubscription: Subscription;
 
@@ -54,6 +62,8 @@ export class UserComponent implements OnInit, OnDestroy {
                 .catch(err => {
                     this.logger.error('Error getting current user', err);
                 });
+                this.authService.isAdminInsecure('').then((isAdmin) => this.isAdmin = isAdmin)
+                .catch(err => this.logger.error(err.message, err));
             }
 
     ngOnInit() {
