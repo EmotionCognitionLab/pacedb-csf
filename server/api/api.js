@@ -9,6 +9,7 @@ const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVer
 const groupMessagesTable = process.env.GROUP_MESSAGES_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
+const disabledGroupName = process.env.DISABLED_GROUP;
 
 const DynUtils = require('../common/dynamo');
 const db = new DynUtils.HrvDb({
@@ -64,6 +65,13 @@ exports.handler = (event, context, callback) => {
         });
     } else if (/^\/users\/[a-f0-9-]+\/emoji$/.test(event.path) && event.httpMethod === 'POST') {
         writeUserEmoji(event)
+        .then((result) => callback(null, result))
+        .catch((err) => {
+            console.log(err);
+            return callback(null, errorResult(err.message));
+        });
+    } else if (/^\/users\/[a-f0-9-]+\/disable$/.test(event.path) && event.httpMethod === 'PUT') {
+        disableUser(event)
         .then((result) => callback(null, result))
         .catch((err) => {
             console.log(err);
@@ -332,6 +340,46 @@ function writeUserEmoji(event) {
         return dynamo.update(writeParams).promise()
     })
     .then(() => normalResult({}, 201))
+    .catch((err) => {
+        console.log(err);
+        return errorResult(err.message);
+    });
+}
+
+function disableUser(event) {
+    // this function is limited to admins only
+    const cognitoGroups = event.requestContext.authorizer.claims["cognito:groups"];
+    if (!callerIsAdmin(cognitoGroups)) {
+        return Promise.resolve(errorResult('401:You do not have permission to complete this operation'));
+    }
+
+    const userId = event.pathParameters.user_id;
+    const paramsOk = paramsPresent({'user_id': userId});
+    if (paramsOk.length > 0) {
+        return Promise.resolve(errorResult('400:'+paramsOk.join('\n')));
+    }
+
+    return db.getUser(userId)
+    .then(users => {
+        if (users.Count === 0) {
+            return errorResult('404: User not found');
+        }
+
+        const origGroup = users.Items[0].group;
+        if (origGroup === disabledGroupName) {
+            return errorResult('409: The user is already disabled');
+        }
+
+        const writeParams = {
+            TableName: process.env.USERS_TABLE,
+            Key: { 'id': userId },
+            UpdateExpression: 'set #group = :disabled, origGroup = :origGroup',
+            ExpressionAttributeValues: {':disabled': disabledGroupName, ':origGroup': origGroup },
+            ExpressionAttributeNames: {'#group': 'group' }
+        };
+        return dynamo.update(writeParams).promise()
+        .then(() => normalResult({}, 204));
+    })
     .catch((err) => {
         console.log(err);
         return errorResult(err.message);

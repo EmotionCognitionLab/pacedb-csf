@@ -15,6 +15,7 @@ const usersTable = process.env.USERS_TABLE;
 const groupMessagesTable = process.env.GROUP_MESSAGES_TABLE;
 const userDataTable = process.env.USER_DATA_TABLE;
 const adminGroupName = process.env.ADMIN_GROUP;
+const disabledGroupName = process.env.DISABLED_GROUP;
 
 const moment = require('moment');
 const todayYMD = +moment().format('YYYYMMDD');
@@ -24,7 +25,8 @@ const groups = ['group1', 'group1', 'group2', 'special-group'];
 const users = [ {id: '1a', group: groups[0], firstName: 'One', lastName: 'Eh', photoUrl: 'http://example.com/picture-eh.jpg', isAdmin: false},
                 {id: '1b', group: groups[1], firstName: 'One', lastName: 'Bee', photoUrl: 'http://example.com/picture-bee.jpg', isAdmin: true},
                 {id: '2b', group: groups[2], firstName: 'Two', lastName: 'Bee'},
-                {id: 'ad9', group: groups[3], firstName: 'Ad', lastName: 'Nine'}
+                {id: 'ad9', group: groups[3], firstName: 'Ad', lastName: 'Nine'},
+                {id: 'd3ab1d', group: disabledGroupName, firstName: 'Disabled', lastName: 'User'}
             ];
 const messages = [
     {fromId: users[0].id, group: groups[0], date: 123456789, body: 'Howdy, folks!'},
@@ -386,6 +388,62 @@ const visitGroupPage = {
         }
     },
     "path": "/users/groupvisit"
+}
+
+const disableUserAsAdmin = {
+    "httpMethod": "PUT",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": "57b8e036-f007-4e2f-b3c6-d7882525fae2",
+                "cognito:groups": adminGroupName
+            }
+        }
+    },
+    "path": `/users/${users[1].id}/disable`,
+    "pathParameters": {"user_id": users[1].id},
+}
+
+const disableAlreadyDisabledUser = {
+    "httpMethod": "PUT",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": "57b8e036-f007-4e2f-b3c6-d7882525fae2",
+                "cognito:groups": adminGroupName
+            }
+        }
+    },
+    "path": `/users/${users[4].id}/disable`,
+    "pathParameters": {"user_id": users[4].id},
+}
+
+const disableUserNotAdmin = {
+    "httpMethod": "PUT",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": "57b8e036-f007-4e2f-b3c6-d7882525fae2",
+                "cognito:groups": ""
+            }
+        }
+    },
+    "path": `/users/${users[1].id}/disable`,
+    "pathParameters": {"user_id": users[1].id},
+}
+
+const disableNonexistentUser = {
+    "httpMethod": "PUT",
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": "57b8e036-f007-4e2f-b3c6-d7882525fae2",
+                "cognito:groups": adminGroupName
+            }
+        }
+    },
+    "path": "/users/c1d2/disable",
+    "pathParameters": {"user_id": 'c1d2'},
 }
 
 describe('Request to get messages for a group', function() {
@@ -1128,6 +1186,65 @@ describe('User request', function() {
             .catch(function(err) {
                 console.log(err);
                 throw(err);
+            });
+        });
+    });
+    describe('When disabling a user', function() {
+        it('should set the user\'s group to disabled and her origGroup to her original group', function() {
+            return lambdaLocal.execute({
+                event: disableUserAsAdmin,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 204);
+            })
+            .then(() => {
+                const queryParams = {
+                    TableName: usersTable,
+                    Key: {
+                        id: disableUserAsAdmin.pathParameters.user_id
+                    }
+                }
+                return dynDocClient.get(queryParams).promise();
+            })
+            .then((result) => {
+                assert.equal(result.Item.group, disabledGroupName);
+                assert.equal(result.Item.origGroup, users[1].group);
+            })
+            .catch(function(err) {
+                console.log(err);
+                throw(err);
+            });
+        });
+        it('should reject the request if the user is already disabled', function() {
+            return lambdaLocal.execute({
+                event: disableAlreadyDisabledUser,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 409);
+            });
+        });
+        it('should reject the request if the caller is not an admin', function() {
+            return lambdaLocal.execute({
+                event: disableUserNotAdmin,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 401);
+            });
+        });
+        it('should reject the request if the user is not found', function() {
+            return lambdaLocal.execute({
+                event: disableNonexistentUser,
+                lambdaPath: 'api.js',
+                envile: './test/env.sh'
+            })
+            .then(function(done) {
+                assert.equal(done.statusCode, 404);
             });
         });
     });

@@ -149,8 +149,19 @@ functions:
               querystrings:
                 date: true
                 minutes: true
+      - http:
+          path: users/{user_id}/disable
+          method: put
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
+          request:
+            parameters:
+              paths:
+                user_id: true
     environment:
       ADMIN_GROUP: "staff"
+      DISABLED_GROUP: "disabled"
 
   remind:
     package:
@@ -491,6 +502,7 @@ resources:
                 - "dynamodb:UpdateItem"
               Resource:
                 - { Fn::GetAtt: [userDataTable, Arn] }
+                - { Fn::GetAtt: [usersTable, Arn] }
         ManagedPolicyName: { "Fn::Sub": "${self:service}-${self:provider.stage}-dynamo-write" }
 
 # role for lambda functions that need common dynamo access
