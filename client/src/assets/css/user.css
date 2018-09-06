@@ -16,9 +16,6 @@
     height: auto;
     margin-right: 7px;
 }
-#user-image-container:hover > #user-pic {
-    opacity: 0.5;
-}
 #disable {
     position: absolute;
     margin: 4px;

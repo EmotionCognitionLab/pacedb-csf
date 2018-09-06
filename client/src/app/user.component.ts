@@ -21,7 +21,7 @@ import { UserService } from './service/user.service';
     selector: 'app-user',
     template: `
         <div class="user" [class.grayed]="isDisabled">
-            <div id="user-image-container">
+            <div id="user-image-container" [ngClass]="grayed" (mouseover)="toggleGrayout($event)" (mouseout)="toggleGrayout($event)">
                 <div id="user-pic">
                     <img src="{{user.photoUrl}}" />
                 </div>
@@ -61,6 +61,7 @@ export class UserComponent implements OnInit, OnDestroy {
     weeklyMinutesTrained = 0;
     isAdmin = false;
     isDisabled = false;
+    grayed = '';
     private _userData: UserData[];
     private _userDataSubscription: Subscription;
 
@@ -109,6 +110,13 @@ export class UserComponent implements OnInit, OnDestroy {
 
     ngOnDestroy() {
         this._userDataSubscription.unsubscribe();
+    }
+
+    toggleGrayout(event) {
+        if (!this.isAdmin) {
+            return;
+        }
+        this.grayed = event.type === 'mouseover' ? 'grayed' : '';
     }
 
     confirmDisable() {
