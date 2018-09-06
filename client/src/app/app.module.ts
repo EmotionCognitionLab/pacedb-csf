@@ -10,6 +10,7 @@ import { JL } from 'jsnlog';
 import { AdminModule } from './admin/admin.module';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
+import { ConfirmationModalComponent } from './shared/confirmation-modal.component';
 import { EmojiPickerComponent } from './emoji-picker.component';
 import { ForbiddenComponent } from './forbidden.component';
 import { GroupMessageComponent } from './group-message.component';
@@ -40,6 +41,7 @@ JL().setOptions({'appenders': [ajaxAppender, consoleAppender]});
 @NgModule({
   declarations: [
     AppComponent,
+    ConfirmationModalComponent,
     EmojiPickerComponent,
     ForbiddenComponent,
     GroupMessageComponent,
