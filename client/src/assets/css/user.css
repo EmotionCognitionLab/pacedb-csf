@@ -1,6 +1,9 @@
 .emoji-feedback {
     cursor: default;
 }
+.grayed {
+    opacity: 0.5;
+}
 .user {
     height: 90px;
 }
@@ -18,8 +21,7 @@
 }
 #disable {
     position: absolute;
-    top: 92px;
-    left: 143px;
+    margin: 4px;
     opacity: 0;
 }
 #user-image-container:hover > #disable {

@@ -27,7 +27,7 @@ import { LoggerService } from './service/logger.service';
         <h2>Team {{group.name}}</h2>
         <span *ngIf="group.earnings > 0">💰 \${{group.earnings}} earned so far! 💰</span>
         <h3>Teammates</h3>
-        <app-user *ngFor="let user of members" [user]=user [group]=group></app-user>
+        <app-user *ngFor="let user of members" [user]=user [group]=group (disabled)=onUserDisabled($event)></app-user>
         <hr />
         <h2>Messages</h2>
         <div class="form-group">
@@ -130,6 +130,10 @@ export class GroupPageComponent implements OnInit, OnDestroy {
             this._status.next('Message sent.');
             this.msgText = '';
         });
+    }
+
+    onUserDisabled(userName) {
+        this._status.next(`${userName} has been disabled.`);
     }
 
     /**

@@ -238,6 +238,55 @@ export class UserService {
     }
 
     /**
+     * Disables the given user.
+     * @param userId Id of the user to be disabled
+     */
+    public disableUser(userId: string, extraHttpRequestParams?: any): Observable<{}> {
+        return this.disableUserWithHttpInfo(userId, extraHttpRequestParams)
+            .map((response: Response) => {
+                if (response.status === 204) {
+                    return undefined;
+                } else {
+                    return response.json() || {};
+                }
+            });
+    }
+
+    /**
+     * Disable a user
+     * @param userId The id of the user to be disabled
+     */
+    public disableUserWithHttpInfo(userId, extraHttpRequestParams): Observable<Response> {
+        const path = this.basePath + '/users/${user_id}/disable'
+        .replace('${' + 'user_id' + '}', String(userId));
+
+        const queryParameters = new URLSearchParams();
+        const headers = new Headers();
+        // verify required parameter 'userId' is not null or undefined
+        if (userId === null || userId === undefined) {
+            throw new Error('Required parameter userId was null or undefined when calling disableUser.');
+        }
+
+        let requestOptions: RequestOptionsArgs = new RequestOptions({
+            method: RequestMethod.Put,
+            headers: headers,
+            search: queryParameters,
+            withCredentials: false
+        });
+        // https://github.com/swagger-api/swagger-codegen/issues/4037
+        if (extraHttpRequestParams) {
+            requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
+        }
+
+        const tokenPromise = this.authService.getAccessToken();
+        return Observable.fromPromise(tokenPromise).flatMap((accessToken) => {
+            headers.set('Authorization', accessToken);
+            requestOptions.headers = headers;
+            return this.http.request(path, requestOptions);
+        });
+    }
+
+    /**
      *
      * @summary Give a user a new emoji
      * @param userId id of the user we&#39;re giving an emoji to
