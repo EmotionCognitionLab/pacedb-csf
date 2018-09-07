@@ -15,6 +15,7 @@ import { GroupService } from './service/group.service';
 import { UserService } from './service/user.service';
 import { LoggerService } from './service/logger.service';
 
+import { ConfirmationModalComponent } from './shared/confirmation-modal.component';
 import { EmojiPickerComponent } from './emoji-picker.component';
 import { GroupMessageComponent } from './group-message.component';
 import { UserComponent } from './user.component';
@@ -43,7 +44,8 @@ describe('GroupPageComponent (inline template)', () => {
     curUser.id = 'def2';
     let members = [curUser, targetUser];
     const authServiceStub = {
-        currentUserInsecure() { return Promise.resolve(curUser); }
+        currentUserInsecure() { return Promise.resolve(curUser); },
+        isAdminInsecure() { return Promise.resolve(false); }
     };
     const activatedRouteStub = {
         data: new Observable(observer => observer.next( {groupInfo: {group: group, members: members}} ))
@@ -56,7 +58,13 @@ describe('GroupPageComponent (inline template)', () => {
 
     beforeEach(async(() => {
       TestBed.configureTestingModule({
-        declarations: [ EmojiPickerComponent, UserComponent, GroupMessageComponent, GroupPageComponent ], // declare the test component
+        declarations: [
+            ConfirmationModalComponent,
+            EmojiPickerComponent,
+            UserComponent,
+            GroupMessageComponent,
+            GroupPageComponent
+        ], // declare the test component
         imports: [ NgbModule.forRoot(), FormsModule, HttpModule, RouterTestingModule ],
         providers: [
             UserService,

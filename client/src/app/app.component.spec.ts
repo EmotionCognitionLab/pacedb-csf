@@ -4,6 +4,7 @@ import { APP_BASE_HREF } from '@angular/common';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import 'rxjs/Rx';
+import { ConfirmationModalComponent } from './shared/confirmation-modal.component';
 import { EmojiPickerComponent } from './emoji-picker.component';
 import { ForbiddenComponent } from './forbidden.component';
 import { GroupMessageComponent } from './group-message.component';
@@ -24,6 +25,7 @@ describe('AppComponent', () => {
     TestBed.configureTestingModule({
       declarations: [
         AppComponent,
+        ConfirmationModalComponent,
         EmojiPickerComponent,
         ForbiddenComponent,
         GroupMessageComponent,
