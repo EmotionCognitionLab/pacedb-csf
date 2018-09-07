@@ -21,11 +21,11 @@ import { UserService } from './service/user.service';
     selector: 'app-user',
     template: `
         <div class="user" [class.grayed]="isDisabled">
-            <div id="user-image-container" [ngClass]="grayed" (mouseover)="toggleGrayout($event)" (mouseout)="toggleGrayout($event)">
-                <div id="user-pic">
+            <div id="user-image-container" (mouseover)="toggleGrayout($event)" (mouseout)="toggleGrayout($event)">
+                <div id="user-pic" [ngClass]="grayed">
                     <img src="{{user.photoUrl}}" />
                 </div>
-                <div *ngIf="this.isAdmin" id="disable" (click)="confirmDisable()">
+                <div *ngIf="this.isAdmin" [style.visibility]="grayed == '' ? 'hidden' : 'visible'" id="disable" (click)="confirmDisable()">
                     <img src="/assets/img/disable.png" />
                 </div>
             </div>
