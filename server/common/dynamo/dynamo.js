@@ -41,6 +41,16 @@ HrvDb.prototype.getActiveGroups = function(asOfDate) {
     return dynamo.scan(params).promise();
 }
 
+/**
+ * Returns promise of scan result of all groups in the dynamo db.
+ */
+HrvDb.prototype.getAllGroups = function() {
+    const params = {
+        TableName: this.groupsTable
+    }
+    return dynamo.scan(params).promise();
+}
+
 
 /**
  * Given a list of groups, returns promise of scan result with users who are members of those groups
