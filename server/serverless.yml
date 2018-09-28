@@ -289,6 +289,41 @@ functions:
       S3_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
       TIMEZONE: "America/Los_Angeles"
 
+  spreadsheetUpdater:
+    package:
+      exclude:
+        - api/**
+        - reminders/**
+        - verification/**
+        - training-data-import/test/**
+        - logger/**
+    role: lambdaWithDynamoRole
+    handler: training-data-import/spreadsheet-updater.handler
+    timeout: 120
+    events:
+      - schedule:
+          rate: cron(40 12 * * ? *)
+          description: Uploads training data to various spreadsheets
+      - http:
+          path: spreadsheets/update
+          method: get
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
+          request:
+            parameters:
+              querystrings:
+                getAllGroups: false
+                week: false
+    environment:
+      DATA_BUCKET:
+        Fn::Sub: "${self:service}-${self:provider.stage}-usr-data"
+      GROUPS_TABLE:
+        Ref: groupsTable
+      S3_ENDPOINT: "https://s3.us-west-2.amazonaws.com"
+      ADMIN_GROUP: "staff"
+      DISABLED_GROUP: "disabled"
+
   logger:
     package:
       exclude:
