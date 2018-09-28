@@ -13,6 +13,7 @@ import { AddGroupComponent } from './add-group.component';
 import { DateInValidRangeDirective } from '../shared/date-in-valid-range.directive';
 import { GroupsComponent } from './groups.component';
 import { RegisterComponent } from './register.component';
+import { SpreadsheetsComponent } from './spreadsheets.component';
 
 import { AdminRoutingModule } from './admin-routing.module';
 
@@ -32,7 +33,8 @@ import { AdminRoutingModule } from './admin-routing.module';
         AddGroupComponent,
         DateInValidRangeDirective,
         GroupsComponent,
-        RegisterComponent
+        RegisterComponent,
+        SpreadsheetsComponent
     ],
     providers: [],
 })

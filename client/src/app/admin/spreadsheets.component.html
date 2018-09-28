@@ -1,0 +1,21 @@
+<div class="container">
+    <h1>Update Spreadsheets</h1>
+    <p>Use this form to update the reward data spreadsheet and the raw data spreadsheet manually.</p>
+   <ngb-alert [type]="alertType" *ngIf="!statusMsgClosed" (close)="statusMsgClosed = true">{{statusMsg}}</ngb-alert>
+   <form (ngSubmit)="updateSpreadsheets()">
+        Select the week you wish to update the data for. Only data for currently active groups will be updated.
+        <div class="form-group">
+            <select name="weekSelector" [(ngModel)]="week">
+                <option selected [ngValue]="null">Current Week</option>
+                <option value="0">Week 2</option>
+                <option value="1">Week 3</option>
+                <option value="2">Week 4</option>
+                <option value="3">Week 5</option>
+                <option value="4">Week 6</option>
+                <option value="5">Week 7</option>
+            </select>
+            <button class="btn" type="submit">Submit</button>
+        </div>
+    </form>
+
+</div>

@@ -15,6 +15,7 @@ import { Group } from '../model/group';
 import { GroupMessage } from '../model/group-message';
 import { User } from '../model/user';
 import { environment } from '../../environments/environment';
+import { query } from '@angular/core/src/animation/dsl';
 
 @Injectable()
 export class GroupService {
@@ -318,5 +319,48 @@ export class GroupService {
         });
     }
 
+    /**
+     * Updates various Google spreadsheets with users' HRV training data.
+     * @param getAllGroups If set, updates data for all groups. If not, updates data only for active groups.
+     * @param week Use a number between 0 and 5 to update a specific week. Leave unset to update the current week.
+     * @param extraHttpRequestParams
+     */
+    public updateSpreadsheets(week?: number, getAllGroups?: boolean, extraHttpRequestParams?: any): Observable<Object> {
+        return this.updateSpreadsheetsWithHttpInfo(week, getAllGroups, extraHttpRequestParams)
+            .map((response: Response) => {
+                return response.json();
+            });
+    }
 
+    public updateSpreadsheetsWithHttpInfo(week?: number, getAllGroups?: boolean, extraHttpRequestParams?: any): Observable<Object> {
+        const path = this.basePath + '/spreadsheets/update';
+
+        const queryParameters = new URLSearchParams();
+        if (getAllGroups !== undefined && getAllGroups) {
+            queryParameters.set('getAllGroups', getAllGroups.toString());
+        }
+        if (week !== undefined && week !== null) {
+            queryParameters.set('week', week.toString());
+        }
+
+        // authentication (basic-user) required
+        const tokenPromise = this.authService.getAccessToken();
+        return Observable.fromPromise(tokenPromise).flatMap((accessToken) => {
+            const headers = new Headers();
+            headers.set('Authorization', accessToken);
+
+            let requestOptions: RequestOptionsArgs = new RequestOptions({
+                method: RequestMethod.Get,
+                headers: headers,
+                search: queryParameters,
+                withCredentials: false
+            });
+            // https://github.com/swagger-api/swagger-codegen/issues/4037
+            if (extraHttpRequestParams) {
+                requestOptions = (<any>Object).assign(requestOptions, extraHttpRequestParams);
+            }
+
+            return this.http.request(path, requestOptions);
+        });
+    }
 }
