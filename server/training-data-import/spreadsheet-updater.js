@@ -95,10 +95,12 @@ exports.handler = (event, context, callback) => {
         return Promise.all(makeSheetPromises);
     })
     .then(() => {
-        const importProms = Object.keys(groupInfo).map(groupName => {
-            return importForGroup(groupName, groupInfo[groupName].start, groupInfo[groupName].end, event.week, jwtClient);
+        let promChain = Promise.resolve();
+        Object.keys(groupInfo).forEach(groupName => {
+            // we process groups sequentially to avoid read/write races with Google Sheets
+            promChain = promChain.then(() => importForGroup(groupName, groupInfo[groupName].start, groupInfo[groupName].end, event.week, jwtClient))
         });
-        return Promise.all(importProms);
+        return promChain;
     })
     .then(() => {
         const result = {
@@ -128,14 +130,18 @@ exports.handler = (event, context, callback) => {
  */
 function importForGroup(groupName, groupStart, groupEnd, week, auth) {
     const [weekStart, weekEnd, weekInt] = weekToDateRange(groupStart, groupEnd, week);
+    let promChain = Promise.resolve();
     return db.getUsersInGroups([groupName])
     .then(usersRes => {
         if (usersRes.Items.length === 0) {
             warn(`No users found for group ${groupName}. Skipping.`)
             return Promise.resolve();
         }
-        const promises = usersRes.Items.map(u => importForUser(u, weekStart, weekEnd, weekInt, auth));
-        return Promise.all(promises);
+        usersRes.Items.forEach(u => {
+            // we process users sequentially to avoid read/write races with Google Sheets
+            promChain = promChain.then(() => importForUser(u, weekStart, weekEnd, weekInt, auth));
+        })
+        return promChain;
     });
 }
 
