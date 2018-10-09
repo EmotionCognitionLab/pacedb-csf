@@ -314,6 +314,7 @@ functions:
             parameters:
               querystrings:
                 getAllGroups: false
+                groupName: false
                 week: false
     environment:
       DATA_BUCKET:

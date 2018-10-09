@@ -59,7 +59,9 @@ exports.handler = (event, context, callback) => {
     });
 
     let groupProm; // promise for fetching groups
-    if (event.getAllGroups) {
+    if (event.groupName) {
+        groupProm = db.getGroup(event.groupName)
+    } else if (event.getAllGroups) {
         groupProm = db.getAllGroups();
     } else {
         groupProm = db.getActiveGroups();
@@ -69,7 +71,8 @@ exports.handler = (event, context, callback) => {
     .then((groupsRes) => {
         if (groupsRes.Items.length === 0) {
             const weekName = event.week === undefined || event.week === null || event.week === '' ? 'current week' : `week ${event.week}`;
-            throw new Error(`No active groups found for ${weekName}. Exiting.`)
+            const groupClause = event.groupName === undefined || event.groupName === null ? '' : ` or the group named ${event.groupName} was not found`
+            throw new Error(`No active groups found for ${weekName}${groupClause}. Exiting.`)
         }
         groupsRes.Items.forEach(g => {
             if (g.name !== process.env.ADMIN_GROUP && g.name !== process.env.DISABLED_GROUP) {

@@ -51,6 +51,22 @@ HrvDb.prototype.getAllGroups = function() {
     return dynamo.scan(params).promise();
 }
 
+/**
+ * Returns promise of query result for group with the given name
+ */
+HrvDb.prototype.getGroup = function(name) {
+    const params = {
+        TableName: this.groupsTable,
+        ExpressionAttributeNames: {
+            '#N': 'name'
+        },
+        ExpressionAttributeValues: {
+            ':name': name
+        },
+        KeyConditionExpression: '#N = :name'
+    }
+    return dynamo.query(params).promise();
+}
 
 /**
  * Given a list of groups, returns promise of scan result with users who are members of those groups
