@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('fs');
+
 const {google} = require('googleapis');
 const moment = require('moment-timezone');
 const sqlite3 = require('better-sqlite3');
@@ -301,7 +303,7 @@ function getCsvDataForUser(user, startDate, endDate) {
 function getSqliteDataForUser(user, startDate, endDate) {
     const params = { Bucket: bucket, Key: `${user.subjectId}/${sqliteDb}` };
     const fname = `/tmp/${user.subjectId}-${sqliteDb}`;
-    const file = require('fs').createWriteStream(fname);
+    const file = fs.createWriteStream(fname);
     s3.getObject(params).createReadStream().pipe(file);
     let db;
     return new Promise((resolve, reject) => {
@@ -327,6 +329,7 @@ function getSqliteDataForUser(user, startDate, endDate) {
                     }
                 });
             }
+            fs.unlinkSync(fname);
             resolve(results);
         });
     });
