@@ -567,23 +567,18 @@ function getExistingSessionIds(auth) {
  */
 function writeRawData(data, auth) {
     if (data.length < 1) return Promise.resolve(0);
-    let startRow = -1;
-    return firstEmptyRowByColA(auth)
-    .then(rowNum => startRow = rowNum)
-    .then(() => getExistingSessionIds(auth)) 
+    return getExistingSessionIds(auth)
     .then(sessIds => data.filter(d => sessIds.indexOf(d[d.length - 1]) === -1)) // filter out any sessions already in the sheet. Assumes session id is last element in data array.
     .then(filteredData => {
-        const finalCol = colForNum(data[0].length); // we assume that all rows are the same length
-        const range = `${RAW_SHEET_NAME}!A${startRow}:${finalCol}${startRow + filteredData.length}`;
         return new Promise((resolve, reject) => {
             const sheets = google.sheets({version: 'v4', auth});
-            sheets.spreadsheets.values.update({
+            sheets.spreadsheets.values.append({
                 spreadsheetId: RAW_SHEET_ID,
                 valueInputOption: "USER_ENTERED",
-                range: range,
+                range: RAW_SHEET_NAME,
                 resource: {
                     majorDimension: "ROWS",
-                    range: range,
+                    range: RAW_SHEET_NAME,
                     values: filteredData
                 }
             }, (err, res) => {
@@ -594,31 +589,6 @@ function writeRawData(data, auth) {
                 resolve(res.updatedRows);
                 return;
             });
-        });
-    });
-}
-
-// used by writeRawData to figure out where to append data
-// assumes that all data are contiguous and that an empty cell in col A
-// means all cols to the right and all rows below are empty
-function firstEmptyRowByColA(auth) {
-    return new Promise((resolve, reject) => {
-        const sheets = google.sheets({version: 'v4', auth});
-        sheets.spreadsheets.values.get({
-            spreadsheetId: RAW_SHEET_ID,
-            range: `${RAW_SHEET_NAME}!A:A`,
-            majorDimension: 'ROWS'
-        }, (err, res) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            let i = 0;
-            while (res.data.values[i] && res.data.values[i] !== '') {
-                i++
-            }
-            resolve(i + 1);
-            return;
         });
     });
 }
