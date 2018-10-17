@@ -20,7 +20,7 @@ const db = new DynUtils.HrvDb({
 });
 
 // used for authenticating with Google sheets
-const privateKey = require('./hrv-dev-e67e6abc67ed.json');
+const privateKey = require('./private-key.json');
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 
 // id's for spreadsheets we work with
