@@ -266,6 +266,9 @@ functions:
         - reminders/**
         - verification/**
         - training-data-import/test/**
+        - training-data-import/spreadsheet-init.js
+        - training-data-import/spreadsheet-updater.js
+        - training-data-import/private-key.json
         - logger/**
     role: lambdaWithDynamoRole
     handler: training-data-import/import.handler
@@ -296,6 +299,8 @@ functions:
         - reminders/**
         - verification/**
         - training-data-import/test/**
+        - training-data-import/spreadsheet-init.js
+        - training-data-import/import.js
         - logger/**
     role: lambdaWithDynamoRole
     handler: training-data-import/spreadsheet-updater.handler
