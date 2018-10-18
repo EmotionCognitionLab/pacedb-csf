@@ -165,7 +165,7 @@ function weekToDateRange(groupStart, groupEnd, week) {
     const weekStart = moment(groupStart);
     weekStart.add(weekInt * 7, 'days');
     const weekEnd = moment(weekStart);
-    weekEnd.add(6, 'days');
+    weekEnd.add(6, 'days').add(23, 'hours').add(59, 'minutes').add(59, 'seconds');
     return [weekStart, weekEnd, weekInt];
 }
 
