@@ -20,7 +20,6 @@ export class SpreadsheetsComponent implements OnInit {
     updateSpreadsheets() {
         this.groupService.updateSpreadsheets(this.week)
         .subscribe((result) => {
-            console.log('result from updateSpreadsheets: ' + JSON.stringify(result));
             if (result['errorMessage']) {
                 this.statusMsg = result['errorMessage'];
                 this.alertType = 'warning';
