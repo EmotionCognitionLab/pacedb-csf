@@ -7,3 +7,6 @@ jspm_packages
 
 # role mapping file generated during setup and referenced from serverless.yml
 rolemappings.yml
+
+# private key for spreadsheet access
+training-data-import/private-key.json
