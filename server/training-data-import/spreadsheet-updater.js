@@ -132,6 +132,15 @@ exports.handler = (event, context, callback) => {
  */
 function importForGroup(groupName, groupStart, groupEnd, week, auth) {
     const [weekStart, weekEnd, weekInt] = weekToDateRange(groupStart, groupEnd, week);
+    const isNewWeek = isWeekStart(groupStart);
+    let priorWeekStart, priorWeekEnd, priorWeekInt;
+    if (weekInt > 0 && isNewWeek) {
+        // at the start of a new week we process the last day of the prior week, just to make sure we don't
+        // miss any data that may have been uploaded after the daily run yesterday
+        priorWeekInt = weekInt - 1;
+        priorWeekStart = moment(weekStart).subtract(1, 'days').startOf('day');
+        priorWeekEnd = moment(weekStart).subtract(1, 'days').endOf('day');
+    }
     let promChain = Promise.resolve();
     return db.getUsersInGroups([groupName])
     .then(usersRes => {
@@ -141,10 +150,17 @@ function importForGroup(groupName, groupStart, groupEnd, week, auth) {
         }
         usersRes.Items.sort().forEach(u => {
             // we process users sequentially to avoid read/write races with Google Sheets
+            if (isNewWeek) {
+                promChain = promChain.then(() => importForUser(u, priorWeekStart, priorWeekEnd, priorWeekInt, auth));
+            }
             promChain = promChain.then(() => importForUser(u, weekStart, weekEnd, weekInt, auth));
         });
         return promChain;
     });
+}
+
+function isWeekStart(groupStart) {
+    return moment.tz(localTz).diff(groupStart, 'days') % 7 === 0;
 }
 
 /**
