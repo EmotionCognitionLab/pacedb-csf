@@ -542,7 +542,6 @@ function writeRewardsData(subjectId, groupName, weekNum, data, auth) {
 
 function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data) {
     if (data.length > MAX_DATA_ENTRIES) {
-        // TODO cut off those below target duration, sort by calmness/coherence and take top 30
         throw new Error(`${data.length} rows of data to be written, but only ${MAX_DATA_ENTRIES} rows are permitted.`)
     }
     const durCol = colForNum(durationColumnForWeek(weekNum));
