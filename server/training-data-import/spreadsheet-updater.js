@@ -139,7 +139,7 @@ function importForGroup(groupName, groupStart, groupEnd, week, auth) {
             warn(`No users found for group ${groupName}. Skipping.`)
             return Promise.resolve();
         }
-        usersRes.Items.forEach(u => {
+        usersRes.Items.sort().forEach(u => {
             // we process users sequentially to avoid read/write races with Google Sheets
             promChain = promChain.then(() => importForUser(u, weekStart, weekEnd, weekInt, auth));
         });
