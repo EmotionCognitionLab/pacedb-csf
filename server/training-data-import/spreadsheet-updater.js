@@ -550,8 +550,10 @@ function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data
     return {
         range: range,
         majorDimension: "ROWS",
-        values: data.map(row => [row[0],,row[1]]) // add a blank between the duration and calmness values since they're separated by a column
+        // write formula to round seconds to nearest quarter minute
+        // also add a blank between the duration and calmness values since they're separated by a column
         // TODO figure out how to add the right number of blanks based on number of columns between duration and calmness rather than hardwiring it to 1
+        values: data.map(row => [`=MROUND((${row[0]}/60), 0.25)`,,row[1]])
     };
 }
 
