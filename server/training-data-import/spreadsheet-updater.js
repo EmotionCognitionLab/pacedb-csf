@@ -167,6 +167,11 @@ function weekToDateRange(groupStart, groupEnd, week) {
     const weekStart = moment(groupStart).startOf('day');
     weekStart.add(weekInt * 7, 'days');
     const weekEnd = moment(weekStart).add(6, 'days').add(23, 'hours').add(59, 'minutes').add(59, 'seconds');
+    if (weekInt === 0) {
+        // ugh. Users can start practicing before their group start date, so if it's
+        // the first week we start early to capture this pre-practice.
+        weekStart.add(-2, 'weeks');
+    } 
     return [weekStart, weekEnd, weekInt];
 }
 
