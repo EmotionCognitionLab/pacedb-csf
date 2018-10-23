@@ -210,7 +210,7 @@ function importForUser(user, startDate, endDate, weekInt, auth) {
             weekInt + 2, //add 1 because researchers work with 1-based weeks and 1 because the study has a week before the online portion begins
             d.startTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
             d.endTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
-            d.minutes,
+            d.seconds,
             d.calmness,
             d.sessId
         ]);
@@ -219,7 +219,7 @@ function importForUser(user, startDate, endDate, weekInt, auth) {
     .then(() => {
         console.log(`Finished writing raw data for user ${user.subjectId}`);
         
-        const rewardData = rawData.map(cur => [cur.minutes, cur.calmness]);
+        const rewardData = rawData.map(cur => [cur.seconds, cur.calmness]);
         return writeRewardsData(user.subjectId, user.group, weekInt, rewardData, auth);        
     })
     .then(() => console.log(`Finished writing reward data for user ${user.subjectId}`))
@@ -287,7 +287,7 @@ function getCsvDataForUser(user, startDate, endDate) {
                 startTime: entryDate.subtract(r['Time Spent On This Attempt'], 'seconds'),
                 endTime: entryDate, 
                 timeSpending: r['Time Spending for the Session'], 
-                duration: r['Time Spent On This Attempt'],
+                seconds: r['Time Spent On This Attempt'],
                 calmness: r['Ave Calmness'],
                 sessId: `${user.subjectId}-${r['Session Name']}`
             }
@@ -317,10 +317,7 @@ function getCsvDataForUser(user, startDate, endDate) {
                         }
                     }
                 });
-                resolve(rowsRead.map(row => {
-                    row.minutes = Math.round(row.duration / 60);
-                    return row;
-                }));
+                resolve(rowsRead);
             }
         )});
     });
@@ -354,7 +351,7 @@ function getSqliteDataForUser(user, startDate, endDate) {
                         groupId: r.groupId,
                         startTime: moment(r.PulseStartTime, 'X'),
                         endTime: moment(r.PulseEndTime, 'X'),
-                        minutes: Math.floor(r.duration / 60),
+                        seconds: r.duration,
                         calmness: r.AvgCoherence,
                         sessId: r.SessionUuid
                     }
