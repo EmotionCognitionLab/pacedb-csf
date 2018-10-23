@@ -186,7 +186,7 @@ function weekToDateRange(groupStart, groupEnd, week) {
     if (weekInt === 0) {
         // ugh. Users can start practicing before their group start date, so if it's
         // the first week we start early to capture this pre-practice.
-        weekStart.add(-2, 'weeks');
+        weekStart.subtract(1, 'year');
     } 
     return [weekStart, weekEnd, weekInt];
 }
