@@ -35,6 +35,8 @@ const sqliteDb = 'emWave.emdb';
 
 const MAX_DATA_ENTRIES = 30; // maximum duration/calmness data points allowed
 
+const localTz = 'America/Los_Angeles';
+
 exports.handler = (event, context, callback) => {
 
     const groupInfo = {}; // map of group name -> { groupStart, groupEnd }
@@ -76,7 +78,7 @@ exports.handler = (event, context, callback) => {
         }
         groupsRes.Items.forEach(g => {
             if (g.name !== process.env.ADMIN_GROUP && g.name !== process.env.DISABLED_GROUP) {
-                groupInfo[g.name] = { start: moment(g.startDate.toString(), 'YYYYMMDD'), end: moment(g.endDate.toString(), 'YYYYMMDD') }
+                groupInfo[g.name] = { start: moment.tz(g.startDate.toString(), 'YYYYMMDD', localTz), end: moment.tz(g.endDate.toString(), 'YYYYMMDD', localTz) }
             }
         });
     })
@@ -140,7 +142,7 @@ function importForGroup(groupName, groupStart, groupEnd, week, auth) {
         usersRes.Items.forEach(u => {
             // we process users sequentially to avoid read/write races with Google Sheets
             promChain = promChain.then(() => importForUser(u, weekStart, weekEnd, weekInt, auth));
-        })
+        });
         return promChain;
     });
 }
@@ -162,10 +164,9 @@ function weekToDateRange(groupStart, groupEnd, week) {
         throw new Error(`${week} is not a valid week.`);
     }
     
-    const weekStart = moment(groupStart);
+    const weekStart = moment(groupStart).startOf('day');
     weekStart.add(weekInt * 7, 'days');
-    const weekEnd = moment(weekStart);
-    weekEnd.add(6, 'days').add(23, 'hours').add(59, 'minutes').add(59, 'seconds');
+    const weekEnd = moment(weekStart).add(6, 'days').add(23, 'hours').add(59, 'minutes').add(59, 'seconds');
     return [weekStart, weekEnd, weekInt];
 }
 
@@ -186,8 +187,8 @@ function importForUser(user, startDate, endDate, weekInt, auth) {
             d.subjectId,
             d.groupId,
             weekInt + 2, //add 1 because researchers work with 1-based weeks and 1 because the study has a week before the online portion begins
-            d.startTime.format('YYYY-MM-DD HH:mm:ss'),
-            d.endTime.format('YYYY-MM-DD HH:mm:ss'),
+            d.startTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
+            d.endTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
             d.minutes,
             d.calmness,
             d.sessId
