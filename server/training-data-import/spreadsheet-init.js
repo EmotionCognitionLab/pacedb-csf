@@ -29,7 +29,7 @@ groupsProm.then(groupsRes => {
 Promise.all([curProm]);
 
 function runWithDelayChain(curProm, groupName, week) {
-    return curProm.then(() => new Promise(res => setTimeout(res, 25000)))
+    return curProm.then(() => new Promise(res => setTimeout(res, 120000)))
     .then(() => runLambda(groupName, week))
 }
 
