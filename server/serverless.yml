@@ -304,7 +304,7 @@ functions:
         - logger/**
     role: lambdaWithDynamoRole
     handler: training-data-import/spreadsheet-updater.handler
-    timeout: 120
+    timeout: 300
     events:
       - schedule:
           rate: cron(40 12 * * ? *)
