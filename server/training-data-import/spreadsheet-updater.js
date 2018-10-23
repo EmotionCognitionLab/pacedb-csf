@@ -135,10 +135,10 @@ function importForGroup(groupName, groupStart, groupEnd, week, auth) {
     const isNewWeek = isWeekStart(groupStart);
     let priorWeekStart, priorWeekEnd, priorWeekInt;
     if (weekInt > 0 && isNewWeek) {
-        // at the start of a new week we process the last day of the prior week, just to make sure we don't
+        // at the start of a new week we process the prior week, just to make sure we don't
         // miss any data that may have been uploaded after the daily run yesterday
         priorWeekInt = weekInt - 1;
-        priorWeekStart = moment(weekStart).subtract(1, 'days').startOf('day');
+        priorWeekStart = moment(weekStart).subtract(7, 'days').startOf('day');
         priorWeekEnd = moment(weekStart).subtract(1, 'days').endOf('day');
     }
     let promChain = Promise.resolve();
