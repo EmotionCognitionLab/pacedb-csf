@@ -18,7 +18,7 @@ const fnName = 'hrv-prod-spreadsheetUpdater';
 let curProm = Promise.resolve();
 
 groupsProm.then(groupsRes => {
-    groupsRes.Items.forEach(g => {
+    groupsRes.Items.filter(g => g.name !== 'staff' && g.name !== 'disabled').forEach(g => {
         weeks.forEach(w => {
             curProm = runWithDelayChain(curProm, g.name, w);
         });
