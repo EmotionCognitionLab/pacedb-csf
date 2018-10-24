@@ -211,6 +211,7 @@ function importForUser(user, startDate, endDate, weekInt, auth) {
             d.startTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
             d.endTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
             d.seconds,
+            ,   // blank row for the minutes column in the spreadsheet
             d.calmness,
             d.sessId
         ]);
@@ -571,7 +572,8 @@ function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data
             // ave calmness goes under the next week b/c it's the target for that week
             values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1], , , , aveCalmness ]  );       
         } else {
-            // just put in duration, calmness
+            // just put in duration, calmness with blank between them b/c they're separated by a column
+            // MROUND is formula to round seconds to nearest quarter minute
             values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1] ]  );
         }
     }
@@ -587,14 +589,11 @@ function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data
     return {
         range: range,
         majorDimension: "ROWS",
-        // write formula to round seconds to nearest quarter minute
-        // also add a blank between the duration and calmness values since they're separated by a column
-        // TODO figure out how to add the right number of blanks based on number of columns between duration and calmness rather than hardwiring it to 1
         values: values
     };
 }
 
-const SESSION_ID_COL = 'H'; // column for session id's in raw data sheet
+const SESSION_ID_COL = 'I'; // column for session id's in raw data sheet
 function getExistingSessionIds(auth) {
     return new Promise((resolve, reject) => {
         const sheets = google.sheets({version: 'v4', auth});
