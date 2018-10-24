@@ -464,6 +464,8 @@ const WEEK_WIDTH = 5; // number of columns for each week
 const DURATION_COL_OFFSET = 2; // duration is second column in each week
 const CALMNESS_COL_OFFSET = 4; // calmness is fourth column in each week
 const WEEKLY_DATA_ROW_OFFSET = 4; // duration and calmness data start four rows below the subject id
+const AVE_CALM_ROW_OFFSET = 7; // average calmness score is seven rows below the FIRST ROW OF DURATION AND CALMNESS DATA
+const AVE_CALM_COL_OFFSET = 4; // average calmness col is four cols past the calmness column
 const LEADING_COLS = 6; // there are six columns before the first week with any duration/calmness data
 
 function durationColumnForWeek(weekNum) {
@@ -473,11 +475,12 @@ function durationColumnForWeek(weekNum) {
     return (weekNum * WEEK_WIDTH) + DURATION_COL_OFFSET + LEADING_COLS;
 }
 
-function calmnessColumnForWeek(weekNum) {
+function endColForWeek(weekNum) {
     // each week is 5 cols wide (weekNum * 5)
-    // duration is the fourth col in the week (+ 3)
+    // calmness is the fourth col in the week (+ 4)
+    // ave calmness is four cols after calmness (+ 4)
     // there are six leading cols in the sheet before the first week ( + 6)
-    return (weekNum * WEEK_WIDTH) + CALMNESS_COL_OFFSET + LEADING_COLS;
+    return (weekNum * WEEK_WIDTH) + CALMNESS_COL_OFFSET + AVE_CALM_COL_OFFSET + LEADING_COLS;
 }
 
 // returns 'A' for 1, 'B' for 2, ... 'AA' for 27, etc.
@@ -514,7 +517,8 @@ function writeRewardsData(subjectId, groupName, weekNum, data, auth) {
         }
     })
     .then(startRow => {
-        const valueRanges = [ weeklyRewardDataToValueRange(startRow, groupName, weekNum, data) ];
+        const aveCalmness = averageCalmness(data);
+        const valueRanges = [ weeklyRewardDataToValueRange(startRow, groupName, weekNum, data, aveCalmness) ];
         valueRanges.push({
             range: `${groupName}!A${startRow}`,
             majorDimension: "ROWS",
@@ -540,20 +544,53 @@ function writeRewardsData(subjectId, groupName, weekNum, data, auth) {
     });
 }
 
-function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data) {
+/**
+ * Calculates average calmness by dropping all sessions that are < 10 minutes long,
+ * sorting the remainder in order of descending calmness, taking the top 10, 
+ * calculating their average calmness and adding 0.3.
+ * @param {array} data [ [seconds, calmness], [seconds, calmness], ...]
+ */
+function averageCalmness(data) {
+    const sortedEligible = data.filter(d => d[0] >= 600).sort((d1, d2) => d2[1] - d1[1]).slice(0, 10).map(d => d[1]);
+    return ( sortedEligible.reduce((prev, cur) => prev + cur, 0) / sortedEligible.length ) + 0.3;
+}
+
+function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data, aveCalmness) {
     if (data.length > MAX_DATA_ENTRIES) {
         throw new Error(`${data.length} rows of data to be written, but only ${MAX_DATA_ENTRIES} rows are permitted.`)
     }
     const durCol = colForNum(durationColumnForWeek(weekNum));
-    const calmCol = colForNum(calmnessColumnForWeek(weekNum));
+    const calmCol = colForNum(endColForWeek(weekNum));
     const range = `${groupId}!${durCol}${startRowForSubject + WEEKLY_DATA_ROW_OFFSET}:${calmCol}${startRowForSubject + WEEKLY_DATA_ROW_OFFSET + MAX_DATA_ENTRIES - 1}`;
+
+    const values = [];
+    var i;
+    for (i = 0; i < data.length; i++) {
+        if (i === AVE_CALM_ROW_OFFSET) {
+            // put in duration, ave calmness, calmness
+            // ave calmness goes under the next week b/c it's the target for that week
+            values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1], , , , aveCalmness ]  );       
+        } else {
+            // just put in duration, calmness
+            values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1] ]  );
+        }
+    }
+    if (i < AVE_CALM_ROW_OFFSET) {
+        // we need to add blank rows until we get to the offset for ave calmness
+        while (i < AVE_CALM_ROW_OFFSET) {
+            values.push( [] );
+            i = i + 1;
+        }
+        values.push( [ , , , , , , aveCalmness ] );
+    }
+    
     return {
         range: range,
         majorDimension: "ROWS",
         // write formula to round seconds to nearest quarter minute
         // also add a blank between the duration and calmness values since they're separated by a column
         // TODO figure out how to add the right number of blanks based on number of columns between duration and calmness rather than hardwiring it to 1
-        values: data.map(row => [`=MROUND((${row[0]}/60), 0.25)`,,row[1]])
+        values: values
     };
 }
 
