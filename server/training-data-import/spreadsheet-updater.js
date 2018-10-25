@@ -544,13 +544,18 @@ function writeRewardsData(subjectId, groupName, weekNum, data, auth) {
 }
 
 /**
- * Calculates average calmness by dropping all sessions that are < 10 minutes long,
+ * Calculates average calmness by rounding all sessions to the nearest quarter minute,
+ * dropping all sessions that are < 10 minutes long,
  * sorting the remainder in order of descending calmness, taking the top 10, 
  * calculating their average calmness and adding 0.3.
  * @param {array} data [ [seconds, calmness], [seconds, calmness], ...]
  */
 function averageCalmness(data) {
-    const sortedEligible = data.filter(d => d[0] >= 600).sort((d1, d2) => d2[1] - d1[1]).slice(0, 10).map(d => d[1]);
+    const sortedEligible = data.map(d => [0.25 * Math.round((d[0] / 60) / 0.25), d[1] ])
+    .filter(d => d[0] >= 10)
+    .sort((d1, d2) => d2[1] - d1[1])
+    .slice(0, 10)
+    .map(d => d[1]);
     if (sortedEligible.length === 0) {
         return 0;
     }
