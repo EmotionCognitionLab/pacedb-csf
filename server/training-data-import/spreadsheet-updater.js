@@ -283,7 +283,7 @@ function getCsvDataForUser(user, startDate, endDate) {
                 subjectId: user.subjectId,
                 groupId: user.group,
                 sessName: r['Session Name'],
-                startTime: entryDate.subtract(r['Time Spent On This Attempt'], 'seconds'),
+                startTime: moment(entryDate).subtract(r['Time Spent On This Attempt'], 'seconds'),
                 endTime: entryDate, 
                 timeSpending: r['Time Spending for the Session'], 
                 seconds: r['Time Spent On This Attempt'],
