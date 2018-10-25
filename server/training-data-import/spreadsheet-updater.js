@@ -573,7 +573,7 @@ function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data
     const values = [];
     var i;
     for (i = 0; i < data.length; i++) {
-        if (i === AVE_CALM_ROW_OFFSET) {
+        if (i === AVE_CALM_ROW_OFFSET && weekNum < 4) { // we don't write ave calmness in final week (week 4) because there is no next week
             // put in duration, ave calmness, calmness
             // ave calmness goes under the next week b/c it's the target for that week
             values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1], , , , aveCalmness ]  );       
@@ -583,7 +583,7 @@ function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data
             values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1] ]  );
         }
     }
-    if (i < AVE_CALM_ROW_OFFSET) {
+    if (i < AVE_CALM_ROW_OFFSET && weekNum < 4) {
         // we need to add blank rows until we get to the offset for ave calmness
         while (i < AVE_CALM_ROW_OFFSET) {
             values.push( [] );
