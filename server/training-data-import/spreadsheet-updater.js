@@ -583,7 +583,7 @@ function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data
             values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1] ]  );
         }
     }
-    if (i < AVE_CALM_ROW_OFFSET && weekNum < 4) {
+    if (i <= AVE_CALM_ROW_OFFSET && weekNum < 4) {
         // we need to add blank rows until we get to the offset for ave calmness
         while (i < AVE_CALM_ROW_OFFSET) {
             values.push( [] );
