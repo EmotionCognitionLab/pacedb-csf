@@ -138,7 +138,13 @@ function importForGroup(groupName, groupStart, groupEnd, week, auth) {
         // at the start of a new week we process the prior week, just to make sure we don't
         // miss any data that may have been uploaded after the daily run yesterday
         priorWeekInt = weekInt - 1;
-        priorWeekStart = moment(weekStart).subtract(7, 'days').startOf('day');
+        if (priorWeekInt === 0) {
+            // for the first week we go back a year and a week just to make sure we capture
+            // any practice the user might have done before the official group start
+            priorWeekStart = moment(weekStart).subtract(1, 'year').subtract(1, 'week').startOf('day');
+        } else {
+            priorWeekStart = moment(weekStart).subtract(7, 'days').startOf('day');
+        }
         priorWeekEnd = moment(weekStart).subtract(1, 'days').endOf('day');
     }
     let promChain = Promise.resolve();
