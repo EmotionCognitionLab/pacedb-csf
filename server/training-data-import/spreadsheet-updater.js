@@ -551,6 +551,9 @@ function writeRewardsData(subjectId, groupName, weekNum, data, auth) {
  */
 function averageCalmness(data) {
     const sortedEligible = data.filter(d => d[0] >= 600).sort((d1, d2) => d2[1] - d1[1]).slice(0, 10).map(d => d[1]);
+    if (sortedEligible.length === 0) {
+        return 0;
+    }
     return ( sortedEligible.reduce((prev, cur) => prev + cur, 0) / sortedEligible.length ) + 0.3;
 }
 
