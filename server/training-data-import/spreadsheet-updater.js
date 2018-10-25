@@ -298,7 +298,7 @@ function getCsvDataForUser(user, startDate, endDate) {
                     reject(err);
                 }
                 csvRecs.forEach(r => {
-                    const entryDate = moment(r['Date'], 'MM-DD-YYYY-HH-mm-ss');
+                    const entryDate = moment.tz(r['Date'], 'MM-DD-YYYY-HH-mm-ss', localTz);
                     if (entryDate.isBefore(startDate) || entryDate.isAfter(endDate) || r['User'].toString() !== user.subjectId) return;
 
                     const dupeIdx = rowsRead.findIndex(a => a.sessName === r['Session Name']);
@@ -348,8 +348,8 @@ function getSqliteDataForUser(user, startDate, endDate) {
                     return {
                         subjectId: r.subjectId,
                         groupId: r.groupId,
-                        startTime: moment(r.PulseStartTime, 'X'),
-                        endTime: moment(r.PulseEndTime, 'X'),
+                        startTime: moment.tz(r.PulseStartTime, 'X', localTz),
+                        endTime: moment.tz(r.PulseEndTime, 'X', localTz),
                         seconds: r.duration,
                         calmness: r.AvgCoherence,
                         sessId: r.SessionUuid
