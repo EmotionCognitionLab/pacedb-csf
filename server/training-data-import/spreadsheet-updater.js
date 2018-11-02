@@ -170,7 +170,7 @@ function isWeekStart(groupStart) {
 function weekToDateRange(groupStart, groupEnd, week) {
     if (week === undefined || week === null || week === '') {
         // use the week that the group is in today
-        week = weekNumForDate(moment().startOf('day'), groupStart, groupEnd);
+        week = weekNumForDate(moment.tz(localTz).startOf('day'), groupStart, groupEnd);
     }
 
     const weekInt = Number.parseInt(week);
@@ -191,7 +191,7 @@ function weekToDateRange(groupStart, groupEnd, week) {
 
 
 function importForUser(user, startDate, endDate, weekInt, auth) {
-    console.log(`importing data from ${startDate} to ${endDate} for subject ${user.subjectId}`);
+    console.log(`importing data from ${startDate} to ${endDate} (week ${weekInt}) for subject ${user.subjectId}`);
     let rawData = {};
 
     return getRawDataForUser(user, startDate, endDate)
