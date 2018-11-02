@@ -170,7 +170,7 @@ function isWeekStart(groupStart) {
 function weekToDateRange(groupStart, groupEnd, week) {
     if (week === undefined || week === null || week === '') {
         // use the week that the group is in today
-        week = weekNumForDate(moment(), groupStart, groupEnd);
+        week = weekNumForDate(moment().startOf('day'), groupStart, groupEnd);
     }
 
     const weekInt = Number.parseInt(week);
