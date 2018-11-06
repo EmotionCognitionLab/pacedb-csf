@@ -339,7 +339,7 @@ function getSqliteDataForUser(user, startDate, endDate) {
             // We credit any sessions begun on the target day to that target day,
             // regardless of when they ended
             const stmt = 
-                db.prepare(`select '${user.subjectId}' subjectId, '${user.group}' groupId, PulseStartTime, PulseEndTime, (PulseEndTime-PulseStartTime) duration, AvgCoherence, SessionUuid from Session s join User u on u.UserUuid = s.UserUuid where u.FirstName = '${user.subjectId}' and s.ValidStatus = 1 and s.PulseStartTime >= ? and s.PulseStartTime <= ?`);
+                db.prepare(`select '${user.subjectId}' subjectId, '${user.group}' groupId, IBIStartTime, IBIEndTime, (IBIEndTime-IBIStartTime) duration, AvgCoherence, SessionUuid from Session s join User u on u.UserUuid = s.UserUuid where u.FirstName = '${user.subjectId}' and s.ValidStatus = 1 and s.IBIStartTime >= ? and s.IBIStartTime <= ?`);
             const rows = stmt.all([startDate.format('X'), endDate.format('X')]);
             db.close();
             let results = [];
@@ -348,8 +348,8 @@ function getSqliteDataForUser(user, startDate, endDate) {
                     return {
                         subjectId: r.subjectId,
                         groupId: r.groupId,
-                        startTime: moment.tz(r.PulseStartTime, 'X', localTz),
-                        endTime: moment.tz(r.PulseEndTime, 'X', localTz),
+                        startTime: moment.tz(r.IBIStartTime, 'X', localTz),
+                        endTime: moment.tz(r.IBIEndTime, 'X', localTz),
                         seconds: r.duration,
                         calmness: r.AvgCoherence,
                         sessId: r.SessionUuid
