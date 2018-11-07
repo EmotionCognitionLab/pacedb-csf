@@ -217,8 +217,8 @@ function importForUser(user, startDate, endDate, weekInt, auth) {
     .then(dataToWrite => writeRawData(dataToWrite, auth))
     .then(() => {
         console.log(`Finished writing raw data for user ${user.subjectId}`);
-        
-        const rewardData = rawData.map(cur => [cur.seconds, cur.calmness]);
+        // very seldom we see negative or very large session durations - set those to 40 minutes for reward calc purposes
+        const rewardData = rawData.map(cur => [cur.seconds < 0 || cur.seconds > (60 * 40) ? 60 * 40 : cur.seconds, cur.calmness]);
         return writeRewardsData(user.subjectId, user.group, weekInt, rewardData, auth);        
     })
     .then(() => console.log(`Finished writing reward data for user ${user.subjectId}`))
