@@ -217,8 +217,12 @@ function importForUser(user, startDate, endDate, weekInt, auth) {
     .then(dataToWrite => writeRawData(dataToWrite, auth))
     .then(() => {
         console.log(`Finished writing raw data for user ${user.subjectId}`);
+        
+        const rewardData = rawData
+        // don't include calibration sessions in reward data
+        .filter(cur => cur.subjectId == user.subjectId)
         // very seldom we see negative or very large session durations - set those to 40 minutes for reward calc purposes
-        const rewardData = rawData.map(cur => [cur.seconds < 0 || cur.seconds > (60 * 40) ? 60 * 40 : cur.seconds, cur.calmness]);
+        .map(cur => [cur.seconds < 0 || cur.seconds > (60 * 40) ? 60 * 40 : cur.seconds, cur.calmness]);
         return writeRewardsData(user.subjectId, user.group, weekInt, rewardData, auth);        
     })
     .then(() => console.log(`Finished writing reward data for user ${user.subjectId}`))
@@ -280,7 +284,7 @@ function getCsvDataForUser(user, startDate, endDate) {
     .then(data => {
         const buildObjFromRow = (r, entryDate) => {
             return {
-                subjectId: user.subjectId,
+                subjectId: r['User'],
                 groupId: user.group,
                 sessName: r['Session Name'],
                 startTime: moment(entryDate).subtract(r['Time Spent On This Attempt'], 'seconds'),
@@ -299,7 +303,7 @@ function getCsvDataForUser(user, startDate, endDate) {
                 }
                 csvRecs.forEach(r => {
                     const entryDate = moment.tz(r['Date'], 'MM-DD-YYYY-HH-mm-ss', localTz);
-                    if (entryDate.isBefore(startDate) || entryDate.isAfter(endDate) || r['User'].toString() !== user.subjectId) return;
+                    if (entryDate.isBefore(startDate) || entryDate.isAfter(endDate) || !r['User'].toString().startsWith(user.subjectId)) return;
 
                     const dupeIdx = rowsRead.findIndex(a => a.sessName === r['Session Name']);
                     if (dupeIdx === -1) {
@@ -339,7 +343,7 @@ function getSqliteDataForUser(user, startDate, endDate) {
             // We credit any sessions begun on the target day to that target day,
             // regardless of when they ended
             const stmt = 
-                db.prepare(`select '${user.subjectId}' subjectId, '${user.group}' groupId, IBIStartTime, IBIEndTime, (IBIEndTime-IBIStartTime) duration, AvgCoherence, SessionUuid from Session s join User u on u.UserUuid = s.UserUuid where u.FirstName = '${user.subjectId}' and s.ValidStatus = 1 and s.IBIStartTime >= ? and s.IBIStartTime <= ?`);
+                db.prepare(`select u.FirstName subjectId, '${user.group}' groupId, IBIStartTime, IBIEndTime, (IBIEndTime-IBIStartTime) duration, AvgCoherence, SessionUuid from Session s join User u on u.UserUuid = s.UserUuid where substr(u.FirstName, 1, ${user.subjectId.length}) = '${user.subjectId}' and s.ValidStatus = 1 and s.IBIStartTime >= ? and s.IBIStartTime <= ?`);
             const rows = stmt.all([startDate.format('X'), endDate.format('X')]);
             db.close();
             let results = [];
