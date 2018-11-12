@@ -178,17 +178,17 @@ functions:
     handler: reminders/remind.handler
     events:
       - schedule:
-          rate: cron(00 05 * * ? *)
+          rate: cron(00 06 * * ? *)
           description: Reminds users who haven't yet done their training for the day to do so.
           input:
             msgType: train
       - schedule:
-          rate: cron(4 15 * * ? *)
+          rate: cron(4 16 * * ? *)
           description: Reminds users who haven't reported their training minutes for yesterday to do so.
           input:
             msgType: report
       - schedule:
-          rate: cron(00 15 * * ? *)
+          rate: cron(00 16 * * ? *)
           description: Asks users to complete the daily survey
           input:
             msgType: survey
@@ -203,12 +203,12 @@ functions:
           input:
             msgType: new_emoji
       - schedule:
-          rate: cron(17 6 ? * 4 *)
+          rate: cron(17 7 ? * 4 *)
           description: Tells users whether their group is on or off track
           input:
             msgType: group_status
       - schedule:
-          rate: cron(22 15 ? * SUN *)
+          rate: cron(22 16 ? * SUN *)
           description: Sends out the weekly status report
           input:
             msgType: status_report
@@ -275,12 +275,12 @@ functions:
     timeout: 120
     events:
       - schedule:
-          rate: cron(40 04 * * ? *)
+          rate: cron(40 05 * * ? *)
           description: Checks for training data before the reminder to train is sent out.
           input:
             day: today
       - schedule:
-          rate: cron(45 14 * * ? *)
+          rate: cron(45 15 * * ? *)
           description: Checks for training data before the reminder to enter training data is sent out.
           input:
             day: yesterday
