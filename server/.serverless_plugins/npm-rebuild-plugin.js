@@ -20,7 +20,8 @@ class NpmRebuildPlugin {
         // { funcName (in serverless.yml): funcDirectory }
         this.funcsWithNativeCode = {
             'dataImporter': 'training-data-import',
-            'spreadsheetUpdater': 'training-data-import'
+            'spreadsheetUpdater': 'training-data-import',
+            'calibrationData': 'calibration'
          };
     }
 

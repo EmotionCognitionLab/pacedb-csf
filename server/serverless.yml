@@ -25,6 +25,8 @@ provider:
   runtime: nodejs6.10
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-west-2'}
+  apiKeys:
+    - ${opt:stage}-calibration  # API key to be used when calling the calibrationData function
 
 # you can define service wide environment variables here
   environment:
@@ -63,6 +65,7 @@ functions:
         - api/node_modules/** # api function doesn't have any dependencies; delete this line if you add any
         - training-data-import/**
         - logger/**
+        - calibration/**
     role: lambdaWithDynamoRole
     handler: api/api.handler
     events:
@@ -174,6 +177,7 @@ functions:
         - reminders/.*
         - training-data-import/**
         - logger/**
+        - calibration/**
     role: reminderRole
     handler: reminders/remind.handler
     events:
@@ -243,6 +247,7 @@ functions:
         - training-data-import/**
         - logger/**
         - common/**
+        - calibration/**
     role: lambdaWithDynamoRole
     handler: verification/message-customizer.handler
 
@@ -256,6 +261,7 @@ functions:
         - training-data-import/**
         - logger/**
         - common/**
+        - calibration/**
     role: lambdaWithDynamoRole
     handler: verification/verified.handler
 
@@ -270,6 +276,7 @@ functions:
         - training-data-import/spreadsheet-updater.js
         - training-data-import/private-key.json
         - logger/**
+        - calibration/**
     role: lambdaWithDynamoRole
     handler: training-data-import/import.handler
     timeout: 120
@@ -302,6 +309,7 @@ functions:
         - training-data-import/spreadsheet-init.js
         - training-data-import/import.js
         - logger/**
+        - calibration/**
     role: lambdaWithDynamoRole
     handler: training-data-import/spreadsheet-updater.handler
     timeout: 300
@@ -338,6 +346,7 @@ functions:
         - verification/**
         - training-data-import/**
         - common/**
+        - calibration/**
     role: lambdaWithDynamoRole
     handler: logger/index.handler
     events:
@@ -355,6 +364,34 @@ functions:
               - X-Amz-User-Agent
               - JSNLog-RequestId
             allowCredentials: false
+
+  calibrationData:
+    package:
+      exclude:
+        - api/**
+        - reminders/**
+        - verification/**
+        - training-data-import/**
+        - logger/**
+        - calibration/test/**
+    role: lambdaWithS3Role
+    handler: calibration/index.handler
+    events:
+      - http:
+          path: subjects/{subject_id}/calibration
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                subject_id: true
+          private: true
+    environment:
+      DATA_BUCKET:
+        Fn::Sub: "${self:service}-${self:provider.stage}-usr-data"
+      S3_ENDPOINT: "https://s3.us-west-2.amazonaws.com"
+      TIMEZONE: "America/Los_Angeles"
+
       
 plugins:
   - serverless-dynamodb-local
@@ -613,3 +650,20 @@ resources:
                       - "/"
                       - - Fn::ImportValue: "${self:service}-${self:provider.stage}-reportingBucketARN"
                         - "*"
+
+# role for lambda functions that only need access to S3 (and cloudwatch)
+    lambdaWithS3Role:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument: 
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal: 
+                Service: 
+                  - "lambda.amazonaws.com"
+              Action: 
+                - "sts:AssumeRole"
+        ManagedPolicyArns:
+          - { Fn::ImportValue: "${self:service}-${self:provider.stage}-cloudwatchWriteAccess" }
+          - { Fn::ImportValue: "${self:service}-${self:provider.stage}-dataBucketReadAccess" }
