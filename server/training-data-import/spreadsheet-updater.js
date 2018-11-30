@@ -343,7 +343,7 @@ function getSqliteDataForUser(user, startDate, endDate) {
             // We credit any sessions begun on the target day to that target day,
             // regardless of when they ended
             const stmt = 
-                db.prepare(`select u.FirstName subjectId, '${user.group}' groupId, IBIStartTime, IBIEndTime, (IBIEndTime-IBIStartTime) duration, AvgCoherence, SessionUuid from Session s join User u on u.UserUuid = s.UserUuid where substr(u.FirstName, 1, ${user.subjectId.length}) = '${user.subjectId}' and s.ValidStatus = 1 and s.IBIStartTime >= ? and s.IBIStartTime <= ?`);
+                db.prepare(`select u.FirstName subjectId, '${user.group}' groupId, IBIStartTime, IBIEndTime, (IBIEndTime-IBIStartTime) duration, AvgCoherence, SessionUuid from Session s join User u on u.UserUuid = s.UserUuid where substr(u.FirstName, 1, ${user.subjectId.length}) = '${user.subjectId}' and s.ValidStatus = 1 and s.DeleteFlag is null and s.IBIStartTime >= ? and s.IBIStartTime <= ?`);
             const rows = stmt.all([startDate.format('X'), endDate.format('X')]);
             db.close();
             let results = [];

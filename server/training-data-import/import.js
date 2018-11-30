@@ -181,7 +181,7 @@ function getSqliteDataForUser(user, date) {
             // We credit any sessions begun on the target day to that target day,
             // regardless of when they ended
             const stmt = 
-                db.prepare('select SUM(PulseEndTime-PulseStartTime) total from Session where ValidStatus = 1 and PulseStartTime >= ? and PulseStartTime <= ?');
+                db.prepare('select SUM(PulseEndTime-PulseStartTime) total from Session where ValidStatus = 1 and DeleteFlag is null and PulseStartTime >= ? and PulseStartTime <= ?');
             const res = stmt.get([dateStart.format('X'), dateEnd.format('X')]);
             db.close();
             resolve(res && res.total > 0 ? res.total : 0);

@@ -520,27 +520,35 @@ describe('Importing log file data', function() {
 
 // test data for sqlite cases
 const basic = {
-    data: [{PulseStartTime: moment().unix(), PulseEndTime: moment().add(190, 'seconds').unix(), ValidStatus: 1}],
+    data: [{PulseStartTime: moment().unix(), PulseEndTime: moment().add(190, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}],
     users: singleLine.users
 };
 
 const invalidStatus = {
     data: [
-        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(190, 'seconds').unix(), ValidStatus: 1},
-        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(500, 'seconds').unix(), ValidStatus: -1}
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(190, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null},
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(500, 'seconds').unix(), ValidStatus: -1, DeleteFlag: null}
     ],
     users: singleLine.users
 };
 
+const deleteFlag = {
+    data: [
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(190, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null},
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(500, 'seconds').unix(), ValidStatus: 1, DeleteFlag: 1}
+    ],
+    users: singleLine.users
+}
+
 const yesterdaySqlite = {
     data: [
-        {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(190, 'seconds').unix(), ValidStatus: 1}
+        {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(190, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}
     ],
     users: singleLine.users
 }
 
 const negativeSqlite = {
-    data: [{PulseStartTime: moment().unix(), PulseEndTime: moment().subtract(95, 'seconds').unix(), ValidStatus: 1}],
+    data: [{PulseStartTime: moment().unix(), PulseEndTime: moment().subtract(95, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}],
     users: singleLine.users
 };
 
@@ -554,24 +562,24 @@ const multiUser = {
 
 const multiDay = {
     data: [
-        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(350, 'seconds').unix(), ValidStatus: 1},
-        {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(280, 'seconds').unix(), ValidStatus: 1}
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(350, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null},
+        {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(280, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}
     ],
     users: singleLine.users
 };
 
 const multiEntry = {
     data: [
-        {PulseStartTime: moment().startOf('day').unix(), PulseEndTime: moment().startOf('day').add(400, 'seconds').unix(), ValidStatus: 1},
-        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(290, 'seconds').unix(), ValidStatus: 1}
+        {PulseStartTime: moment().startOf('day').unix(), PulseEndTime: moment().startOf('day').add(400, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null},
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(290, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}
     ],
     users: singleLine.users
 };
 
 const futureData = {
     data: [
-        {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(22, 'minutes').unix(), ValidStatus: 1},
-        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(8, 'minutes').unix(), ValidStatus: 1}
+        {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(22, 'minutes').unix(), ValidStatus: 1, DeleteFlag: null},
+        {PulseStartTime: moment().unix(), PulseEndTime: moment().add(8, 'minutes').unix(), ValidStatus: 1, DeleteFlag: null}
     ],
     users: singleLine.users
 }
@@ -643,6 +651,24 @@ describe("Importing sqlite data", function() {
         .then(function() {
             const expectedMin = sumSqliteMinutes(invalidStatus.data, (d) => d.ValidStatus === 1);
             return confirmResult(invalidStatus.users[0].id, todayYMD, expectedMin);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should ignore rows where DeleteFlag is not null', function() {
+        makeSqliteData(deleteFlag.data, sqliteFname);
+        return saveFileToS3(sqliteFname, emWaveS3Key(deleteFlag.users[0].subjectId))
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, deleteFlag.users);
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function() {
+            const expectedMin = sumSqliteMinutes(deleteFlag.data, (d) => d.ValidStatus === 1 && d.DeleteFlag === null);
+            return confirmResult(deleteFlag.users[0].id, todayYMD, expectedMin);
         })
         .catch(function(err) {
             console.log(err);
@@ -822,9 +848,9 @@ function emWaveS3Key(subjectId) { return `${subjectId}/emWave.emdb`; }
  */
 function makeSqliteData(data, fname) {
     const db = new sqlite3(fname);
-    db.exec('CREATE TABLE Session (PulseStartTime INTEGER, PulseEndTime INTEGER, ValidStatus INTEGER)');
-    const stmt = db.prepare('INSERT INTO Session VALUES (?, ?, ?)');
-    data.forEach(d => stmt.run([d.PulseStartTime, d.PulseEndTime, d.ValidStatus]));
+    db.exec('CREATE TABLE Session (PulseStartTime INTEGER, PulseEndTime INTEGER, ValidStatus INTEGER, DeleteFlag INTEGER)');
+    const stmt = db.prepare('INSERT INTO Session VALUES (?, ?, ?, ?)');
+    data.forEach(d => stmt.run([d.PulseStartTime, d.PulseEndTime, d.ValidStatus, d.DeleteFlag]));
     db.close();
 }
 
@@ -848,7 +874,7 @@ function runScheduledEvent(whichDay) {
         event: event,
         lambdaPath: 'import.js',
         envfile: './test/env.sh',
-        verboseLevel: 0 // set this to 3 to get all lambda-local output
+        verboseLevel: 3 // set this to 3 to get all lambda-local output
     }));
 }
 
