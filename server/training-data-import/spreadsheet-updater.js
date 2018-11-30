@@ -292,7 +292,7 @@ function getCsvDataForUser(user, startDate, endDate) {
                 timeSpending: r['Time Spending for the Session'], 
                 seconds: r['Time Spent On This Attempt'],
                 calmness: r['Ave Calmness'],
-                sessId: `${user.subjectId}-${r['Session Name']}`
+                sessId: `${user.subjectId}-${r['Session Name']}-${r['Attempt']}`
             }
         }
         return new Promise((resolve, reject) => {
@@ -304,21 +304,7 @@ function getCsvDataForUser(user, startDate, endDate) {
                 csvRecs.forEach(r => {
                     const entryDate = moment.tz(r['Date'], 'MM-DD-YYYY-HH-mm-ss', localTz);
                     if (entryDate.isBefore(startDate) || entryDate.isAfter(endDate) || !r['User'].toString().startsWith(user.subjectId)) return;
-
-                    const dupeIdx = rowsRead.findIndex(a => a.sessName === r['Session Name']);
-                    if (dupeIdx === -1) {
-                        rowsRead.push(buildObjFromRow(r, entryDate));
-                    } else {
-                        // we have a dupe - probably two partial sessions
-                        // check to see if they sum to at least the Session Time
-                        // if so, keep the new one if its status is 'Finished'
-                        const dupeRow = rowsRead[dupeIdx];
-                        if (dupeRow.duration + r['Time Spent On This Attempt'] >= r['Session Time']) {
-                            if (r['Finish Status'] === 'Finished') {
-                                rowsRead.splice(dupeIdx, 1, buildObjFromRow(r, entryDate));
-                            }
-                        }
-                    }
+                    rowsRead.push(buildObjFromRow(r, entryDate));
                 });
                 resolve(rowsRead);
             }
