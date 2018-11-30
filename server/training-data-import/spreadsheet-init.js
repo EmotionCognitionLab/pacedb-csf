@@ -12,7 +12,7 @@ const db = new DynUtils.HrvDb({
 const lambda = new AWS.Lambda({region: 'us-west-2', endpoint: 'https://lambda.us-west-2.amazonaws.com', apiVersion: '2015-03-31'});
 
 const groupsProm = db.getAllGroups();
-const weeks = [0, 1, 2, 3, 4];
+const weeks = [0, 1, 2, 3, 4, 5, 6];
 const fnName = 'hrv-prod-spreadsheetUpdater';
 
 let curProm = Promise.resolve();

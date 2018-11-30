@@ -42,8 +42,8 @@ exports.handler = (event, context, callback) => {
     const groupInfo = {}; // map of group name -> { groupStart, groupEnd }
     const weekInt = Number.parseInt(event.week);
 
-    if (event.week !== undefined && event.week !== null && event.week !== '' && (Number.isNaN(weekInt) || (Number.isInteger(weekInt) && (weekInt < 0 || weekInt > 5)))) {
-        const errMsg = `The 'week' parameter should be between 0 and 5, but was ${event.week}.`;
+    if (event.week !== undefined && event.week !== null && event.week !== '' && (Number.isNaN(weekInt) || (Number.isInteger(weekInt) && (weekInt < 0 || weekInt > 6)))) {
+        const errMsg = `The 'week' parameter should be between 0 and 6, but was ${event.week}.`;
         console.log(errMsg);
         return callback(new Error(errMsg));
     }
