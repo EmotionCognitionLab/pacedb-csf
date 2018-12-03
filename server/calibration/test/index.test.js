@@ -172,9 +172,14 @@ const invalidSession = [Object.assign({}, basicSession[0])];
 invalidSession[0].ValidStatus = 0;
 
 // session data for older calibration
+const oldSessionStart = moment().tz(localTz).subtract(2, 'hours');
+const oldSessionEnd = moment().tz(localTz).subtract(115, 'minutes');
 const oldSession = [Object.assign({}, basicSession[0])];
-oldSession[0].IBIStartTime = moment().tz(localTz).subtract(2, 'hours').format('X');
-oldSession[0].IBIEndTime = moment().tz(localTz).subtract(115, 'minutes').format('X');
+oldSession[0].IBIStartTime = oldSessionStart.format('X');
+oldSession[0].IBIEndTime = oldSessionEnd.format('X');
+oldSession[0].SessionStartTime = oldSessionStart.format('hh:mm a');
+oldSession[0].SessionEndTime = oldSessionEnd.format('hh:mm a');
+oldSession[0].SessionDate = oldSessionStart.format('MM/DD/YYYY');
 
 // session data for deleted session
 const deletedSession = [Object.assign({}, basicSession[0])];
@@ -324,13 +329,16 @@ describe("Fetching emWave data for Kubios", function() {
         expectedSession[0].AvgCoherence = upperCaseCsvData[0]['Ave Calmness'];
         return runTestWithCsv(upperCaseUser, upperCaseSession, upperCaseUser[0].SubjectId, upperCaseCsvData, 200, upperCaseUser[0].SubjectId, expectedSession);
     });
+    it('should accept a start date in YYYYMMDDHHmmss format as a query string param', function() {
+        return runTest(basicUser, oldSession, basicUser[0].SubjectId, 200, basicUser[0].SubjectId, oldSession, oldSessionStart.format('YYYYMMDDHHmmdd'));
+    })
 });
 
-function runTest(users, sessions, userId, expectedStatusCode, expectedUserId, expectedSessions) {
+function runTest(users, sessions, userId, expectedStatusCode, expectedUserId, expectedSessions, startDateStr = null) {
     makeSqliteData(users, sessions, sqliteFname);
     return saveFileToS3(sqliteFname, `${userId}/${sqliteDb}`)
     .then(function() {
-        return callLambda(userId)
+        return callLambda(userId, startDateStr)
         .then(function(result) {
             checkResults(result, expectedStatusCode, expectedUserId, expectedSessions);
         });
@@ -404,17 +412,20 @@ function saveFileToS3(src, key) {
     return saveDataToS3(key, data);
 }
 
-function makeEvent(subjectId) {
+function makeEvent(subjectId, startDateStr) {
+    let queryStringParams = {};
+    if (startDateStr) queryStringParams = { since: startDateStr};
     return {
         "httpMethod": "GET",
         "path": `/subjects/${subjectId}/calibration`,
-        "pathParameters": { "subject_id": subjectId }
+        "pathParameters": { "subject_id": subjectId },
+        "queryStringParameters": queryStringParams
     }
 }
 
-function callLambda(subjectId) {
+function callLambda(subjectId, startDateStr) {
     return lambdaLocal.execute({
-        event: makeEvent(subjectId),
+        event: makeEvent(subjectId, startDateStr),
         lambdaPath: 'index.js',
         envFile: './test/env.sh',
         verboseLevel: 0 // set this to 3 to get all lambda-local output

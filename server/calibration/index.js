@@ -45,7 +45,13 @@ exports.handler = (event, context, callback) => {
         if (fileNames.length > 1) csvFile = fileNames[1];
         return getCalibrationUserId(subjectId, sqlDbFile);
     })
-    .then(calibrationUserId => generateCalibrationDataForUser(calibrationUserId, subjectId, moment().tz(localTz).subtract(1, 'hours'), sqlDbFile, csvFile))
+    .then(calibrationUserId => {
+        let startDate = moment().tz(localTz).subtract(1, 'hours');
+        if (event.queryStringParameters.since) {
+            startDate = moment(event.queryStringParameters.since, 'YYYYMMDDHHmmss').tz(localTz);
+        }
+        return generateCalibrationDataForUser(calibrationUserId, subjectId, startDate, sqlDbFile, csvFile);
+    })
     .then((calibData) => {
         if (sqlDbFile != null) fs.unlinkSync(sqlDbFile);
         if (csvFile != null) fs.unlinkSync(csvFile);
