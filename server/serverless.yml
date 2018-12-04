@@ -376,6 +376,7 @@ functions:
         - calibration/test/**
     role: lambdaWithS3Role
     handler: calibration/index.handler
+    timeout: 120
     events:
       - http:
           path: subjects/{subject_id}/calibration
