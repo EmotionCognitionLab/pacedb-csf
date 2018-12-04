@@ -174,7 +174,7 @@ function weekToDateRange(groupStart, groupEnd, week) {
     }
 
     const weekInt = Number.parseInt(week);
-    if (Number.isNaN(weekInt) || weekInt < 0 || weekInt > 5) {
+    if (Number.isNaN(weekInt) || weekInt < 0 || weekInt > 6) {
         throw new Error(`${week} is not a valid week.`);
     }
     
