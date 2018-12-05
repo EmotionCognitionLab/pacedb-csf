@@ -34,6 +34,7 @@ const logFile = 'log.csv';
 const sqliteDb = 'emWave.emdb';
 
 const MAX_DATA_ENTRIES = 30; // maximum duration/calmness data points allowed
+const MAX_WEEKS = 6; // the maximum week index we handle
 
 const localTz = 'America/Los_Angeles';
 
@@ -42,7 +43,7 @@ exports.handler = (event, context, callback) => {
     const groupInfo = {}; // map of group name -> { groupStart, groupEnd }
     const weekInt = Number.parseInt(event.week);
 
-    if (event.week !== undefined && event.week !== null && event.week !== '' && (Number.isNaN(weekInt) || (Number.isInteger(weekInt) && (weekInt < 0 || weekInt > 6)))) {
+    if (event.week !== undefined && event.week !== null && event.week !== '' && (Number.isNaN(weekInt) || (Number.isInteger(weekInt) && (weekInt < 0 || weekInt > MAX_WEEKS)))) {
         const errMsg = `The 'week' parameter should be between 0 and 6, but was ${event.week}.`;
         console.log(errMsg);
         return callback(new Error(errMsg));
@@ -174,7 +175,7 @@ function weekToDateRange(groupStart, groupEnd, week) {
     }
 
     const weekInt = Number.parseInt(week);
-    if (Number.isNaN(weekInt) || weekInt < 0 || weekInt > 6) {
+    if (Number.isNaN(weekInt) || weekInt < 0 || weekInt > MAX_WEEKS) {
         throw new Error(`${week} is not a valid week.`);
     }
     
@@ -563,7 +564,7 @@ function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data
     const values = [];
     var i;
     for (i = 0; i < data.length; i++) {
-        if (i === AVE_CALM_ROW_OFFSET && weekNum < 4) { // we don't write ave calmness in final week (week 4) because there is no next week
+        if (i === AVE_CALM_ROW_OFFSET && weekNum < MAX_WEEKS) { // we don't write ave calmness in final week (MAX_WEEKS) because there is no next week
             // put in duration, ave calmness, calmness
             // ave calmness goes under the next week b/c it's the target for that week
             values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1], , , , aveCalmness ]  );       
@@ -573,7 +574,7 @@ function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data
             values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1] ]  );
         }
     }
-    if (i <= AVE_CALM_ROW_OFFSET && weekNum < 4) {
+    if (i <= AVE_CALM_ROW_OFFSET && weekNum < MAX_WEEKS) {
         // we need to add blank rows until we get to the offset for ave calmness
         while (i < AVE_CALM_ROW_OFFSET) {
             values.push( [] );
