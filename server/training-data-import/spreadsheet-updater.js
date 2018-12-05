@@ -229,7 +229,7 @@ function importForUser(user, startDate, endDate, weekInt, auth) {
     .then(() => console.log(`Finished writing reward data for user ${user.subjectId}`))
     .catch((err) => {
         if (err.name === 'NonFatalError') {
-            warn(err.message);
+            console.log(err.message);
         } else {
             throw err;
         }
