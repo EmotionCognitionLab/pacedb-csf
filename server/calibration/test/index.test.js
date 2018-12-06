@@ -413,14 +413,17 @@ function saveFileToS3(src, key) {
 }
 
 function makeEvent(subjectId, startDateStr) {
-    let queryStringParams = {};
-    if (startDateStr) queryStringParams = { since: startDateStr};
-    return {
+    let queryStringParams;
+    if (startDateStr) queryStringParams = { since: startDateStr };
+    const result = {
         "httpMethod": "GET",
         "path": `/subjects/${subjectId}/calibration`,
-        "pathParameters": { "subject_id": subjectId },
-        "queryStringParameters": queryStringParams
+        "pathParameters": { "subject_id": subjectId }
+    };
+    if (queryStringParams) {
+        result['queryStringParameters'] = queryStringParams;
     }
+    return result;
 }
 
 function callLambda(subjectId, startDateStr) {
