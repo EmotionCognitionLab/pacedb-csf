@@ -11,6 +11,7 @@ requests = "*"
 gspread = "*"
 oauth2client = "*"
 moment = "*"
+pywinauto = "*"
 
 [requires]
 python_version = "3.7"

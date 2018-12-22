@@ -1,13 +1,17 @@
-#!/usr/bin/env python3
 
 from datetime import datetime
 import gspread
 import json
 import moment
 from oauth2client.service_account import ServiceAccountCredentials
+from pathlib import Path
+from pywinauto.application import Application
+from pywinauto.findwindows import ElementNotFoundError, find_windows
+from pywinauto.win32functions import SetForegroundWindow
 import requests
 import sys
 import tempfile
+import time
 
 # ID of the Google spreadsheet we store the data in
 SHEET_ID = '1Qs2MNm0IkjQguA6N6zQagh1sToay-nb7G0g926Du96M'
@@ -18,6 +22,16 @@ GS_KEY_FILE = './private-key.json'
 # info for lambda access
 # Example file: { "key": "<your api key>", "url": "https://<your aws api gateway host>.execute-api.<aws region>.amazonaws.com/dev/subjects/{0}/calibration" }
 API_CONFIG_FILE = './api-config.json'
+
+KUBIOS_PATH = 'C:/Program Files/Kubios/Kubios HRV Premium/kubioshrv.exe'
+
+# x,y coordinates of various UI elements, relative to Kubios window
+coords = {}
+coords['artifact_correction_menu'] = (32, 232)
+coords['artifact_correction_automatic_option'] = (32, 275)
+coords['artifact_correction_apply_button'] = (170, 217)
+coords['length_text_field'] = (165, 338)
+coords['start_text_field'] = (165, 320)
 
 def get_sheets_service(key_file_name):
     """Returns a service client for the Google Sheets API"""
@@ -61,7 +75,7 @@ def fetch_data_for_subject(subject_id, start_date=None):
     return json
 
 def write_rr_data_to_file(subject_id, data):
-    fname = tempfile.mkstemp('.txt', "rr_{0}_".format(subject_id))[1]
+    fname = expand_windows_short_name(tempfile.mkstemp('.txt', "rr_{0}_".format(subject_id))[1])
     with open(fname, 'w') as f:
         for d in data:
             f.write("%d\n" % d)
@@ -88,6 +102,115 @@ def get_subject_and_date():
 
     return (subject_id, date_cutoff)    
 
+def kubios_get_app():
+    try:
+        app=Application().connect(title_re='Kubios.*$', class_name='SunAwtFrame')
+        print('WARNING: Kubios is already running.')
+        print('Please make sure that any open analyses are saved and closed before continuing.')
+        response = ''
+        while (response != 'c' and response != 'q'):
+            response = input("Press 'c' to continue or 'q' to quit:")
+            if (response == 'c'):
+                return app
+            if (response == 'q'): 
+                sys.exit(0)
+    except ElementNotFoundError:
+        app=Application().start(KUBIOS_PATH)
+    
+    return app
+
+def kubios_open_rr_file(kubios_app, rr_file_path):
+    kubios_window = kubios_app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
+    kubios_window.wait('visible')
+    kubios_window.type_keys('^O') # Ctrl-O
+    open_dlg = kubios_app.window(title='Get Data File')
+    open_dlg.type_keys('foo') # hack to get the file name text entry box to have focus; the 'foo' isn't actually captured by it
+    open_dlg.get_focus().type_keys(rr_file_path + '{ENTER}', with_spaces=True)
+    while(kubios_is_processing(kubios_app)):
+        pass
+        # do nothing; just wait for it to finish opening the file
+
+def kubios_save_results(kubios_app, results_file_path, input_fname):
+    kubios_window = kubios_app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
+    kubios_window.type_keys('^S') # Ctrl-S
+    save_dlg = kubios_app.window(title='Save as')
+    save_dlg.wait('ready')
+
+    # Set the 'Save as' type
+    combo_boxes = save_dlg.children(title='Save all (*.txt,*.mat,*.pdf)')
+    if (len(combo_boxes) != 1):
+        print('WARNING: Could not find "Save as type:" pull-down menu while saving - using default.')
+    else:
+        save_as_combo_box = combo_boxes[0]
+        save_as_combo_box.select(0)
+    
+    # Set the filename
+    combo_boxes = save_dlg.children(title=kubios_default_save_as_fname(input_fname), class_name='Edit')
+    if (len(combo_boxes) != 1):
+        raise Exception('Could not find text field for file name in save dialog.')
+    
+    combo_boxes[0].type_keys(results_file_path + '{ENTER}', with_spaces=True)
+    
+    # TODO find better way to accomodate the delay between submitting save dlg
+    # and appearance of "processing" dialogs associated with saving
+    # maybe just check for existence of output files?
+    time.sleep(7)
+    while(kubios_is_processing(kubios_app)):
+        pass
+        # do nothing; just wait for it to finish saving the results
+
+def kubios_default_save_as_fname(input_fname):
+    """As a default file name for the results kubios suggests the input file name with the extension replaced with '_hrv'."""
+    return input_fname.split('.')[0] + '_hrv'
+
+def kubios_close_file(kubios_window):
+    kubios_window.type_keys('^W') # Ctrl-W
+
+def kubios_apply_artifact_correction(kubios_window):
+    kubios_click_on(kubios_window, coords['artifact_correction_menu'])
+    kubios_click_on(kubios_window, coords['artifact_correction_automatic_option'])
+    kubios_click_on(kubios_window, coords['artifact_correction_apply_button'])
+
+def kubios_trim_session_length(kubios_window):
+    kubios_click_on(kubios_window, coords['length_text_field'])
+    len_field = kubios_window.get_focus()
+    len_field.type_keys('^A') # Ctrl-A
+    len_field.type_keys('00:04:00')
+    kubios_click_on(kubios_window, coords['start_text_field'])
+    start_field = kubios_window.get_focus()
+    start_field.type_keys('^A') # Ctrl-A
+    start_field.type_keys('00:00:30')
+
+def kubios_click_on(kubios_window, coords, delay=1):
+    kubios_window.click_input(coords=coords)
+    time.sleep(delay)
+
+def kubios_is_processing(kubios_app):
+    """ When opening or saving a file Kubios can throw up multiple 'Processing...' dialogs.
+    This will find one, wait until it doesn't exist, and repeat until no such
+    dialog has existed for 2 seconds.
+    """
+    test_start = datetime.now()
+    test_end = datetime.now()
+    while ((test_end - test_start).seconds < 2):
+        proc_dlg_count = len(kubios_app.windows(title='Processing...'))
+        if (proc_dlg_count == 0):
+                time.sleep(1)
+                test_end = datetime.now()
+        else:
+            test_start = datetime.now()
+            test_end = datetime.now()
+
+    return False
+        
+def expand_windows_short_name(short_name):
+    from ctypes import create_unicode_buffer, windll
+    buf_size = 500
+    buffer = create_unicode_buffer(buf_size)
+    get_long_path_name = windll.kernel32.GetLongPathNameW
+    get_long_path_name(short_name, buffer, buf_size)
+    return buffer.value
+
 
 if __name__ == "__main__":
     (subject_id, cutoff_date) = get_subject_and_date()
@@ -106,3 +229,19 @@ if __name__ == "__main__":
     data_for_sheet = [ [subject_id, None, x['SessionDate'], x['SessionStartTime'], None, None, x['duration'], x['AvgCoherence']] for x in data['sessionData']]
     write_session_data_to_sheet(sheet, data_for_sheet)
     print("Data saved to Google Sheets.")
+
+    print("Running Kubios analysis...")
+    app = kubios_get_app()
+    kubios_open_rr_file(app, rr_data_file)
+    win = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
+    kubios_trim_session_length(win)
+    kubios_apply_artifact_correction(win)
+    p = Path(rr_data_file)
+    tmp_dir = p.parent
+    results_path = tmp_dir / (subject_id + '-results')
+    input_fname = p.name
+
+    print("Saving Kubios results to {}...".format(str(results_path)))
+    kubios_save_results(app, str(results_path), str(input_fname))
+    kubios_close_file(win)
+    print("Done.")
