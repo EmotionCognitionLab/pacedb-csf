@@ -2,6 +2,7 @@
 from datetime import datetime
 import gspread
 import json
+from kubios import import_report
 import moment
 from oauth2client.service_account import ServiceAccountCredentials
 from pathlib import Path
@@ -24,6 +25,9 @@ GS_KEY_FILE = './private-key.json'
 API_CONFIG_FILE = './api-config.json'
 
 KUBIOS_PATH = 'C:/Program Files/Kubios/Kubios HRV Premium/kubioshrv.exe'
+
+# Expected value for the AR model preference setting in Kubios
+KUBIOS_AR_MODEL = 16
 
 # x,y coordinates of various UI elements, relative to Kubios window
 coords = {}
@@ -82,14 +86,38 @@ def write_rr_data_to_file(subject_id, data):
 
     return fname
 
-def write_session_data_to_sheet(sheet, data):
-    """ Writes basic information about a calibration session to a google spreadsheet.
-    Data should be a list of lists:
-    [[subject_id,None,date,session_start_time,None,None,duration,coherence], ...]
-    """
+def write_data_to_sheet(sheet, subject_id, kubios_data_file, emwave_data):
+    """Pulls relevant kubios output from kubios_data_file, merges it with emwave_data
+     and writes it to a google spreadsheet.
+     Headers in the google sheet are:
+     ['Subject ID', 'Week', 'Date', 'Session Start Time', 'Target Score', 'Condition', 'Duration (s)', 'Coherence', 'HR: Max', 'HR: Min', 'Max-Min', 'Mean HR (BPM)', 'RMSSD', 'LF Power (ms2)', 'LF peak X (Hz)', 'LF peak Y (PSD)']
+     """
+    kubios_data = import_report(kubios_data_file)
+    if (kubios_data['ar_model'] != 16):
+        raise Exception("ERROR: AR model should be {0} but is {1}. Please correct the AR model in the Kubios preferences and re-run".format(KUBIOS_AR_MODEL, kubios_data['ar_model']))
+    data_for_sheet = [
+        [
+            subject_id,
+            None,
+            emwave_data['SessionData'],
+            emwave_data['SessionStartTime'],
+            None,
+            None,
+            emwave_data['duration'],
+            emwave_data['AvgCoherence'],
+            kubios_data['hr_max'],
+            kubios_data['hr_min'],
+            None,
+            kubios_data['hr_mean'],
+            kubios_data['rmssd'],
+            kubios_data['ar_abs'][1],
+            kubios_data['ar_peak'][1],
+            None
+        ]
+    ]
     sheet.values_append('A:A', 
     {'valueInputOption':'USER_ENTERED', 'insertDataOption':'INSERT_ROWS'},
-     {'range':'A:A', 'majorDimension':'ROWS', 'values': data})
+     {'range':'A:A', 'majorDimension':'ROWS', 'values': data_for_sheet})
 
 def get_subject_and_date():
     subject_id = input("Subject id: ")
@@ -217,31 +245,36 @@ if __name__ == "__main__":
     # data = fetch_data_for_subject('5040', '20181112080000')
     print('Fetching data for subject id {0} after {1}...'.format(subject_id, cutoff_date))
     data = fetch_data_for_subject(subject_id, cutoff_date)
-    if (len(data['sessionData']) == 0):
+    session_count = len(data['sessionData'])
+    if (session_count == 0):
         print('No data found for subject id {0} after {1}.'.format(subject_id, cutoff_date))
         sys.exit(0)
 
-    rr_data_file = write_rr_data_to_file(subject_id, data['sessionData'][0]['rrData'])
-    print("RR data saved to file", rr_data_file)
+    for i in range(0, session_count):
+        print("Processing session {0} of {1}...".format(i+1, session_count))
 
-    sheets = get_sheets_service(GS_KEY_FILE)
-    sheet = sheets.open_by_key(SHEET_ID)
-    data_for_sheet = [ [subject_id, None, x['SessionDate'], x['SessionStartTime'], None, None, x['duration'], x['AvgCoherence']] for x in data['sessionData']]
-    write_session_data_to_sheet(sheet, data_for_sheet)
-    print("Data saved to Google Sheets.")
+        rr_data_file = write_rr_data_to_file(subject_id, data['sessionData'][i]['rrData'])
+        print("RR data saved to file", rr_data_file)
 
-    print("Running Kubios analysis...")
-    app = kubios_get_app()
-    kubios_open_rr_file(app, rr_data_file)
-    win = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
-    kubios_trim_session_length(win)
-    kubios_apply_artifact_correction(win)
-    p = Path(rr_data_file)
-    tmp_dir = p.parent
-    results_path = tmp_dir / (subject_id + '-results')
-    input_fname = p.name
+        print("Running Kubios analysis...")
+        app = kubios_get_app()
+        kubios_open_rr_file(app, rr_data_file)
+        win = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
+        kubios_trim_session_length(win)
+        kubios_apply_artifact_correction(win)
+        p = Path(rr_data_file)
+        tmp_dir = p.parent
+        results_path = tmp_dir / (subject_id + '-results')
+        input_fname = p.name
+        kubios_data_file = Path(results_path, input_fname, '.txt')
 
-    print("Saving Kubios results to {}...".format(str(results_path)))
-    kubios_save_results(app, str(results_path), str(input_fname))
-    kubios_close_file(win)
+        print("Saving Kubios results to {}...".format(str(results_path)))
+        kubios_save_results(app, str(results_path), str(input_fname))
+        kubios_close_file(win)
+
+        print("Writing data to Google Sheets...")
+        sheets = get_sheets_service(GS_KEY_FILE)
+        sheet = sheets.open_by_key(SHEET_ID)
+        write_data_to_sheet(sheet, subject_id, kubios_data_file, data['sessionData'][i])
+
     print("Done.")
