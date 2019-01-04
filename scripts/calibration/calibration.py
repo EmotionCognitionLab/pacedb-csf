@@ -99,7 +99,7 @@ def write_data_to_sheet(sheet, subject_id, kubios_data_file, emwave_data):
         [
             subject_id,
             None,
-            emwave_data['SessionData'],
+            emwave_data['SessionDate'],
             emwave_data['SessionStartTime'],
             None,
             None,
