@@ -29,14 +29,6 @@ KUBIOS_PATH = 'C:/Program Files/Kubios/Kubios HRV Premium/kubioshrv.exe'
 # Expected value for the AR model preference setting in Kubios
 KUBIOS_AR_MODEL = 16
 
-# x,y coordinates of various UI elements, relative to Kubios window
-coords = {}
-coords['artifact_correction_menu'] = (32, 232)
-coords['artifact_correction_automatic_option'] = (32, 275)
-coords['artifact_correction_apply_button'] = (170, 217)
-coords['length_text_field'] = (165, 338)
-coords['start_text_field'] = (165, 320)
-
 def get_sheets_service(key_file_name):
     """Returns a service client for the Google Sheets API"""
 
@@ -194,23 +186,26 @@ def kubios_default_save_as_fname(input_fname):
 def kubios_close_file(kubios_window):
     kubios_window.type_keys('^W') # Ctrl-W
 
-def kubios_apply_artifact_correction(kubios_window):
-    kubios_click_on(kubios_window, coords['artifact_correction_menu'])
-    kubios_click_on(kubios_window, coords['artifact_correction_automatic_option'])
-    kubios_click_on(kubios_window, coords['artifact_correction_apply_button'])
-
-def kubios_trim_session_length(kubios_window):
-    kubios_click_on(kubios_window, coords['length_text_field'])
-    len_field = kubios_window.get_focus()
-    len_field.type_keys('^A') # Ctrl-A
-    len_field.type_keys('00:04:00')
-    kubios_click_on(kubios_window, coords['start_text_field'])
-    start_field = kubios_window.get_focus()
-    start_field.type_keys('^A') # Ctrl-A
-    start_field.type_keys('00:00:30')
-
-def kubios_click_on(kubios_window, coords, delay=1):
-    kubios_window.click_input(coords=coords)
+def kubios_analyse(kubios_window, delay=2):
+    """Applies artifact correction and sets the start and length of the sample.
+    The elements in the Kubios UI can be given focus by tabbing through them.
+    They're organized (by kubios) in a particular order, and pressing tab will
+    take you through them in that order (while shift+tab takes you backward).
+    For that reason it's very important that the order of the operations here
+    not be changed without careful testing.
+    """
+    kubios_window.type_keys('{TAB}')   # give focus to artifact correction menu
+    kubios_window.type_keys('{DOWN}')  # use down arrow to select 1st item in artifact correction menu
+    time.sleep(delay)
+    kubios_window.type_keys('+{TAB}')  # use shift-tab to select the 'Apply' button
+    kubios_window.type_keys('{VK_SPACE}') # to press the 'Apply' button
+    time.sleep(delay)
+    kubios_window.type_keys('{TAB 5}') # 5 tabs to select the sample length text field
+    kubios_window.type_keys('00:04:00') # set the length
+    time.sleep(delay)
+    kubios_window.type_keys('+{TAB}')  # shift-tab to select the sample start text field
+    kubios_window.type_keys('00:00:30') # set the start
+    kubios_window.type_keys('{TAB}')   # to get kubios to recognize the change we made to the start field
     time.sleep(delay)
 
 def kubios_is_processing(kubios_app):
@@ -260,8 +255,7 @@ if __name__ == "__main__":
         app = kubios_get_app()
         kubios_open_rr_file(app, rr_data_file)
         win = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
-        kubios_trim_session_length(win)
-        kubios_apply_artifact_correction(win)
+        kubios_analyse(win)
         p = Path(rr_data_file)
         tmp_dir = p.parent
         results_path = tmp_dir / (subject_id + '-results-' + str(i + 1))
