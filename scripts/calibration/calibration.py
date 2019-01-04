@@ -264,7 +264,7 @@ if __name__ == "__main__":
         kubios_apply_artifact_correction(win)
         p = Path(rr_data_file)
         tmp_dir = p.parent
-        results_path = tmp_dir / (subject_id + '-results')
+        results_path = tmp_dir / (subject_id + '-results-' + str(i + 1))
         input_fname = p.name
         kubios_data_file = str(results_path) + '.txt'
 
