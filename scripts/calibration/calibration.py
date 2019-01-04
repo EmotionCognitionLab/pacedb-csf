@@ -266,7 +266,7 @@ if __name__ == "__main__":
         tmp_dir = p.parent
         results_path = tmp_dir / (subject_id + '-results')
         input_fname = p.name
-        kubios_data_file = Path(results_path, input_fname, '.txt')
+        kubios_data_file = str(results_path) + '.txt'
 
         print("Saving Kubios results to {}...".format(str(results_path)))
         kubios_save_results(app, str(results_path), str(input_fname))
