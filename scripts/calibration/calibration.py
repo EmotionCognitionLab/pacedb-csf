@@ -1,8 +1,8 @@
 
 from datetime import datetime
 import gspread
+import h5py
 import json
-from kubios import import_report
 import moment
 from oauth2client.service_account import ServiceAccountCredentials
 from pathlib import Path
@@ -78,15 +78,47 @@ def write_rr_data_to_file(subject_id, data):
 
     return fname
 
+def check_expected_kubios_settings(settings):
+    expected = {}
+    expected['ar_model'] = 16
+    expected['artifact_correction']  = 'Automatic correction'
+    expected['sample_start'] = 30
+    expected['sample_length'] = 270
+
+    for i in expected.items():
+        if (settings[i[0]] != i[1]):
+            raise Exception("ERROR: {0} should be {1} but is {2}. Please double-check Kubios and re-run.".format(i[0], i[1], settings[i[0]]))
+
 def write_data_to_sheet(sheet, subject_id, kubios_data_file, emwave_data):
     """Pulls relevant kubios output from kubios_data_file, merges it with emwave_data
      and writes it to a google spreadsheet.
      Headers in the google sheet are:
      ['Subject ID', 'Week', 'Date', 'Session Start Time', 'Target Score', 'Condition', 'Duration (s)', 'Coherence', 'HR: Max', 'HR: Min', 'Max-Min', 'Mean HR (BPM)', 'RMSSD', 'LF Power (ms2)', 'LF peak X (Hz)', 'LF peak Y (PSD)']
      """
-    kubios_data = import_report(kubios_data_file)
-    if (kubios_data['ar_model'] != 16):
-        raise Exception("ERROR: AR model should be {0} but is {1}. Please correct the AR model in the Kubios preferences and re-run".format(KUBIOS_AR_MODEL, kubios_data['ar_model']))
+    kubios_data = {}
+    kubios_settings = {}
+    with h5py.File(kubios_data_file) as file:
+        kubios_settings['ar_model'] = file['Res']['HRV']['Param']['AR_order'][()][0][0]
+        kubios_settings['artifact_correction'] = ''.join([chr(c) for c in file['Res']['HRV']['Param']['Artifact_correction'][()]])
+        kubios_settings['sample_start'] = round(file['Res']['HRV']['Param']['Segments'][0][()][0])
+        kubios_settings['sample_length'] = round(file['Res']['HRV']['Param']['Segments'][1][()][0])
+
+        kubios_data['hr_max'] = file['Res']['HRV']['Statistics']['max_HR'][()][0][0]
+        kubios_data['hr_min'] = file['Res']['HRV']['Statistics']['min_HR'][()][0][0]
+        kubios_data['hr_mean'] = file['Res']['HRV']['Statistics']['mean_HR'][()][0][0]
+        kubios_data['rmssd'] = 1000 * file['Res']['HRV']['Statistics']['RMSSD'][()][0][0] # multiply by 1000 to get it in ms
+        kubios_data['ar_abs_lf_power'] = file['Res']['HRV']['Frequency']['AR']['LF_power'][()][0][0]
+        kubios_data['ar_peak_lf_freq'] = file['Res']['HRV']['Frequency']['AR']['LF_peak'][()][0][0]
+        
+        kubios_data['ar_peak_lf_power'] = None
+        try:
+            peak_lf_idx = list(file['Res']['HRV']['Frequency']['AR']['F'][()][0]).index(kubios_data['ar_peak_lf_freq'])
+            kubios_data['ar_peak_lf_power'] = file['Res']['HRV']['Frequency']['AR']['PSD'][()][0][peak_lf_idx]
+        except ValueError:
+            print("WARNING: Value for LF peak Y (PSD) could not be found - you'll have to enter it manually.")
+
+    check_expected_kubios_settings(kubios_settings)
+
     data_for_sheet = [
         [
             subject_id,
@@ -102,9 +134,9 @@ def write_data_to_sheet(sheet, subject_id, kubios_data_file, emwave_data):
             None,
             kubios_data['hr_mean'],
             kubios_data['rmssd'],
-            kubios_data['ar_abs'][1],
-            kubios_data['ar_peak'][1],
-            None
+            kubios_data['ar_abs_lf_power'],
+            kubios_data['ar_peak_lf_freq'],
+            kubios_data['ar_peak_lf_power']
         ]
     ]
     sheet.values_append('A:A', 
@@ -260,7 +292,7 @@ if __name__ == "__main__":
         tmp_dir = p.parent
         results_path = tmp_dir / (subject_id + '-results-' + str(i + 1))
         input_fname = p.name
-        kubios_data_file = str(results_path) + '.txt'
+        kubios_data_file = str(results_path) + '.mat'
 
         print("Saving Kubios results to {}...".format(str(results_path)))
         kubios_save_results(app, str(results_path), str(input_fname))
