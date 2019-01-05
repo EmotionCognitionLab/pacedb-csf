@@ -5,6 +5,7 @@ import h5py
 import json
 import moment
 from oauth2client.service_account import ServiceAccountCredentials
+import os
 from pathlib import Path
 from pywinauto.application import Application
 from pywinauto.findwindows import ElementNotFoundError, find_windows
@@ -257,6 +258,16 @@ def kubios_is_processing(kubios_app):
             test_end = datetime.now()
 
     return False
+
+def check_expected_output_files(fname_prefix):
+    expected_suffixes = ['.pdf', '.txt', '.mat']
+    expected_files = [fname_prefix + x for x in expected_suffixes]
+    for f in expected_files:
+        try:
+            os.stat(f)
+        except FileNotFoundError:
+            print("ERROR: Kubios should have generated the output file {0}, but no such file exists. Please re-run.".format(f))
+            sys.exit(1)
         
 def expand_windows_short_name(short_name):
     from ctypes import create_unicode_buffer, windll
@@ -297,6 +308,7 @@ if __name__ == "__main__":
         print("Saving Kubios results to {}...".format(str(results_path)))
         kubios_save_results(app, str(results_path), str(input_fname))
         kubios_close_file(win)
+        check_expected_output_files(str(results_path))
 
         print("Writing data to Google Sheets...")
         sheets = get_sheets_service(GS_KEY_FILE)
