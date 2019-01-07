@@ -96,7 +96,7 @@ def check_expected_kubios_settings(settings):
 
     for i in expected.items():
         if (settings[i[0]] != i[1]):
-            raise Exception("ERROR: {0} should be {1} but is {2}. Please double-check Kubios and re-run.".format(i[0], i[1], settings[i[0]]))
+            raise Exception("ERROR: {0} should be '{1}' but is '{2}'. Please double-check Kubios and re-run.".format(i[0], i[1], settings[i[0]]))
 
 def write_data_to_sheet(sheet, subject_id, week, kubios_data_file, emwave_data):
     """Pulls relevant kubios output from kubios_data_file, merges it with emwave_data
