@@ -98,7 +98,7 @@ def check_expected_kubios_settings(settings):
         if (settings[i[0]] != i[1]):
             raise Exception("ERROR: {0} should be {1} but is {2}. Please double-check Kubios and re-run.".format(i[0], i[1], settings[i[0]]))
 
-def write_data_to_sheet(sheet, subject_id, kubios_data_file, emwave_data):
+def write_data_to_sheet(sheet, subject_id, week, kubios_data_file, emwave_data):
     """Pulls relevant kubios output from kubios_data_file, merges it with emwave_data
      and writes it to a google spreadsheet.
      Headers in the google sheet are:
@@ -131,7 +131,7 @@ def write_data_to_sheet(sheet, subject_id, kubios_data_file, emwave_data):
     data_for_sheet = [
         [
             subject_id,
-            None,
+            week,
             emwave_data['SessionDate'],
             emwave_data['SessionStartTime'],
             None,
@@ -152,8 +152,9 @@ def write_data_to_sheet(sheet, subject_id, kubios_data_file, emwave_data):
     {'valueInputOption':'USER_ENTERED', 'insertDataOption':'INSERT_ROWS'},
      {'range':'A:A', 'majorDimension':'ROWS', 'values': data_for_sheet})
 
-def get_subject_and_date():
+def get_run_info():
     subject_id = input("Subject id: ")
+    week = input("Week: ")
     default_date_cutoff = moment.now().subtract(hours=1)
     date_cutoff = input("Ignore data before [{0}]: ".format(default_date_cutoff.format('YYYY-MM-DD HH:mm')))
     if (date_cutoff == ''):
@@ -161,7 +162,7 @@ def get_subject_and_date():
     else:
         date_cutoff = moment.date(date_cutoff).format('YYYYMMDDHHmmss')
 
-    return (subject_id, date_cutoff)    
+    return (subject_id, week, date_cutoff)    
 
 def kubios_get_app():
     try:
@@ -320,7 +321,7 @@ def upload_kubios_results(subject_id, fname_prefix):
         s3_rsrc.Object(bucket.name, name).upload_file(Filename=path)
 
 if __name__ == "__main__":
-    (subject_id, cutoff_date) = get_subject_and_date()
+    (subject_id, week, cutoff_date) = get_run_info()
     # data = fetch_data_for_subject('5040', '20181112080000')
     print('Fetching data for subject id {0} after {1}...'.format(subject_id, cutoff_date))
     data = fetch_data_for_subject(subject_id, cutoff_date)
@@ -342,7 +343,7 @@ if __name__ == "__main__":
         kubios_analyse(win)
         p = Path(rr_data_file)
         tmp_dir = p.parent
-        results_path = str(tmp_dir / (subject_id + '-results-' + str(i + 1)))
+        results_path = str(tmp_dir / ('{0}_week{1}_{2}'.format(subject_id, week, str(i + 1))))
         input_fname = p.name
 
         print("Saving Kubios results to {}...".format(results_path))
@@ -357,6 +358,6 @@ if __name__ == "__main__":
         sheets = get_sheets_service(GS_KEY_FILE)
         sheet = sheets.open_by_key(SHEET_ID)
         kubios_data_file = results_path + '.mat'
-        write_data_to_sheet(sheet, subject_id, kubios_data_file, data['sessionData'][i])
+        write_data_to_sheet(sheet, subject_id, week, kubios_data_file, data['sessionData'][i])
 
     print("Done.")
