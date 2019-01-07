@@ -183,7 +183,7 @@ def kubios_get_app():
 
 def kubios_open_rr_file(kubios_app, rr_file_path):
     kubios_window = kubios_app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
-    kubios_window.wait('visible')
+    kubios_window.wait('visible', 120)
     kubios_window.type_keys('^O') # Ctrl-O
     open_dlg = kubios_app.window(title='Get Data File')
     open_dlg.type_keys('foo') # hack to get the file name text entry box to have focus; the 'foo' isn't actually captured by it
@@ -253,11 +253,11 @@ def kubios_analyse(kubios_window, delay=2):
 def kubios_is_processing(kubios_app):
     """ When opening or saving a file Kubios can throw up multiple 'Processing...' dialogs.
     This will find one, wait until it doesn't exist, and repeat until no such
-    dialog has existed for 2 seconds.
+    dialog has existed for 4 seconds.
     """
     test_start = datetime.now()
     test_end = datetime.now()
-    while ((test_end - test_start).seconds < 2):
+    while ((test_end - test_start).seconds < 4):
         proc_dlg_count = len(kubios_app.windows(title='Processing...'))
         if (proc_dlg_count == 0):
                 time.sleep(1)
