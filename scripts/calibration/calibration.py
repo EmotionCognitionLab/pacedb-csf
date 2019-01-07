@@ -342,21 +342,21 @@ if __name__ == "__main__":
         kubios_analyse(win)
         p = Path(rr_data_file)
         tmp_dir = p.parent
-        results_path = tmp_dir / (subject_id + '-results-' + str(i + 1))
+        results_path = str(tmp_dir / (subject_id + '-results-' + str(i + 1)))
         input_fname = p.name
-        kubios_data_file = str(results_path) + '.mat'
 
-        print("Saving Kubios results to {}...".format(str(results_path)))
-        kubios_save_results(app, str(results_path), str(input_fname))
+        print("Saving Kubios results to {}...".format(results_path))
+        kubios_save_results(app, results_path, input_fname)
         kubios_close_file(win)
-        check_expected_output_files(str(results_path))
+        check_expected_output_files(results_path)
 
         print("Uploading Kubios output files to S3...")
-        upload_kubios_results(subject_id, str(results_path))
+        upload_kubios_results(subject_id, results_path)
 
         print("Writing data to Google Sheets...")
         sheets = get_sheets_service(GS_KEY_FILE)
         sheet = sheets.open_by_key(SHEET_ID)
+        kubios_data_file = results_path + '.mat'
         write_data_to_sheet(sheet, subject_id, kubios_data_file, data['sessionData'][i])
 
     print("Done.")
