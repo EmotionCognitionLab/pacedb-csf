@@ -1,5 +1,6 @@
 api-config-dev.json
 api-config.json
+aws-key.json
 private-key.json
 build
 dist
