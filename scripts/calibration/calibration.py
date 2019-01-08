@@ -56,7 +56,7 @@ def get_api_call(subject_id, start_date=None):
     key = api_key_js['key']
     url = api_key_js['url'].format(subject_id)
     query_params = {}
-    if (start_date):
+    if start_date:
         query_params['since'] = start_date
 
     return (url, {'x-api-key': key}, query_params)
@@ -95,7 +95,7 @@ def check_expected_kubios_settings(settings):
     expected['sample_length'] = 270
 
     for i in expected.items():
-        if (settings[i[0]] != i[1]):
+        if settings[i[0]] != i[1]:
             raise Exception("ERROR: {0} should be '{1}' but is '{2}'. Please double-check Kubios and re-run.".format(i[0], i[1], settings[i[0]]))
 
 def write_data_to_sheet(sheet, subject_id, week, kubios_data_file, emwave_data):
@@ -157,7 +157,7 @@ def get_run_info():
     week = input("Week: ")
     default_date_cutoff = moment.now().subtract(hours=1)
     date_cutoff = input("Ignore data before [{0}]: ".format(default_date_cutoff.format('YYYY-MM-DD HH:mm')))
-    if (date_cutoff == ''):
+    if date_cutoff == '':
         date_cutoff = default_date_cutoff.format('YYYYMMDDHHmmss')
     else:
         date_cutoff = moment.date(date_cutoff).format('YYYYMMDDHHmmss')
@@ -170,11 +170,11 @@ def kubios_get_app():
         print('WARNING: Kubios is already running.')
         print('Please make sure that any open analyses are saved and closed before continuing.')
         response = ''
-        while (response != 'c' and response != 'q'):
+        while response != 'c' and response != 'q':
             response = input("Press 'c' to continue or 'q' to quit:")
-            if (response == 'c'):
+            if response == 'c':
                 return app
-            if (response == 'q'): 
+            if response == 'q': 
                 sys.exit(0)
     except ElementNotFoundError:
         app=Application().start(KUBIOS_PATH)
@@ -188,7 +188,7 @@ def kubios_open_rr_file(kubios_app, rr_file_path):
     open_dlg = kubios_app.window(title='Get Data File')
     open_dlg.type_keys('foo') # hack to get the file name text entry box to have focus; the 'foo' isn't actually captured by it
     open_dlg.get_focus().type_keys(rr_file_path + '{ENTER}', with_spaces=True)
-    while(kubios_is_processing(kubios_app)):
+    while kubios_is_processing(kubios_app):
         pass
         # do nothing; just wait for it to finish opening the file
 
@@ -200,7 +200,7 @@ def kubios_save_results(kubios_app, results_file_path, input_fname):
 
     # Set the 'Save as' type
     combo_boxes = save_dlg.children(title='Save all (*.txt,*.mat,*.pdf)')
-    if (len(combo_boxes) != 1):
+    if len(combo_boxes) != 1:
         print('WARNING: Could not find "Save as type:" pull-down menu while saving - using default.')
     else:
         save_as_combo_box = combo_boxes[0]
@@ -208,7 +208,7 @@ def kubios_save_results(kubios_app, results_file_path, input_fname):
     
     # Set the filename
     combo_boxes = save_dlg.children(title=kubios_default_save_as_fname(input_fname), class_name='Edit')
-    if (len(combo_boxes) != 1):
+    if len(combo_boxes) != 1:
         raise Exception('Could not find text field for file name in save dialog.')
     
     combo_boxes[0].type_keys(results_file_path + '{ENTER}', with_spaces=True)
@@ -217,7 +217,7 @@ def kubios_save_results(kubios_app, results_file_path, input_fname):
     # and appearance of "processing" dialogs associated with saving
     # maybe just check for existence of output files?
     time.sleep(7)
-    while(kubios_is_processing(kubios_app)):
+    while kubios_is_processing(kubios_app):
         pass
         # do nothing; just wait for it to finish saving the results
 
@@ -257,9 +257,9 @@ def kubios_is_processing(kubios_app):
     """
     test_start = datetime.now()
     test_end = datetime.now()
-    while ((test_end - test_start).seconds < 4):
+    while (test_end - test_start).seconds < 4:
         proc_dlg_count = len(kubios_app.windows(title='Processing...'))
-        if (proc_dlg_count == 0):
+        if proc_dlg_count == 0:
                 time.sleep(1)
                 test_end = datetime.now()
         else:
@@ -295,7 +295,7 @@ def check_expected_output_files(fname_prefix):
 
 def upload_kubios_results(subject_id, fname_prefix):
     """Uploads the RR input file provided to Kubios and the output files Kubios generates from it"""
-    
+
     with open(AWS_KEY_FILE, 'r') as keyfile:
         aws_js = json.load(keyfile)
     aws_id = aws_js['id']
@@ -313,7 +313,7 @@ def upload_kubios_results(subject_id, fname_prefix):
     calib_dir = uc_calib_dir 
     result = bucket.meta.client.list_objects(Bucket = bucket.name, Delimiter='/')
     subject_dirs = result.get('CommonPrefixes')
-    if (uc_calib_dir not in subject_dirs and lc_calib_dir in subject_dirs):
+    if uc_calib_dir not in subject_dirs and lc_calib_dir in subject_dirs:
         calib_dir = lc_calib_dir
 
     file_paths = expected_output_files(fname_prefix)
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     print('Fetching data for subject id {0} after {1}...'.format(subject_id, cutoff_date))
     data = fetch_data_for_subject(subject_id, cutoff_date)
     session_count = len(data['sessionData'])
-    if (session_count == 0):
+    if session_count == 0:
         print('No data found for subject id {0} after {1}.'.format(subject_id, cutoff_date))
         sys.exit(0)
 
