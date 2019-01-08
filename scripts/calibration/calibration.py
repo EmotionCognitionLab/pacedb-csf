@@ -38,6 +38,9 @@ KUBIOS_AR_MODEL = 16
 # Top-level bucket where calibration data should be stored
 DATA_BUCKET = 'hrv-usr-data'
 
+# Suffix used for files that store RR input data
+RR_SUFFIX = '_rr.txt'
+
 def get_sheets_service(key_file_name):
     """Returns a service client for the Google Sheets API"""
 
@@ -291,6 +294,8 @@ def check_expected_output_files(fname_prefix):
             sys.exit(1)
 
 def upload_kubios_results(subject_id, fname_prefix):
+    """Uploads the RR input file provided to Kubios and the output files Kubios generates from it"""
+    
     with open(AWS_KEY_FILE, 'r') as keyfile:
         aws_js = json.load(keyfile)
     aws_id = aws_js['id']
@@ -312,6 +317,7 @@ def upload_kubios_results(subject_id, fname_prefix):
         calib_dir = lc_calib_dir
 
     file_paths = expected_output_files(fname_prefix)
+    file_paths.append(fname_prefix + RR_SUFFIX) # include RR input file in upload
     file_names = [calib_dir + '/' + Path(f).name for f in file_paths]
 
     for (path, name) in zip(file_paths, file_names):
@@ -331,7 +337,7 @@ if __name__ == "__main__":
     for i in range(0, session_count):
         print("Processing session {0} of {1}...".format(i+1, session_count))
 
-        rr_fname = '{0}_week{1}_{2}_rr.txt'.format(subject_id, week, str(i + 1))
+        rr_fname = '{0}_week{1}_{2}{3}'.format(subject_id, week, str(i + 1), RR_SUFFIX)
         rr_data_file = '{0}\\{1}'.format(temp_dir, rr_fname)
         write_rr_data_to_file(rr_data_file, data['sessionData'][i]['rrData'])
         print("RR data saved to file", rr_data_file)
