@@ -9,7 +9,7 @@ strptime_loc = os.path.expanduser('~/AppData/Local/Programs/Python/Python37/Lib/
 
 a = Analysis(['calibration.py'],
              binaries=[],
-             datas=[('.\\private-key.json', '.'), ('.\\api-config.json', '.'), (strptime_loc,'.')],
+             datas=[('.\\aws-key.json', '.'), ('.\\private-key.json', '.'), ('.\\api-config.json', '.'), (strptime_loc,'.')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
