@@ -79,13 +79,10 @@ def fetch_data_for_subject(subject_id, start_date=None):
 
     return json
 
-def write_rr_data_to_file(subject_id, data):
-    fname = expand_windows_short_name(tempfile.mkstemp('.txt', "rr_{0}_".format(subject_id))[1])
+def write_rr_data_to_file(fname, data):
     with open(fname, 'w') as f:
         for d in data:
             f.write("%d\n" % d)
-
-    return fname
 
 def check_expected_kubios_settings(settings):
     expected = {}
@@ -330,10 +327,13 @@ if __name__ == "__main__":
         print('No data found for subject id {0} after {1}.'.format(subject_id, cutoff_date))
         sys.exit(0)
 
+    temp_dir = expand_windows_short_name(tempfile.gettempdir())
     for i in range(0, session_count):
         print("Processing session {0} of {1}...".format(i+1, session_count))
 
-        rr_data_file = write_rr_data_to_file(subject_id, data['sessionData'][i]['rrData'])
+        rr_fname = '{0}_week{1}_{2}_rr.txt'.format(subject_id, week, str(i + 1))
+        rr_data_file = '{0}\\{1}'.format(temp_dir, rr_fname)
+        write_rr_data_to_file(rr_data_file, data['sessionData'][i]['rrData'])
         print("RR data saved to file", rr_data_file)
 
         print("Running Kubios analysis...")
@@ -341,13 +341,10 @@ if __name__ == "__main__":
         kubios_open_rr_file(app, rr_data_file)
         win = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
         kubios_analyse(win)
-        p = Path(rr_data_file)
-        tmp_dir = p.parent
-        results_path = str(tmp_dir / ('{0}_week{1}_{2}'.format(subject_id, week, str(i + 1))))
-        input_fname = p.name
+        results_path = '{0}\\{1}_week{2}_{3}'.format(temp_dir, subject_id, week, str(i + 1))
 
         print("Saving Kubios results to {}...".format(results_path))
-        kubios_save_results(app, results_path, input_fname)
+        kubios_save_results(app, results_path, rr_fname)
         kubios_close_file(win)
         check_expected_output_files(results_path)
 
