@@ -157,16 +157,12 @@ def extract_kubios_data(kubios_data_file):
 
     return (kubios_settings, kubios_data)
 
-def write_data_to_sheet(sheet, subject_id, week, kubios_data_file, emwave_data):
+def write_data_to_sheet(sheet, subject_id, week, kubios_data, emwave_data):
     """Pulls relevant kubios output from kubios_data_file, merges it with emwave_data
      and writes it to a google spreadsheet.
      Headers in the google sheet are:
      ['Subject ID', 'Week', 'Date', 'Session Start Time', 'Target Score', 'Condition', 'Duration (s)', 'Coherence', 'HR: Max', 'HR: Min', 'Max-Min', 'Mean HR (BPM)', 'RMSSD', 'LF Power (ms2)', 'LF peak X (Hz)', 'LF peak Y (PSD)', 'LF peak single or multiple']
      """
-    
-    kubios_settings, kubios_data = extract_kubios_data(kubios_data_file)
-    check_expected_kubios_settings(kubios_settings)
-
     data_for_sheet = [
         [
             subject_id,
@@ -393,6 +389,9 @@ if __name__ == "__main__":
         kubios_save_results(app, results_path, rr_fname)
         kubios_close_file(win)
         check_expected_output_files(results_path)
+        kubios_data_file = results_path + '.mat'
+        kubios_settings, kubios_data = extract_kubios_data(kubios_data_file)
+        check_expected_kubios_settings(kubios_settings)
 
         print("Uploading Kubios output files to S3...")
         upload_kubios_results(subject_id, results_path)
@@ -400,7 +399,6 @@ if __name__ == "__main__":
         print("Writing data to Google Sheets...")
         sheets = get_sheets_service(GS_KEY_FILE)
         sheet = sheets.open_by_key(SHEET_ID)
-        kubios_data_file = results_path + '.mat'
-        write_data_to_sheet(sheet, subject_id, week, kubios_data_file, data['sessionData'][i])
+        write_data_to_sheet(sheet, subject_id, week, kubios_data, data['sessionData'][i])
 
     print("Done.")
