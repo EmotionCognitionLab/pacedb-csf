@@ -98,12 +98,9 @@ def check_expected_kubios_settings(settings):
         if settings[i[0]] != i[1]:
             raise Exception("ERROR: {0} should be '{1}' but is '{2}'. Please double-check Kubios and re-run.".format(i[0], i[1], settings[i[0]]))
 
-def write_data_to_sheet(sheet, subject_id, week, kubios_data_file, emwave_data):
-    """Pulls relevant kubios output from kubios_data_file, merges it with emwave_data
-     and writes it to a google spreadsheet.
-     Headers in the google sheet are:
-     ['Subject ID', 'Week', 'Date', 'Session Start Time', 'Target Score', 'Condition', 'Duration (s)', 'Coherence', 'HR: Max', 'HR: Min', 'Max-Min', 'Mean HR (BPM)', 'RMSSD', 'LF Power (ms2)', 'LF peak X (Hz)', 'LF peak Y (PSD)']
-     """
+def extract_kubios_data(kubios_data_file):
+    """Pulls relevant output from kubios_data_file and returns a tuple of two objects: 
+    Settings and outuput data"""
     kubios_data = {}
     kubios_settings = {}
     with h5py.File(kubios_data_file) as file:
@@ -126,6 +123,48 @@ def write_data_to_sheet(sheet, subject_id, week, kubios_data_file, emwave_data):
         except ValueError:
             print("WARNING: Value for LF peak Y (PSD) could not be found - you'll have to enter it manually.")
 
+        # we're checking to see if there are "multiple" peaks, defined as any other PSD
+        # value that is >= 0.25x the peak value that is separated from the peak by one or more
+        # values that are <= 0.25x the peak value. We search to the left and right of the peak.
+        kubios_data['has_multi_peak'] = None
+        try:
+            fft_peak_lf_freq = file['Res']['HRV']['Frequency']['Welch']['LF_peak'][()][0][0]
+            peak_fft_lf_idx = list(file['Res']['HRV']['Frequency']['Welch']['F'][()][0]).index(fft_peak_lf_freq)
+            fft_psd = list(file['Res']['HRV']['Frequency']['Welch']['PSD'][()][0])
+        except ValueError:
+            print("WARNING: Value for peak (FFT) frequency couldn't be found - you'll have to determine whether the FFT spectrum had single or multiple peaks and enter that manually.")
+            return (kubios_settings, kubios_data)
+
+    right_of_peak = fft_psd[peak_fft_lf_idx:]
+    left_of_peak = fft_psd[:peak_fft_lf_idx-1]
+    left_of_peak.reverse()
+    fft_peak_lf_power = fft_psd[peak_fft_lf_idx]
+    second_peak_limit = 0.25 * fft_peak_lf_power
+    try:
+        gap_idx = next(idx for idx, i in enumerate(right_of_peak) if i <= second_peak_limit)
+        kubios_data['has_multi_peak'] = len([x for x in right_of_peak[gap_idx:] if x >= second_peak_limit]) > 0
+    except StopIteration:
+        pass
+        # do nothing - there was no gap and therefore no second peak
+    
+    if not kubios_data['has_multi_peak']:
+        # no second peak to the right - check to the left
+        try:
+            gap_idx = next(idx for idx, i in enumerate(left_of_peak) if i <= second_peak_limit)
+            kubios_data['has_multi_peak'] = len([x for x in left_of_peak[gap_idx:] if x >= second_peak_limit]) > 0
+        except StopIteration:
+            pass
+
+    return (kubios_settings, kubios_data)
+
+def write_data_to_sheet(sheet, subject_id, week, kubios_data_file, emwave_data):
+    """Pulls relevant kubios output from kubios_data_file, merges it with emwave_data
+     and writes it to a google spreadsheet.
+     Headers in the google sheet are:
+     ['Subject ID', 'Week', 'Date', 'Session Start Time', 'Target Score', 'Condition', 'Duration (s)', 'Coherence', 'HR: Max', 'HR: Min', 'Max-Min', 'Mean HR (BPM)', 'RMSSD', 'LF Power (ms2)', 'LF peak X (Hz)', 'LF peak Y (PSD)', 'LF peak single or multiple']
+     """
+    
+    kubios_settings, kubios_data = extract_kubios_data(kubios_data_file)
     check_expected_kubios_settings(kubios_settings)
 
     data_for_sheet = [
@@ -145,7 +184,8 @@ def write_data_to_sheet(sheet, subject_id, week, kubios_data_file, emwave_data):
             kubios_data['rmssd'],
             kubios_data['ar_abs_lf_power'],
             kubios_data['ar_peak_lf_freq'],
-            kubios_data['ar_peak_lf_power']
+            kubios_data['ar_peak_lf_power'],
+            'multiple' if kubios_data['has_multi_peak'] else 'single'
         ]
     ]
     sheet.values_append('A:A', 
