@@ -167,7 +167,7 @@ def write_data_to_sheet(sheet, subject_id, week, kubios_data, emwave_data):
     """Pulls relevant kubios output from kubios_data_file, merges it with emwave_data
      and writes it to a google spreadsheet.
      Headers in the google sheet are:
-     ['Subject ID', 'Week', 'Date', 'Session Start Time', 'Target Score', 'Condition', 'Duration (s)', 'Coherence', 'HR: Max', 'HR: Min', 'Max-Min', 'Mean HR (BPM)', 'RMSSD', 'LF Power (ms2)', 'LF peak X (Hz)', 'LF peak Y (PSD)', 'LF peak single or multiple']
+     ['Subject ID', 'Week', 'Date', 'Session Start Time', 'Duration (s)', 'Coherence', 'HR: Max', 'HR: Min', 'Max-Min', 'Mean HR (BPM)', 'RMSSD', 'LF Power (ms2)', 'LF peak X (Hz)', 'LF peak Y (PSD)', 'LF peak single or multiple']
      """
     data_for_sheet = [
         [
@@ -175,8 +175,6 @@ def write_data_to_sheet(sheet, subject_id, week, kubios_data, emwave_data):
             week,
             emwave_data['SessionDate'],
             emwave_data['SessionStartTime'],
-            None,
-            None,
             emwave_data['duration'],
             emwave_data['AvgCoherence'],
             kubios_data['hr_max'],
