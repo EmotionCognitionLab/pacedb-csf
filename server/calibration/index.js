@@ -101,20 +101,40 @@ function getCalibrationUserId(userId, sqlDbFile) {
 }
 
 function downloadData(userId, dataFile) {
-    const params = { Bucket: bucket, Key: `${userId}/${dataFile}` };
+    const key1 = `${userId}_Calibration/${dataFile}`;
+    const params = { Bucket: bucket, Key: key1 };
     const fname = `/tmp/${userId}-${dataFile}`;
     const file = fs.createWriteStream(fname);
     return new Promise((resolve, reject) => {
         const rs = s3.getObject(params).createReadStream();
         rs.on('error', err => {
             if (err.code == 'NoSuchKey') {
-                resolve(null);
+                resolve(err.code);
                 return;
             }
             reject(err)
         });
         rs.pipe(file);
         file.on('finish', () => resolve(fname));
+    })
+    .then(result => {
+        if (result == 'NoSuchKey') { // try again using '_calibration' - staff aren't consistent with capitalization
+            const key2 = `${userId}_calibration/${dataFile}`;
+            return new Promise((resolve, reject) => {
+                const rs2 = s3.getObject({Bucket: bucket, Key: key2 }).createReadStream();
+                rs2.on('error', err => {
+                    if (err.code == 'NoSuchKey') {
+                        resolve(null);
+                        return;
+                    }
+                    reject(err)
+                });
+                rs2.pipe(file);
+                file.on('finish', () => resolve(fname))
+            });
+        } else {
+            return result;
+        }
     });
 }
 

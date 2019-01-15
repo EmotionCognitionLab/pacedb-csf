@@ -225,7 +225,7 @@ describe("Fetching emWave data for Kubios", function() {
     });
     it('should reject data with multiple users with the same calibration name', function() {
         makeSqliteData(multiSameFirstNameUsers, basicSession, sqliteFname);
-        return saveFileToS3(sqliteFname, `${multiSameFirstNameUsers[0].SubjectId}/${sqliteDb}`)
+        return saveFileToS3(sqliteFname, `${multiSameFirstNameUsers[0].SubjectId}_Calibration/${sqliteDb}`)
         .then(function() {
             return callLambda(multiSameFirstNameUsers[0].SubjectId)
             .then(function(result) {
@@ -240,7 +240,7 @@ describe("Fetching emWave data for Kubios", function() {
     });
     it('should reject data lacking a calibration user', function() {
         makeSqliteData([], basicSession, sqliteFname);
-        return saveFileToS3(sqliteFname, `${basicUser[0].SubjectId}/${sqliteDb}`)
+        return saveFileToS3(sqliteFname, `${basicUser[0].SubjectId}_Calibration/${sqliteDb}`)
         .then(function() {
             return callLambda(basicUser[0].SubjectId)
             .then(function(result) {
@@ -302,9 +302,9 @@ describe("Fetching emWave data for Kubios", function() {
         const extraCsvData = [Object.assign({}, basicCsvData[0]), Object.assign({}, basicCsvData[0])];
         makeSqliteData(basicUser, basicSession, sqliteFname);
         makeCsvData(extraCsvData, csvFname);
-        return saveFileToS3(sqliteFname, `${basicUser[0].SubjectId}/${sqliteDb}`)
+        return saveFileToS3(sqliteFname, `${basicUser[0].SubjectId}_Calibration/${sqliteDb}`)
         .then(function() {
-            return saveFileToS3(csvFname, `${basicUser[0].SubjectId}/${csvLogFile}`);
+            return saveFileToS3(csvFname, `${basicUser[0].SubjectId}_Calibration/${csvLogFile}`);
         })
         .then(function() {
             return callLambda(basicUser[0].SubjectId)
@@ -331,12 +331,25 @@ describe("Fetching emWave data for Kubios", function() {
     });
     it('should accept a start date in YYYYMMDDHHmmss format as a query string param', function() {
         return runTest(basicUser, oldSession, basicUser[0].SubjectId, 200, basicUser[0].SubjectId, oldSession, oldSessionStart.format('YYYYMMDDHHmmdd'));
+    });
+    it('should find calibration data when calibration suffix in s3 key is lower case', function() {
+        makeSqliteData(basicUser, basicSession, sqliteFname);
+        return saveFileToS3(sqliteFname, `${basicUser[0].SubjectId}_calibration/${sqliteDb}`)
+        .then(function() {
+            return callLambda(basicUser[0].SubjectId)
+            .then(function(result) {
+                checkResults(result, 200, basicUser[0].SubjectId, basicSession)
+            });
+        })
+        .catch(function(err) {
+            assert.fail(err.errorMessage);
+        });
     })
 });
 
 function runTest(users, sessions, userId, expectedStatusCode, expectedUserId, expectedSessions, startDateStr = null) {
     makeSqliteData(users, sessions, sqliteFname);
-    return saveFileToS3(sqliteFname, `${userId}/${sqliteDb}`)
+    return saveFileToS3(sqliteFname, `${userId}_Calibration/${sqliteDb}`)
     .then(function() {
         return callLambda(userId, startDateStr)
         .then(function(result) {
@@ -355,9 +368,9 @@ function runTest(users, sessions, userId, expectedStatusCode, expectedUserId, ex
 function runTestWithCsv(users, sessions, userId, csvData, expectedStatusCode, expectedUserId, expectedSessions) {
     makeSqliteData(users, sessions, sqliteFname);
     makeCsvData(csvData, csvFname);
-    return saveFileToS3(sqliteFname, `${userId}/${sqliteDb}`)
+    return saveFileToS3(sqliteFname, `${userId}_Calibration/${sqliteDb}`)
     .then(function() {
-        return saveFileToS3(csvFname, `${userId}/${csvLogFile}`);
+        return saveFileToS3(csvFname, `${userId}_Calibration/${csvLogFile}`);
     })
     .then(function() {
         return callLambda(userId)
