@@ -12,7 +12,9 @@ gspread = "*"
 oauth2client = "*"
 moment = "*"
 pywinauto = "*"
-kubios = {editable = true,git = "https://github.com/noah10/kubios.git",ref = "py3-with-max"}
+h5py = "*"
+boto3 = "*"
+colorama = "*"
 
 [requires]
 python_version = "3.7"
