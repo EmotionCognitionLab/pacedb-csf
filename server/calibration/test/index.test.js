@@ -89,7 +89,7 @@ const secondSession = [
 const basicCsvData = [
     {
         User: basicUser[0].FirstName,
-        Date: basicEnd.format('MM-DD-YYYY-hh-mm-ss'),
+        Date: basicEnd.format('MM-DD-YYYY-HH-mm-ss'),
         'Time Spending for the Session': basicSession[0].IBIEndTime-basicSession[0].IBIStartTime,
         'Ave Calmness': 9.72
     }
@@ -98,7 +98,7 @@ const basicCsvData = [
 const secondCsvData = [
     {
         User: basicUser[0].FirstName,
-        Date: secondEnd.format('MM-DD-YYYY-hh-mm-ss'),
+        Date: secondEnd.format('MM-DD-YYYY-HH-mm-ss'),
         'Time Spending for the Session': secondSession[0].IBIEndTime-secondSession[0].IBIStartTime,
         'Ave Calmness': 8.91
     }
@@ -123,7 +123,7 @@ const upperCaseSession = [
 const upperCaseCsvData = [
     {
         User: upperCaseUser[0].FirstName,
-        Date: basicEnd.format('MM-DD-YYYY-hh-mm-ss'),
+        Date: basicEnd.format('MM-DD-YYYY-HH-mm-ss'),
         'Time Spending for the Session': upperCaseSession[0].IBIEndTime-upperCaseSession[0].IBIStartTime,
         'Ave Calmness': 9.72
     }
@@ -297,6 +297,14 @@ describe("Fetching emWave data for Kubios", function() {
         const extraCsvData = [Object.assign({}, basicCsvData[0]), Object.assign({}, basicCsvData[0])];
         extraCsvData[1].Date = '01-01-1970-00-00-00';
         return runTestWithCsv(basicUser, basicSession, basicUser[0].SubjectId, extraCsvData, 200, basicUser[0].SubjectId, expectedBasicCsvSessions);
+    });
+    it('should accept all csv rows that are after the cutoff date', function() {
+        const extraCsvData = [Object.assign({}, basicCsvData[0]), Object.assign({}, basicCsvData[0])];
+        extraCsvData[1].Date = moment().tz(localTz).add(1, 'day').format('MM-DD-YYYY-HH-mm-ss');
+        const expectedSessions = [Object.assign({}, basicSession[0]), Object.assign({}, basicSession[0])];
+        expectedSessions[0].AvgCoherence = extraCsvData[0]['Ave Calmness'];
+        expectedSessions[1].AvgCoherence = extraCsvData[1]['Ave Calmness'];
+        return runTestWithCsv(basicUser, [basicSession[0], basicSession[0]], basicUser[0].SubjectId, extraCsvData, 200, basicUser[0].SubjectId, expectedSessions);
     });
     it('should throw an error if there are a different number of rows in the csv results and the emWave results', function() {
         const extraCsvData = [Object.assign({}, basicCsvData[0]), Object.assign({}, basicCsvData[0])];

@@ -177,7 +177,6 @@ function generateCalibrationDataForUser(calibrationUserId, userId, startDate, sq
 }
 
 function getCsvData(csvFile, userId, startDate) {
-    const startDateForCsv = startDate.format('MM-DD-YYYY');
     const csvData = fs.readFileSync(csvFile);
     const rowsRead = [];
     const calibUserId = `${userId}_calibration`;
@@ -190,7 +189,8 @@ function getCsvData(csvFile, userId, startDate) {
                    return;
                 }
                 csvRecs.forEach((r) => {
-                    if (!r['User'] || r['User'].toLowerCase() !== calibUserId || !r.Date.startsWith(startDateForCsv) || r['Time Spending for the Session'] > 330 || r ['Time Spending for the Session'] < 270) return;
+                    const recDate = moment(r.Date, 'MM-DD-YYYY-HH-mm-ss').tz(localTz, true);
+                    if (!r['User'] || r['User'].toLowerCase() !== calibUserId || recDate.isBefore(startDate) || r['Time Spending for the Session'] > 330 || r ['Time Spending for the Session'] < 270) return;
                     rowsRead.push({calmness: r['Ave Calmness']});
                 });
                 resolve(rowsRead);
