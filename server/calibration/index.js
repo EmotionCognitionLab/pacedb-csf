@@ -48,7 +48,7 @@ exports.handler = (event, context, callback) => {
     .then(calibrationUserId => {
         let startDate = moment().tz(localTz).subtract(1, 'hours');
         if (event.queryStringParameters && event.queryStringParameters.since) {
-            startDate = moment(event.queryStringParameters.since, 'YYYYMMDDHHmmss').tz(localTz);
+            startDate = moment.tz(event.queryStringParameters.since, 'YYYYMMDDHHmmss', localTz);
         }
         return generateCalibrationDataForUser(calibrationUserId, subjectId, startDate, sqlDbFile, csvFile);
     })
