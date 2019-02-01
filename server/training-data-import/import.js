@@ -110,12 +110,11 @@ function getDataForUser(user, date) {
     .then(fileInfo => {
         const logIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${logFile}`);
         const dbIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${sqliteDb}`);
-        if (logIdx !== -1 && dbIdx !== -1) {
-            throw new Error(`Expected either ${logFile} or ${sqliteDb} for subject id ${user.subjectId}; found both. Skipping subject.`);
-        } else if (logIdx === -1 && dbIdx === -1) {
+        if (logIdx === -1 && dbIdx === -1) {
             // no data have been uploaded for this user; do nothing
             return;
         } else if (logIdx !== -1) {
+            // if the csv file is there choose that rather than the sqlite db
             return getCsvDataForUser(user, date);
         } else {
             return getSqliteDataForUser(user, date);

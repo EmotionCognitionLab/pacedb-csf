@@ -177,19 +177,25 @@ describe('Importing log file data', function() {
             throw(err);
         });
     });
-    it('should skip importing data for the user if it finds both a log file and a sqlite db file', function() {
-        return saveDataToS3(`${singleLine.users[0].subjectId}/${logFile}`, '')
+    it('should import data only from the log file if it finds both a log file and a sqlite db file', function() {
+        const csvData = makeCsvData(singleLine.data);
+        if (fs.existsSync(sqliteFname)) fs.unlinkSync(sqliteFname);
+        makeSqliteData(basic.data, sqliteFname);
+        return saveDataToS3(`${singleLine.users[0].subjectId}/${logFile}`, csvData)
         .then(function() {
-            return saveDataToS3(`${singleLine.users[0].subjectId}/${sqliteDb}`, '')
+            return saveFileToS3(sqliteFname, emWaveS3Key(basic.users[0].subjectId));
+        })
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, singleLine.users);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, basic.users);
         })
         .then(function() {
             return runScheduledEvent('today');
         })
         .then(function() {
-            return getUserDataForDate(singleLine.users[0].id, todayYMD);
-        })
-        .then(function(userData) {
-            assert.equal(userData.length, 0);
+            return confirmResult(singleLine.users[0].id, todayYMD, Math.round(singleLine.data[0].seconds / 60));
         })
         .catch(function(err) {
             console.log(err);
@@ -923,7 +929,7 @@ function confirmResult(userId, date, expectedMinutes) {
 
         assert.equal(rows.length, 1, `Expected 1 row for userId ${userId} and date ${date}, but found ${rows.length}.`);
         const minutes = rows[0].minutes;
-        assert.equal(minutes, expectedMinutes);
+        assert.equal(minutes, expectedMinutes, `Expected ${expectedMinutes} for userId ${userId} and date ${date}, but found ${minutes}.`);
     });
 } 
 
