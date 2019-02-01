@@ -303,7 +303,11 @@ function getCsvDataForUser(user, startDate, endDate) {
                 }
                 csvRecs.forEach(r => {
                     const entryDate = moment.tz(r['Date'], 'MM-DD-YYYY-HH-mm-ss', localTz);
-                    if (entryDate.isBefore(startDate) || entryDate.isAfter(endDate) || !r['User'].toString().startsWith(user.subjectId)) return;
+                    if (entryDate.isBefore(startDate) || 
+                    entryDate.isAfter(endDate) || 
+                    !r['User'].toString().startsWith(user.subjectId) ||
+                    r['Time Spending for the Session'] - r['Session Time'] > 1 || // bogus dupe session
+                    r['Ave Calmness'] < 8) return; // also bogus dupe session
                     rowsRead.push(buildObjFromRow(r, entryDate));
                 });
                 resolve(rowsRead);
