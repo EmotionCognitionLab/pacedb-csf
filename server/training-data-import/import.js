@@ -96,6 +96,10 @@ function importForUser(user, date) {
     });
 }
 
+function userIsDecreaseSubject(subjectId) {
+    return subjectId.startsWith('6') || subjectId.startsWith('8');
+}
+
 /**
  * Returns all of the data (from either csv file or sqlite db) uploaded
  * for the given user for the given date.
@@ -108,16 +112,18 @@ function getDataForUser(user, date) {
         Prefix: user.subjectId
     }).promise()
     .then(fileInfo => {
-        const logIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${logFile}`);
-        const dbIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${sqliteDb}`);
-        if (logIdx === -1 && dbIdx === -1) {
-            // no data have been uploaded for this user; do nothing
-            return;
-        } else if (logIdx !== -1) {
-            // if the csv file is there choose that rather than the sqlite db
-            return getCsvDataForUser(user, date);
+        if (userIsDecreaseSubject(user.subjectId)) {
+            // data for participants in decrease condition is in log.csv file
+            const logIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${logFile}`);
+            if (logIdx !== -1) {
+                return getCsvDataForUser(user, date);
+            }
         } else {
-            return getSqliteDataForUser(user, date);
+            // ...and data for participants in increase condition is in sqlite file
+            const dbIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${sqliteDb}`);
+            if (dbIdx !== -1) {
+                return getSqliteDataForUser(user, date);
+            }
         }
     });
 }
@@ -174,16 +180,20 @@ function getSqliteDataForUser(user, date) {
     let db;
     return new Promise((resolve, reject) => {
         file.on('finish', () => {
-            db = new sqlite3(fname);
-            const dateStart = date.clone().startOf('day');
-            const dateEnd = date.clone().endOf('day');
-            // We credit any sessions begun on the target day to that target day,
-            // regardless of when they ended
-            const stmt = 
-                db.prepare('select SUM(PulseEndTime-PulseStartTime) total from Session where ValidStatus = 1 and DeleteFlag is null and PulseStartTime >= ? and PulseStartTime <= ?');
-            const res = stmt.get([dateStart.format('X'), dateEnd.format('X')]);
-            db.close();
-            resolve(res && res.total > 0 ? res.total : 0);
+            try {
+                db = new sqlite3(fname);
+                const dateStart = date.clone().startOf('day');
+                const dateEnd = date.clone().endOf('day');
+                // We credit any sessions begun on the target day to that target day,
+                // regardless of when they ended
+                const stmt = 
+                    db.prepare('select SUM(PulseEndTime-PulseStartTime) total from Session where ValidStatus = 1 and DeleteFlag is null and PulseStartTime >= ? and PulseStartTime <= ?');
+                const res = stmt.get([dateStart.format('X'), dateEnd.format('X')]);
+                db.close();
+                resolve(res && res.total > 0 ? res.total : 0);
+            } catch (err) {
+                reject(err);
+            }  
         });
     });
 }

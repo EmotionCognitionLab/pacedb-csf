@@ -49,86 +49,86 @@ const todayLogFormat = moment().format('MM-DD-YYYY-HH-mm-ss');
 
 const activeGroup = {name: 'active', startDate: +moment().subtract(10, 'days').format('YYYYMMDD'), endDate: +moment().add(10, 'days').format('YYYYMMDD')};
 const singleLine = {
-    data: [{subjectId: '5017', sessName: 1, seconds: 181, date: todayLogFormat, timeSpending: 181}],
-    users: [{id: 'abc123', subjectId: '5017', group: activeGroup.name}]
+    data: [{subjectId: '6017', sessName: 1, seconds: 181, date: todayLogFormat, timeSpending: 181}],
+    users: [{id: 'abc123', subjectId: '6017', group: activeGroup.name}]
 };
 
 const multiLine = {
     data: [
-        {subjectId: '5002', sessName: 1, seconds: 90, date: todayLogFormat, timeSpending: 90},
-        {subjectId: '5002', sessName: 2, seconds: 177, date: todayLogFormat, timeSpending: 177},
-        {subjectId: '5002', sessName: 3, seconds: 32, date: todayLogFormat, timeSpending: 32}
+        {subjectId: '8002', sessName: 1, seconds: 90, date: todayLogFormat, timeSpending: 90},
+        {subjectId: '8002', sessName: 2, seconds: 177, date: todayLogFormat, timeSpending: 177},
+        {subjectId: '8002', sessName: 3, seconds: 32, date: todayLogFormat, timeSpending: 32}
     ],
-    users: [{id: 'def456', subjectId: '5002', group: activeGroup.name}]
+    users: [{id: 'def456', subjectId: '8002', group: activeGroup.name}]
 }
 
 const activeGroup2 = {name: 'active2', startDate: +moment().subtract(10, 'days').format('YYYYMMDD'), endDate: +moment().add(10, 'days').format('YYYYMMDD')};
 const multiGroup = {
     data1: [{subjectId: '5003', sessName: 1, seconds: 240, date: todayLogFormat, timeSpending: 240}],
-    data2: [{subjectId: '5004', sessName: 1, seconds: 300, date: todayLogFormat, timeSpending: 300}],
+    data2: [{subjectId: '6004', sessName: 1, seconds: 300, date: todayLogFormat, timeSpending: 300}],
     users: [
         {id: 'abd289', subjectId: '5003', group: activeGroup.name},
-        {id: 'abd290', subjectId: '5004', group: activeGroup2.name}
+        {id: 'abd290', subjectId: '6004', group: activeGroup2.name}
     ]
 };
 
 const oldLogFormat = moment().subtract(92, 'days').format('MM-DD-YYYY-HH-mm-ss');
 const multiDate = {
     data: [
-        {subjectId: '5005', sessName: 1, seconds: 117, date: todayLogFormat, timeSpending: 117},
-        {subjectId: '5005', sessName: 2, seconds: 98, date: todayLogFormat, timeSpending: 98},
-        {subjectId: '5005', sessName: 3, seconds: 382, date: oldLogFormat, timeSpending: 382},
-        {subjectId: '5005', sessName: 4, seconds: 229, date: oldLogFormat, timeSpending: 229}
+        {subjectId: '8005', sessName: 1, seconds: 117, date: todayLogFormat, timeSpending: 117},
+        {subjectId: '8005', sessName: 2, seconds: 98, date: todayLogFormat, timeSpending: 98},
+        {subjectId: '8005', sessName: 3, seconds: 382, date: oldLogFormat, timeSpending: 382},
+        {subjectId: '8005', sessName: 4, seconds: 229, date: oldLogFormat, timeSpending: 229}
     ],
-    users: [{id: 'bec482', subjectId: '5005', group: activeGroup.name}]
+    users: [{id: 'bec482', subjectId: '8005', group: activeGroup.name}]
 };
 
 const negative = {
     data: [ 
-        {subjectId: '5006', sessName: 1, seconds: 20, date: todayLogFormat, timeSpending: 20},
-        {subjectId: '5006', sessName: 2, seconds: -30, date: todayLogFormat, timeSpending: -30}
+        {subjectId: '6006', sessName: 1, seconds: 20, date: todayLogFormat, timeSpending: 20},
+        {subjectId: '6006', sessName: 2, seconds: -30, date: todayLogFormat, timeSpending: -30}
      ],
-     users: [{id: 'cdb123', subjectId: '5006', group: activeGroup.name}]
+     users: [{id: 'cdb123', subjectId: '6006', group: activeGroup.name}]
 };
 
 const yesterdayLogFormat = moment().subtract(1, 'days').format('MM-DD-YYYY-HH-mm-ss');
 const yesterday = {
     data: [
-        {subjectId: '5007', sessName: 1, seconds: 229, date: todayLogFormat, timeSpending: 229},
-        {subjectId: '5007', sessName: 2, seconds: 300, date: yesterdayLogFormat, timeSpending: 300}
+        {subjectId: '8007', sessName: 1, seconds: 229, date: todayLogFormat, timeSpending: 229},
+        {subjectId: '8007', sessName: 2, seconds: 300, date: yesterdayLogFormat, timeSpending: 300}
     ],
-    users: [{id: 'fff888', subjectId: '5007', group: activeGroup.name}]
+    users: [{id: 'fff888', subjectId: '8007', group: activeGroup.name}]
 };
 
 const inactiveGroup = {name: 'inactive', startDate: 20170923, endDate: 20171023};
 const inactive = {
-    data1: [ {subjectId: '5008', sessName: 1, seconds: 382, date: todayLogFormat, timeSpending: 382} ],
-    data2: [ {subjectId: '5009', sessName: 1, seconds: 294, date: todayLogFormat, timeSpending: 294} ] ,
+    data1: [ {subjectId: '6008', sessName: 1, seconds: 382, date: todayLogFormat, timeSpending: 382} ],
+    data2: [ {subjectId: '6009', sessName: 1, seconds: 294, date: todayLogFormat, timeSpending: 294} ] ,
     users:  [
-        {id: 'def902', subjectId: '5008', group: activeGroup.name},
-        {id: 'cde238', subjectId: '5009', group: inactiveGroup.name}
+        {id: 'def902', subjectId: '6008', group: activeGroup.name},
+        {id: 'cde238', subjectId: '6009', group: inactiveGroup.name}
     ]
 };
 
 const dupeSessionLowFirst = {
     data: [
-        {subjectId: '5009', sessName: 1, seconds: 20, date: todayLogFormat, timeSpending: 20},
-        {subjectId: '5009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 30},
-        {subjectId: '5009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 61}
+        {subjectId: '8009', sessName: 1, seconds: 20, date: todayLogFormat, timeSpending: 20},
+        {subjectId: '8009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 30},
+        {subjectId: '8009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 61}
     ],
     users: [
-        {id: 'cab000', subjectId: '5009', group: activeGroup.name}
+        {id: 'cab000', subjectId: '8009', group: activeGroup.name}
     ]
 };
 
 const dupeSessionHighFirst = {
     data: [
-        {subjectId: '5009', sessName: 1, seconds: 20, date: todayLogFormat, timeSpending: 20},
-        {subjectId: '5009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 61},
-        {subjectId: '5009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 30}
+        {subjectId: '6009', sessName: 1, seconds: 20, date: todayLogFormat, timeSpending: 20},
+        {subjectId: '6009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 61},
+        {subjectId: '6009', sessName: 2, seconds: 30, date: todayLogFormat, timeSpending: 30}
     ],
     users: [
-        {id: 'cab000', subjectId: '5009', group: activeGroup.name}
+        {id: 'cab000', subjectId: '6009', group: activeGroup.name}
     ]
 };
 
@@ -177,7 +177,9 @@ describe('Importing log file data', function() {
             throw(err);
         });
     });
-    it('should import data only from the log file if it finds both a log file and a sqlite db file', function() {
+    it('should read data from log file for user ids starting with 6 or 8 and from sqlite db for user ids starting with 5 0r 7', function() {
+        assert(singleLine.users[0].subjectId.startsWith('6') || singleLine.users[0].subjectId.startsWith('8'));
+        assert(basic.users[0].subjectId.startsWith('5') || basic.users[0].subjectId.startsWith('7'));
         const csvData = makeCsvData(singleLine.data);
         if (fs.existsSync(sqliteFname)) fs.unlinkSync(sqliteFname);
         makeSqliteData(basic.data, sqliteFname);
@@ -197,13 +199,19 @@ describe('Importing log file data', function() {
         .then(function() {
             return confirmResult(singleLine.users[0].id, todayYMD, Math.round(singleLine.data[0].seconds / 60));
         })
+        .then(function() {
+            return confirmResult(basic.users[0].id, todayYMD, Math.round((basic.data[0].PulseEndTime - basic.data[0].PulseStartTime) / 60));
+        })
         .catch(function(err) {
             console.log(err);
             throw(err);
         });
     });
     it('should do nothing if it finds neither a log file nor a sqlite db file', function() {
-        return runScheduledEvent('today')
+        return dbSetup.writeTestData(usersTable, singleLine.users)
+        .then(function() {
+            return runScheduledEvent('today');
+        })
         .then(function() {
             return getUserDataForDate(singleLine.users[0].id, todayYMD);
         })
@@ -262,9 +270,10 @@ describe('Importing log file data', function() {
         });
     });
     it('should record data for all members of all active groups', function() {
-        const data1 = makeCsvData(multiGroup.data1);
+        if (fs.existsSync(sqliteFname)) fs.unlinkSync(sqliteFname);
+        makeSqliteData(multiUser.data, sqliteFname);
         const data2 = makeCsvData(multiGroup.data2);
-        return saveDataToS3(`${multiGroup.users[0].subjectId}/${logFile}`, data1)
+        return saveFileToS3(sqliteFname, emWaveS3Key(multiUser.users[0].subjectId))
         .then(function() {
             return saveDataToS3(`${multiGroup.users[1].subjectId}/${logFile}`, data2);
         })
@@ -278,7 +287,7 @@ describe('Importing log file data', function() {
             return runScheduledEvent('today');
         })
         .then(function() {
-            const u1ExpectedMin = sumCsvMinutes(multiGroup.data1, (d) => d);
+            const u1ExpectedMin = sumSqliteMinutes(multiUser.data, (d) => d);
             return confirmResult(multiGroup.users[0].id, todayYMD, u1ExpectedMin);
         })
         .then(function() {
@@ -309,10 +318,8 @@ describe('Importing log file data', function() {
         });
     });
     it('should import data for other users if it errors on one user', function() {
-        return saveDataToS3(`${multiGroup.users[0].subjectId}/${logFile}`, '')
-        .then(function() {
-            return saveDataToS3(`${multiGroup.users[0].subjectId}/${sqliteDb}`, '')
-        })
+        // intentionally save empty sqlite db file to trigger error
+        return saveDataToS3(`${multiGroup.users[0].subjectId}/${sqliteDb}`, '')
         .then(function() { 
             const user2Data = makeCsvData(multiGroup.data2);
             return saveDataToS3(`${multiGroup.users[1].subjectId}/${logFile}`, user2Data);
@@ -414,14 +421,21 @@ describe('Importing log file data', function() {
         .then(function() {
             // figure out the offset to a timezone where it's already tomorrow
             const tomorrowOffset = offsetForTomorrow();
+            let timezone;
+            if (tomorrowOffset < 0) {
+                timezone = `Etc/GMT${tomorrowOffset}`;
+            } else {
+                timezone = `Etc/GMT-${tomorrowOffset}`;
+            }
             const event = Object.assign({}, scheduledEvent);
             Object.assign(event, {day: 'today'});
+            
             return lambdaLocal.execute({
                 event: event,
                 lambdaPath: 'import.js',
                 envfile: './test/env.sh',
                 envdestroy: true,
-                environment: { TIMEZONE: `Etc/GMT-${tomorrowOffset}` }, // see https://momentjs.com/timezone/docs/#/zone-object/offset/ 
+                environment: { TIMEZONE: timezone }, // see https://momentjs.com/timezone/docs/#/zone-object/offset/ 
                 verboseLevel: 0 // set this to 3 to get all lambda-local output
             });
         })
@@ -525,9 +539,12 @@ describe('Importing log file data', function() {
 });
 
 // test data for sqlite cases
+
+const sqliteUsers = [{id: 'bcd234', subjectId: '5017', group: activeGroup.name}]
+
 const basic = {
     data: [{PulseStartTime: moment().unix(), PulseEndTime: moment().add(190, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}],
-    users: singleLine.users
+    users: sqliteUsers
 };
 
 const invalidStatus = {
@@ -535,7 +552,7 @@ const invalidStatus = {
         {PulseStartTime: moment().unix(), PulseEndTime: moment().add(190, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null},
         {PulseStartTime: moment().unix(), PulseEndTime: moment().add(500, 'seconds').unix(), ValidStatus: -1, DeleteFlag: null}
     ],
-    users: singleLine.users
+    users: sqliteUsers
 };
 
 const deleteFlag = {
@@ -543,26 +560,26 @@ const deleteFlag = {
         {PulseStartTime: moment().unix(), PulseEndTime: moment().add(190, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null},
         {PulseStartTime: moment().unix(), PulseEndTime: moment().add(500, 'seconds').unix(), ValidStatus: 1, DeleteFlag: 1}
     ],
-    users: singleLine.users
+    users: sqliteUsers
 }
 
 const yesterdaySqlite = {
     data: [
         {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(190, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}
     ],
-    users: singleLine.users
+    users: sqliteUsers
 }
 
 const negativeSqlite = {
     data: [{PulseStartTime: moment().unix(), PulseEndTime: moment().subtract(95, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}],
-    users: singleLine.users
+    users: sqliteUsers
 };
 
 const multiUser = {
     data: basic.data,
     users: [
         {id: 'abd289', subjectId: '5003', group: activeGroup.name},
-        {id: 'abd290', subjectId: '5004', group: activeGroup.name}
+        {id: 'abd290', subjectId: '5004', group: activeGroup2.name}
     ]
 };
 
@@ -571,7 +588,7 @@ const multiDay = {
         {PulseStartTime: moment().unix(), PulseEndTime: moment().add(350, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null},
         {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(280, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}
     ],
-    users: singleLine.users
+    users: sqliteUsers
 };
 
 const multiEntry = {
@@ -579,7 +596,7 @@ const multiEntry = {
         {PulseStartTime: moment().startOf('day').unix(), PulseEndTime: moment().startOf('day').add(400, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null},
         {PulseStartTime: moment().unix(), PulseEndTime: moment().add(290, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}
     ],
-    users: singleLine.users
+    users: sqliteUsers
 };
 
 const futureData = {
@@ -587,7 +604,7 @@ const futureData = {
         {PulseStartTime: moment().subtract(1, 'days').unix(), PulseEndTime: moment().subtract(1, 'days').add(22, 'minutes').unix(), ValidStatus: 1, DeleteFlag: null},
         {PulseStartTime: moment().unix(), PulseEndTime: moment().add(8, 'minutes').unix(), ValidStatus: 1, DeleteFlag: null}
     ],
-    users: singleLine.users
+    users: sqliteUsers
 }
 
 const sqliteFname = '/tmp/testdb.sqlite';
@@ -721,16 +738,16 @@ describe("Importing sqlite data", function() {
     });
     it('should import data for other users if it errors on one user', function() {
         makeSqliteData(multiUser.data, sqliteFname);
-        // intentionally save both a csv file and a sqlite file (both empty) for users[0] to trigger an error
-        return saveDataToS3(`${multiUser.users[0].subjectId}/${logFile}`, '')
-        .then(function() {
-            return saveDataToS3(`${multiUser.users[0].subjectId}/${sqliteDb}`, '');
-        })
+        // intentionally save an empty sqlite file for users[0] to trigger an error
+        return saveDataToS3(`${multiUser.users[0].subjectId}/${sqliteDb}`, '')
         .then(function() {
             return saveFileToS3(sqliteFname, emWaveS3Key(multiUser.users[1].subjectId));
         })
         .then(function() {
             return dbSetup.writeTestData(usersTable, multiUser.users);
+        })
+        .then(function() {
+            return dbSetup.writeTestData(groupsTable, [activeGroup2]);
         })
         .then(function() {
             return runScheduledEvent('today');
@@ -795,6 +812,12 @@ describe("Importing sqlite data", function() {
         .then(function() {
             // figure out the offset to a timezone where it's already tomorrow
             const tomorrowOffset = offsetForTomorrow();
+            let timezone;
+            if (tomorrowOffset < 0) {
+                timezone = `Etc/GMT${tomorrowOffset}`;
+            } else {
+                timezone = `Etc/GMT-${tomorrowOffset}`;
+            }
             const event = Object.assign({}, scheduledEvent);
             Object.assign(event, {day: 'today'});
             return lambdaLocal.execute({
@@ -802,7 +825,7 @@ describe("Importing sqlite data", function() {
                 lambdaPath: 'import.js',
                 envfile: './test/env.sh',
                 envdestroy: true,
-                environment: { TIMEZONE: `Etc/GMT-${tomorrowOffset}` }, // see https://momentjs.com/timezone/docs/#/zone-object/offset/ 
+                environment: { TIMEZONE: timezone }, // see https://momentjs.com/timezone/docs/#/zone-object/offset/ 
                 verboseLevel: 0 // set this to 3 to get all lambda-local output
             });
         })

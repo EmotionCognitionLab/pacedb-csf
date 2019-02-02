@@ -236,11 +236,16 @@ function importForUser(user, startDate, endDate, weekInt, auth) {
     });
 }
 
+function userIsDecreaseSubject(subjectId) {
+    return subjectId.startsWith('6') || subjectId.startsWith('8');
+}
+
 /**
  * Returns [ subjectId, groupId, startTime, endTime, duration(minutes), calmness/coherence score, sessionId ] 
  * of the data (from either csv file or sqlite db) uploaded for the given user for the given date.
  * @param {Object} user User object
- * @param {Object} date moment object representing the date of the data to fetch
+ * @param {Object} startDate moment object representing the start date of the data range to fetch
+ * @param {Object} endDate moment object representing the end date of the data range to fetch
  */
 function getRawDataForUser(user, startDate, endDate) {
     return s3.listObjectsV2({
@@ -248,16 +253,18 @@ function getRawDataForUser(user, startDate, endDate) {
         Prefix: user.subjectId
     }).promise()
     .then(fileInfo => {
-        const logIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${logFile}`);
-        const dbIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${sqliteDb}`);
-        if (logIdx === -1 && dbIdx === -1) {
-            // no data have been uploaded for this user; do nothing
-            return;
-        } else if (logIdx !== -1) {
-            // if the csv file is there choose that rather than the sqlite db
-            return getCsvDataForUser(user, startDate, endDate);
+        if (userIsDecreaseSubject(user.subjectId)) {
+            // data for participants in decrease condition is in log.csv file
+            const logIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${logFile}`);
+            if (logIdx !== -1) {
+                return getCsvDataForUser(user, startDate, endDate);
+            }
         } else {
-            return getSqliteDataForUser(user, startDate, endDate);
+            // ...and data for participants in increase condition is in sqlite file
+            const dbIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${sqliteDb}`);
+            if (dbIdx !== -1) {
+                return getSqliteDataForUser(user, startDate, endDate);
+            }
         }
     })
     .catch(err => {
@@ -329,29 +336,33 @@ function getSqliteDataForUser(user, startDate, endDate) {
     let db;
     return new Promise((resolve, reject) => {
         file.on('finish', () => {
-            db = new sqlite3(fname);
-            // We credit any sessions begun on the target day to that target day,
-            // regardless of when they ended
-            const stmt = 
-                db.prepare(`select u.FirstName subjectId, '${user.group}' groupId, IBIStartTime, IBIEndTime, (IBIEndTime-IBIStartTime) duration, AvgCoherence, SessionUuid from Session s join User u on u.UserUuid = s.UserUuid where substr(u.FirstName, 1, ${user.subjectId.length}) = '${user.subjectId}' and s.ValidStatus = 1 and s.DeleteFlag is null and s.IBIStartTime >= ? and s.IBIStartTime <= ?`);
-            const rows = stmt.all([startDate.format('X'), endDate.format('X')]);
-            db.close();
-            let results = [];
-            if (rows) {
-                results = rows.map(r => {
-                    return {
-                        subjectId: r.subjectId,
-                        groupId: r.groupId,
-                        startTime: moment.tz(r.IBIStartTime, 'X', localTz),
-                        endTime: moment.tz(r.IBIEndTime, 'X', localTz),
-                        seconds: r.duration,
-                        calmness: r.AvgCoherence,
-                        sessId: r.SessionUuid
-                    }
-                });
+            try {
+                db = new sqlite3(fname);
+                // We credit any sessions begun on the target day to that target day,
+                // regardless of when they ended
+                const stmt = 
+                    db.prepare(`select u.FirstName subjectId, '${user.group}' groupId, IBIStartTime, IBIEndTime, (IBIEndTime-IBIStartTime) duration, AvgCoherence, SessionUuid from Session s join User u on u.UserUuid = s.UserUuid where substr(u.FirstName, 1, ${user.subjectId.length}) = '${user.subjectId}' and s.ValidStatus = 1 and s.DeleteFlag is null and s.IBIStartTime >= ? and s.IBIStartTime <= ?`);
+                const rows = stmt.all([startDate.format('X'), endDate.format('X')]);
+                db.close();
+                let results = [];
+                if (rows) {
+                    results = rows.map(r => {
+                        return {
+                            subjectId: r.subjectId,
+                            groupId: r.groupId,
+                            startTime: moment.tz(r.IBIStartTime, 'X', localTz),
+                            endTime: moment.tz(r.IBIEndTime, 'X', localTz),
+                            seconds: r.duration,
+                            calmness: r.AvgCoherence,
+                            sessId: r.SessionUuid
+                        }
+                    });
+                }
+                fs.unlinkSync(fname);
+                resolve(results);
+            } catch (err) {
+                reject(err);
             }
-            fs.unlinkSync(fname);
-            resolve(results);
         });
     });
 }
