@@ -253,12 +253,6 @@ describe("Fetching emWave data for Kubios", function() {
             assert.fail(err.errorMessage);
         });
     });
-    it('should skip sessions longer than 5.5 minutes', function() {
-        return runTest(basicUser, longSession, basicUser[0].SubjectId, 200, basicUser[0].SubjectId, []);
-    });
-    it('should skip sessions shorter than 4.5 minutes', function() {
-        return runTest(basicUser, shortSession, basicUser[0].SubjectId, 200, basicUser[0].SubjectId, []);
-    });
     it('should skip sessions whose ValidStatus is not 1', function() {
         return runTest(basicUser, invalidSession, basicUser[0].SubjectId, 200, basicUser[0].SubjectId, []);
     });
@@ -281,16 +275,6 @@ describe("Fetching emWave data for Kubios", function() {
             'Time Spending for the Session': basicSession[0].IBIEndTime-basicSession[0].IBIStartTime,
             'Ave Calmness': 9.72
         });
-        return runTestWithCsv(basicUser, basicSession, basicUser[0].SubjectId, extraCsvData, 200, basicUser[0].SubjectId, expectedBasicCsvSessions);
-    });
-    it('should skip csv rows with Time Spending for the Session values longer than 5.5 minutes', function() {
-        const extraCsvData = [Object.assign({}, basicCsvData[0]), Object.assign({}, basicCsvData[0])];
-        extraCsvData[1]['Time Spending for the Session'] = 531;
-        return runTestWithCsv(basicUser, basicSession, basicUser[0].SubjectId, extraCsvData, 200, basicUser[0].SubjectId, expectedBasicCsvSessions);
-    });
-    it('should skip csv rows with Time Spending for the Session values shorter than 4.5 minutes', function() {
-        const extraCsvData = [Object.assign({}, basicCsvData[0]), Object.assign({}, basicCsvData[0])];
-        extraCsvData[1]['Time Spending for the Session'] = 269;
         return runTestWithCsv(basicUser, basicSession, basicUser[0].SubjectId, extraCsvData, 200, basicUser[0].SubjectId, expectedBasicCsvSessions);
     });
     it('should skip csv rows with the wrong date', function() {

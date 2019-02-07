@@ -141,8 +141,8 @@ function downloadData(userId, dataFile) {
 function generateCalibrationDataForUser(calibrationUserId, userId, startDate, sqlDbFile, csvFile) {
     const db = new sqlite3(sqlDbFile);
     const stmt = 
-        db.prepare('select IBIStartTime, IBIEndTime, (IBIEndTime-IBIStartTime) duration, AvgCoherence, LiveIBI from Session s where s.UserUuid = ? and s.ValidStatus = 1 and s.DeleteFlag is null and s.IBIStartTime >= ? and duration >= ? and duration <= ? order by IBIStartTime asc');
-    const rows = stmt.all([calibrationUserId, startDate.format('X'), 270, 330]);
+        db.prepare('select IBIStartTime, IBIEndTime, (IBIEndTime-IBIStartTime) duration, AvgCoherence, LiveIBI from Session s where s.UserUuid = ? and s.ValidStatus = 1 and s.DeleteFlag is null and s.IBIStartTime >= ? order by IBIStartTime asc');
+    const rows = stmt.all([calibrationUserId, startDate.format('X')]);
     db.close();
     
     const result = rows.map(r => {
@@ -190,7 +190,7 @@ function getCsvData(csvFile, userId, startDate) {
                 }
                 csvRecs.forEach((r) => {
                     const recDate = moment(r.Date, 'MM-DD-YYYY-HH-mm-ss').tz(localTz, true);
-                    if (!r['User'] || r['User'].toLowerCase() !== calibUserId || recDate.isBefore(startDate) || r['Time Spending for the Session'] > 330 || r ['Time Spending for the Session'] < 270) return;
+                    if (!r['User'] || r['User'].toLowerCase() !== calibUserId || recDate.isBefore(startDate)) return;
                     rowsRead.push({calmness: r['Ave Calmness']});
                 });
                 resolve(rowsRead);
