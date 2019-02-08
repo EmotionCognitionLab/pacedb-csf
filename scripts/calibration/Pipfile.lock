@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "fb906da96340eba657048fe77b1b8b952b2e0492cf996c20cc08e08073999234"
+            "sha256": "a80c4fd91aea9e9c3df5f7cf8b255cfb926016313f60e7cc83d5dce94acdf359"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -58,6 +58,12 @@
             ],
             "index": "pypi",
             "version": "==0.4.1"
+        },
+        "comtypes": {
+            "hashes": [
+                "sha256:c9d59f57d559613940f22da54d70add066faa23b4fa9b5cd95facdc501a63b0b"
+            ],
+            "version": "==1.1.7"
         },
         "dateparser": {
             "hashes": [
@@ -137,12 +143,8 @@
             "version": "==0.9.3"
         },
         "kubios": {
-            "hashes": [
-                "sha256:ed5c2d6071b7473ca6bab72337bfc2842cc28f4614b45fb14c7472d6b2fd7030",
-                "sha256:f9445db38fed5e38db5e5ba20bcb659b2df644885ae20b8dc628da60885f107a"
-            ],
-            "index": "pypi",
-            "version": "==0.1"
+            "editable": true,
+            "path": "./../lib/kubios"
         },
         "moment": {
             "hashes": [
@@ -209,19 +211,25 @@
             "markers": "python_version >= '2.7'",
             "version": "==2.8.0"
         },
-        "python-xlib": {
-            "hashes": [
-                "sha256:204f280b549352af6cbdaff43405186822ae05749518dd9be209bd88a0088f99",
-                "sha256:cdc806892f28fcd2c52e22a646c2ae3af3f0539cbbacfe7b344231d75eb96095"
-            ],
-            "version": "==0.25"
-        },
         "pytz": {
             "hashes": [
                 "sha256:32b0891edff07e28efe91284ed9c31e123d84bea3fd98e1f72be2508f43ef8d9",
                 "sha256:d5f05e487007e29e03409f9398d074e158d920d36eb82eaf66fb1136b0c5374c"
             ],
             "version": "==2018.9"
+        },
+        "pywin32": {
+            "hashes": [
+                "sha256:22e218832a54ed206452c8f3ca9eff07ef327f8e597569a4c2828be5eaa09a77",
+                "sha256:32b37abafbfeddb0fe718008d6aada5a71efa2874f068bee1f9e703983dcc49a",
+                "sha256:35451edb44162d2f603b5b18bd427bc88fcbc74849eaa7a7e7cfe0f507e5c0c8",
+                "sha256:4eda2e1e50faa706ff8226195b84fbcbd542b08c842a9b15e303589f85bfb41c",
+                "sha256:5f265d72588806e134c8e1ede8561739071626ea4cc25c12d526aa7b82416ae5",
+                "sha256:6852ceac5fdd7a146b570655c37d9eacd520ed1eaeec051ff41c6fc94243d8bf",
+                "sha256:6dbc4219fe45ece6a0cc6baafe0105604fdee551b5e876dc475d3955b77190ec",
+                "sha256:9bd07746ce7f2198021a9fa187fa80df7b221ec5e4c234ab6f00ea355a3baf99"
+            ],
+            "version": "==224"
         },
         "pywinauto": {
             "hashes": [
@@ -328,6 +336,13 @@
             ],
             "index": "pypi",
             "version": "==3.4"
+        },
+        "pywin32-ctypes": {
+            "hashes": [
+                "sha256:24ffc3b341d457d48e8922352130cf2644024a4ff09762a2261fd34c36ee5942",
+                "sha256:9dc2d991b3479cc2df15930958b674a48a227d5361d413827a4cfd0b5876fc98"
+            ],
+            "version": "==0.2.0"
         }
     }
 }
