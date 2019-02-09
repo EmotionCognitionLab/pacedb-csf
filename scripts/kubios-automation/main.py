@@ -113,13 +113,15 @@ if __name__ == "__main__":
                     if response == 'q':
                         sys.exit(0)
 
+            f = kubios.expand_windows_short_name(f)
             kubios.open_rr_file(app, f)
             kubios_window = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
             kubios.analyse(kubios_window)
 
-            name_no_ext = PurePath(f).stem
+            f_path = PurePath(f)
+            name_no_ext =f_path.stem
             results_path = output_path / name_no_ext
-            kubios.save_results(app, str(results_path), f)
+            kubios.save_results(app, str(results_path), f_path.name)
             kubios.close_file(kubios_window)
         else:
             print('Only emwave files are currently supported.')
