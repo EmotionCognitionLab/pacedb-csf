@@ -1,8 +1,11 @@
 import emwave as em
-import kubios as ka
+import kubios
 from pathlib import Path, PurePath
 import sys
 import tempfile
+
+# Path to kubios application
+KUBIOS_PATH = 'C:/Program Files/Kubios/Kubios HRV Premium/kubioshrv.exe'
 
 EMWAVE_FILE_TYPE = 'em'
 ACQ_FILE_TYPE = 'acq'
@@ -81,7 +84,7 @@ if __name__ == "__main__":
             emwave_user_names = db.fetch_user_first_names()
             db.close()
             for name in emwave_user_names:
-                should_process = get_valid_response("Process user {} from {}? [Y(es)/n(o)/s(kip) to next emWave file]".format(name, emdb), ['', 'Y', 'y', 'N', 'n', 'S', 's'])
+                should_process = get_valid_response("Process user {} from {}? [Y(es)/n(o)/s(kip) to next emWave file] ".format(name, emdb), ['', 'Y', 'y', 'N', 'n', 'S', 's'])
                 if should_process == '' or should_process == 'Y' or should_process == 'y':
                     rr_files.extend(write_emwave_data_to_file(str(emdb), name))
                 elif should_process == 'N' or should_process == 'n':
@@ -97,15 +100,27 @@ if __name__ == "__main__":
 
     for f in input_files:
         if file_type == EMWAVE_FILE_TYPE:
-            app = ka.kubios_get_app()
-            ka.kubios_open_rr_file(app, f)
+            try:
+                app = kubios.get_app(KUBIOS_PATH)
+            except kubios.KubiosRunningError:
+                print('Kubios is already running.')
+                print('Please make sure that any open analyses are saved and closed before continuing.')
+                response = ''
+                while response != 'c' and response != 'q':
+                    response = input("Press 'c' to continue or 'q' to quit:")
+                    if response == 'c':
+                        app = kubios.get_app(KUBIOS_PATH, True)
+                    if response == 'q':
+                        sys.exit(0)
+
+            kubios.open_rr_file(app, f)
             kubios_window = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
-            ka.kubios_analyse(kubios_window)
+            kubios.analyse(kubios_window)
 
             name_no_ext = PurePath(f).stem
             results_path = output_path / name_no_ext
-            ka.kubios_save_results(app, str(results_path), f)
-            ka.kubios_close_file(kubios_window)
+            kubios.save_results(app, str(results_path), f)
+            kubios.close_file(kubios_window)
         else:
             print('Only emwave files are currently supported.')
             sys.exit()
