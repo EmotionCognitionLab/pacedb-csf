@@ -62,7 +62,11 @@ def save_results(kubios_app, results_file_path, input_fname):
 
 def default_save_as_fname(input_fname):
     """As a default file name for the results kubios suggests the input file name with the extension replaced with '_hrv'."""
-    return input_fname.split('.')[0] + '_hrv'
+    parts = input_fname.split('.')
+    if len(parts) == 1:
+        return parts[0] + "_hrv"
+
+    return '.'.join(parts[:-1]) + '_hrv'
 
 def close_file(kubios_window):
     kubios_window.type_keys('^W') # Ctrl-W
