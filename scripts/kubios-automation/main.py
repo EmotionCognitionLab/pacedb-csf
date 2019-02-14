@@ -37,7 +37,7 @@ def get_input_files(input_dir, file_type):
 def write_emwave_data_to_file(fname, user_name):
     emwave_db = em.EmwaveDb(fname)
     emwave_db.open()
-    sessions = emwave_db.fetch_session_rr_data(user_name, (2000, 0, 0, 0, 0, 0, 0, 0, -1), (3000, 0, 0, 0, 0, 0, 0, 0, -1))
+    sessions = emwave_db.fetch_session_rr_data(user_name)
     emwave_db.close()
 
     rr_file_names = list()

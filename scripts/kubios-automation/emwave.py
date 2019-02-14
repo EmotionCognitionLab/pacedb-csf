@@ -20,19 +20,17 @@ class EmwaveDb:
         if not self.conn:
             raise Exception('You must call open() before fetching sessions')
 
-    def fetch_session_rr_data(self, username, start_date, end_date):
+    def fetch_session_rr_data(self, username):
         """Returns list of sessions. Each session contains a list of RR intervals (ms between heartbeats).
 
         username   - The name of the user (as found in User.FirstName in the emwave database) whose data you want
-        start_date - time_struct (referring to local time). Sessions starting earlier than this will be ignored.
-        end_date   - time_struct (referring to local time). Sessions starting later than this will be ignored.
         """
         
         self._confirm_db_open()
 
         sessions = list()
-        stmt = 'select LiveIBI from Session s join User u on s.UserUuid = u.UserUuid where u.FirstName = ? and s.ValidStatus = 1 and s.DeleteFlag is null and s.IBIStartTime >= ? and s.IBIEndTime <= ? order by IBIStartTime asc'
-        for row in self.c.execute(stmt, (username, time.mktime(start_date), time.mktime(end_date))):
+        stmt = 'select LiveIBI from Session s join User u on s.UserUuid = u.UserUuid where u.FirstName = ? and s.ValidStatus = 1 and s.DeleteFlag is null order by IBIStartTime asc'
+        for row in self.c.execute(stmt, (username, )):
             rr_data = list()
             for i in range(0, len(row[0]), 2):
                 rr_data.append(int.from_bytes(row[0][i:i+2], byteorder='little'))
