@@ -99,9 +99,11 @@ if __name__ == "__main__":
         print('Only emwave files are currently supported.')
         sys.exit()
 
-    for f in input_files:
+    num_sessions = len(input_files)
+    for idx, f in enumerate(input_files):
         if file_type == EMWAVE_FILE_TYPE:
             try:
+                print("Session {} of {}...".format(idx, num_sessions))
                 app = kubios.get_app(KUBIOS_PATH)
             except kubios.KubiosRunningError:
                 print('Kubios is already running.')
