@@ -79,12 +79,13 @@ if __name__ == "__main__":
     if file_type == EMWAVE_FILE_TYPE:
         rr_files = list()
         for emdb in input_files:
+            print("Processing {}...".format(emdb))
             db = em.EmwaveDb(emdb)
             db.open()
             emwave_user_names = db.fetch_user_first_names()
             db.close()
             for name in emwave_user_names:
-                should_process = get_valid_response("Process user {} from {}? [Y(es)/n(o)/s(kip) to next emWave file] ".format(name, emdb), ['', 'Y', 'y', 'N', 'n', 'S', 's'])
+                should_process = get_valid_response("\tProcess user {}? [Y(es)/n(o)/s(kip) to next emWave file] ".format(name), ['', 'Y', 'y', 'N', 'n', 'S', 's'])
                 if should_process == '' or should_process == 'Y' or should_process == 'y':
                     rr_files.extend(write_emwave_data_to_file(str(emdb), name))
                 elif should_process == 'N' or should_process == 'n':
