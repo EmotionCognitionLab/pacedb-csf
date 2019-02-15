@@ -1,6 +1,7 @@
 from colorama import init
 init(autoreset=True)
 from datetime import datetime
+import h5py
 import os
 from pywinauto.application import Application
 from pywinauto.findwindows import ElementNotFoundError, find_windows
@@ -71,6 +72,18 @@ def default_save_as_fname(input_fname):
 
 def close_file(kubios_window):
     kubios_window.type_keys('^W') # Ctrl-W
+
+def get_settings(matlab_results):
+    """Given the matlab version of the kubios output, extracts some of the settings
+    kubios was run with and returns them"""
+    kubios_settings = {}
+    with h5py.File(matlab_results) as file:
+        kubios_settings['ar_model'] = file['Res']['HRV']['Param']['AR_order'][()][0][0]
+        kubios_settings['artifact_correction'] = ''.join([chr(c) for c in file['Res']['HRV']['Param']['Artifact_correction'][()]])
+        kubios_settings['sample_start'] = round(file['Res']['HRV']['Param']['Segments'][0][()][0])
+        kubios_settings['sample_length'] = round(file['Res']['HRV']['Param']['Segments'][1][()][0])
+
+    return kubios_settings
 
 def analyse(kubios_window, sample_length='00:04:00', sample_start='00:00:30', delay=2):
     """Applies artifact correction and sets the start and length of the sample.

@@ -101,13 +101,8 @@ def extract_kubios_data(kubios_data_file):
     """Pulls relevant output from kubios_data_file and returns a tuple of two objects: 
     Settings and outuput data"""
     kubios_data = {}
-    kubios_settings = {}
+    kubios_settings = kubios.get_settings(kubios_data_file)
     with h5py.File(kubios_data_file) as file:
-        kubios_settings['ar_model'] = file['Res']['HRV']['Param']['AR_order'][()][0][0]
-        kubios_settings['artifact_correction'] = ''.join([chr(c) for c in file['Res']['HRV']['Param']['Artifact_correction'][()]])
-        kubios_settings['sample_start'] = round(file['Res']['HRV']['Param']['Segments'][0][()][0])
-        kubios_settings['sample_length'] = round(file['Res']['HRV']['Param']['Segments'][1][()][0])
-
         kubios_data['hr_max'] = file['Res']['HRV']['Statistics']['max_HR'][()][0][0]
         kubios_data['hr_min'] = file['Res']['HRV']['Statistics']['min_HR'][()][0][0]
         kubios_data['hr_mean'] = file['Res']['HRV']['Statistics']['mean_HR'][()][0][0]
