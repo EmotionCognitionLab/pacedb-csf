@@ -72,6 +72,11 @@ def get_valid_response(msg, valid_responses):
         
         return resp
 
+def wait_and_exit(code):
+    """Prompts the user and waits for response before closing output window"""
+    input("Press the Enter key when you're ready to close the window...")
+    sys.exit(code)
+
 if __name__ == "__main__":
     (file_type, input_dir) = get_run_info()
     output_path = make_output_dir_if_not_exists(input_dir)
@@ -126,6 +131,8 @@ if __name__ == "__main__":
             results_path = output_path / name_no_ext
             kubios.save_results(app, str(results_path), f_path.name)
             kubios.close_file(kubios_window)
+            if not kubios.expected_output_files_exist(str(results_path)):
+                wait_and_exit(1)
         else:
             print('Only emwave files are currently supported.')
             sys.exit()
