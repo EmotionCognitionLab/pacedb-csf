@@ -72,7 +72,7 @@ def default_save_as_fname(input_fname):
 def close_file(kubios_window):
     kubios_window.type_keys('^W') # Ctrl-W
 
-def analyse(kubios_window, delay=2):
+def analyse(kubios_window, sample_length='00:04:00', sample_start='00:00:30', delay=2):
     """Applies artifact correction and sets the start and length of the sample.
     The elements in the Kubios UI can be given focus by tabbing through them.
     They're organized (by kubios) in a particular order, and pressing tab will
@@ -87,10 +87,10 @@ def analyse(kubios_window, delay=2):
     kubios_window.type_keys('{VK_SPACE}') # to press the 'Apply' button
     time.sleep(delay)
     kubios_window.type_keys('{TAB 5}') # 5 tabs to select the sample length text field
-    kubios_window.type_keys('00:04:00') # set the length
+    kubios_window.type_keys(sample_length) # set the length
     time.sleep(delay)
     kubios_window.type_keys('+{TAB}')  # shift-tab to select the sample start text field
-    kubios_window.type_keys('00:00:30') # set the start
+    kubios_window.type_keys(sample_start) # set the start
     kubios_window.type_keys('{TAB}')   # to get kubios to recognize the change we made to the start field
     time.sleep(delay)
 
