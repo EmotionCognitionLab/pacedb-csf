@@ -3,6 +3,7 @@ import kubios
 from pathlib import Path, PurePath
 import sys
 import tempfile
+import traceback
 
 # Path to kubios application
 KUBIOS_PATH = 'C:/Program Files/Kubios/Kubios HRV Premium/kubioshrv.exe'
@@ -78,62 +79,67 @@ def wait_and_exit(code):
     sys.exit(code)
 
 if __name__ == "__main__":
-    (file_type, input_dir) = get_run_info()
-    output_path = make_output_dir_if_not_exists(input_dir)
-    input_files = get_input_files(input_dir, file_type)
-    if file_type == EMWAVE_FILE_TYPE:
-        rr_files = list()
-        for emdb in input_files:
-            print("Processing {}...".format(emdb))
-            db = em.EmwaveDb(emdb)
-            db.open()
-            emwave_user_names = db.fetch_user_first_names()
-            db.close()
-            for name in emwave_user_names:
-                should_process = get_valid_response("\tProcess user {}? [Y(es)/n(o)/s(kip) to next emWave file] ".format(name), ['', 'Y', 'y', 'N', 'n', 'S', 's'])
-                if should_process == '' or should_process == 'Y' or should_process == 'y':
-                    rr_files.extend(write_emwave_data_to_file(str(emdb), name))
-                elif should_process == 'N' or should_process == 'n':
-                    continue
-                elif should_process == 'S' or should_process == 's':
-                    break
-        
-        # now that we've sucked the RR data from the emwave file we just proceed with a bunch of RR data files
-        input_files = rr_files
-    else:
-        print('Only emwave files are currently supported.')
-        sys.exit()
-
-    num_sessions = len(input_files)
-    for idx, f in enumerate(input_files):
+    try:
+        (file_type, input_dir) = get_run_info()
+        output_path = make_output_dir_if_not_exists(input_dir)
+        input_files = get_input_files(input_dir, file_type)
         if file_type == EMWAVE_FILE_TYPE:
-            try:
-                print("Session {} of {}...".format(idx, num_sessions))
-                app = kubios.get_app(KUBIOS_PATH)
-            except kubios.KubiosRunningError:
-                print('Kubios is already running.')
-                print('Please make sure that any open analyses are saved and closed before continuing.')
-                response = ''
-                while response != 'c' and response != 'q':
-                    response = input("Press 'c' to continue or 'q' to quit:")
-                    if response == 'c':
-                        app = kubios.get_app(KUBIOS_PATH, True)
-                    if response == 'q':
-                        sys.exit(0)
-
-            f = kubios.expand_windows_short_name(f)
-            kubios.open_rr_file(app, f)
-            kubios_window = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
-            kubios.analyse(kubios_window)
-
-            f_path = PurePath(f)
-            name_no_ext =f_path.stem
-            results_path = output_path / name_no_ext
-            kubios.save_results(app, str(results_path), f_path.name)
-            kubios.close_file(kubios_window)
-            if not kubios.expected_output_files_exist(str(results_path)):
-                wait_and_exit(1)
+            rr_files = list()
+            for emdb in input_files:
+                print("Processing {}...".format(emdb))
+                db = em.EmwaveDb(emdb)
+                db.open()
+                emwave_user_names = db.fetch_user_first_names()
+                db.close()
+                for name in emwave_user_names:
+                    should_process = get_valid_response("\tProcess user {}? [Y(es)/n(o)/s(kip) to next emWave file] ".format(name), ['', 'Y', 'y', 'N', 'n', 'S', 's'])
+                    if should_process == '' or should_process == 'Y' or should_process == 'y':
+                        rr_files.extend(write_emwave_data_to_file(str(emdb), name))
+                    elif should_process == 'N' or should_process == 'n':
+                        continue
+                    elif should_process == 'S' or should_process == 's':
+                        break
+            
+            # now that we've sucked the RR data from the emwave file we just proceed with a bunch of RR data files
+            input_files = rr_files
         else:
             print('Only emwave files are currently supported.')
             sys.exit()
-        
+
+        num_sessions = len(input_files)
+        for idx, f in enumerate(input_files):
+            if file_type == EMWAVE_FILE_TYPE:
+                try:
+                    print("Session {} of {}...".format(idx, num_sessions))
+                    app = kubios.get_app(KUBIOS_PATH)
+                except kubios.KubiosRunningError:
+                    print('Kubios is already running.')
+                    print('Please make sure that any open analyses are saved and closed before continuing.')
+                    response = ''
+                    while response != 'c' and response != 'q':
+                        response = input("Press 'c' to continue or 'q' to quit:")
+                        if response == 'c':
+                            app = kubios.get_app(KUBIOS_PATH, True)
+                        if response == 'q':
+                            sys.exit(0)
+
+                f = kubios.expand_windows_short_name(f)
+                kubios.open_rr_file(app, f)
+                kubios_window = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
+                kubios.analyse(kubios_window)
+
+                f_path = PurePath(f)
+                name_no_ext =f_path.stem
+                results_path = output_path / name_no_ext
+                kubios.save_results(app, str(results_path), f_path.name)
+                kubios.close_file(kubios_window)
+                if not kubios.expected_output_files_exist(str(results_path)):
+                    wait_and_exit(1)
+            else:
+                print('Only emwave files are currently supported.')
+                sys.exit()
+    except Exception as ex:
+        print(ex)
+        traceback.print_exception(type(ex), ex, ex.__traceback__)
+        wait_and_exit(2)    
+            
