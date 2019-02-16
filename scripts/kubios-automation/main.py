@@ -56,6 +56,13 @@ def write_emwave_data_to_files(fname, user_name):
 
 def export_rr_sessions_to_kubios(session_files, output_path, sample_length, sample_start):
     num_sessions = len(session_files)
+    expected = {}
+    expected['ar_model'] = 16
+    expected['artifact_correction']  = 'Automatic correction'
+    sample_start_sec = min_sec_to_sec(sample_start)
+    expected['sample_start'] = sample_start_sec
+    expected['sample_length'] = min_sec_to_sec(sample_length) + sample_start_sec
+
     for idx, f in enumerate(session_files):
         try:
             print("Session {} of {}...".format(idx + 1, num_sessions))
@@ -83,6 +90,15 @@ def export_rr_sessions_to_kubios(session_files, output_path, sample_length, samp
         kubios.close_file(kubios_window)
         if not kubios.expected_output_files_exist(str(results_path)):
             wait_and_exit(1)
+
+        settings = kubios.get_settings(str(results_path) + '.mat')
+        has_error = False
+        for i in expected.items():
+            if settings[i[0]] != i[1]:
+                print("{0} should be '{1}' but is '{2}'. Please double-check Kubios and re-run.".format(i[0], i[1], settings[i[0]]))
+                has_error = True
+
+        if has_error: wait_and_exit(0)
 
 def make_output_dir_if_not_exists(input_dir):
     input_path = Path(input_dir)
@@ -121,6 +137,20 @@ def is_valid_min_sec(input):
             return False # hours are not supported
     except ValueError:
         return False
+
+def min_sec_to_sec(min_sec):
+    """Given a string in the form mm:ss, returns the total number of seconds it represents"""
+    if not is_valid_min_sec(min_sec):
+        print("{} is not a valid minutes/seconds (mm:ss) value".format(min_sec))
+        wait_and_exit(0)
+
+    parts = min_sec.split(':')
+    parts.reverse()
+    secs = int(parts[0])
+    if len(parts) > 1:
+        secs += int(parts[1]) * 60
+
+    return secs
 
 def wait_and_exit(code):
     """Prompts the user and waits for response before closing output window"""
