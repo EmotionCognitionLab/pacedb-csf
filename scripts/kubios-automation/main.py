@@ -163,6 +163,9 @@ if __name__ == "__main__":
         output_path = make_output_dir_if_not_exists(input_dir)
         input_files = get_input_files(input_dir, file_type)
         if file_type == EMWAVE_FILE_TYPE:
+            if len(input_files) == 0:
+                print("No files of type '{}' found in directory '{}'".format(FILE_TYPE_TO_EXTENSION[file_type], input_dir))
+                wait_and_exit(0)
             for emdb in input_files:
                 print("Processing {}...".format(emdb))
                 sample_start = get_valid_response("Where should the sample start? (mm:ss) ", is_valid_min_sec)
