@@ -54,6 +54,25 @@ def write_emwave_data_to_files(fname, user_name):
     
     return rr_file_names
 
+def process_emwave_files(input_files):
+    for emdb in input_files:
+        print("Processing {}...".format(emdb))
+        sample_start = get_valid_response("Where should the sample start? (mm:ss) ", is_valid_min_sec)
+        sample_length = get_valid_response("How long should the sample be? (mm:ss) ", is_valid_min_sec)
+        db = em.EmwaveDb(emdb)
+        db.open()
+        emwave_user_names = db.fetch_user_first_names()
+        db.close()
+        for name in emwave_user_names:
+            should_process = get_valid_response("\tProcess user {}? [Y(es)/n(o)/s(kip) to next emWave file] ".format(name), lambda resp: ['', 'Y', 'y', 'N', 'n', 'S', 's'].count(resp) > 0)
+            if should_process == '' or should_process == 'Y' or should_process == 'y':
+                rr_session_files = write_emwave_data_to_files(str(emdb), name)
+                export_rr_sessions_to_kubios(rr_session_files, output_path, sample_length, sample_start)
+            elif should_process == 'N' or should_process == 'n':
+                continue
+            elif should_process == 'S' or should_process == 's':
+                break
+
 def export_rr_sessions_to_kubios(session_files, output_path, sample_length, sample_start):
     num_sessions = len(session_files)
     expected = {}
@@ -162,27 +181,11 @@ if __name__ == "__main__":
         (file_type, input_dir) = get_run_info()
         output_path = make_output_dir_if_not_exists(input_dir)
         input_files = get_input_files(input_dir, file_type)
+        if len(input_files) == 0:
+            print("No files of type '{}' found in directory '{}'".format(FILE_TYPE_TO_EXTENSION[file_type], input_dir))
+            wait_and_exit(0)
         if file_type == EMWAVE_FILE_TYPE:
-            if len(input_files) == 0:
-                print("No files of type '{}' found in directory '{}'".format(FILE_TYPE_TO_EXTENSION[file_type], input_dir))
-                wait_and_exit(0)
-            for emdb in input_files:
-                print("Processing {}...".format(emdb))
-                sample_start = get_valid_response("Where should the sample start? (mm:ss) ", is_valid_min_sec)
-                sample_length = get_valid_response("How long should the sample be? (mm:ss) ", is_valid_min_sec)
-                db = em.EmwaveDb(emdb)
-                db.open()
-                emwave_user_names = db.fetch_user_first_names()
-                db.close()
-                for name in emwave_user_names:
-                    should_process = get_valid_response("\tProcess user {}? [Y(es)/n(o)/s(kip) to next emWave file] ".format(name), lambda resp: ['', 'Y', 'y', 'N', 'n', 'S', 's'].count(resp) > 0)
-                    if should_process == '' or should_process == 'Y' or should_process == 'y':
-                        rr_session_files = write_emwave_data_to_files(str(emdb), name)
-                        export_rr_sessions_to_kubios(rr_session_files, output_path, sample_length, sample_start)
-                    elif should_process == 'N' or should_process == 'n':
-                        continue
-                    elif should_process == 'S' or should_process == 's':
-                        break
+            process_emwave_files(input_files)
         else:
             print('Only emwave files are currently supported.')
             sys.exit()      
