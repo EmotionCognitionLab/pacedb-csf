@@ -8,6 +8,19 @@ from pywinauto.findwindows import ElementNotFoundError, find_windows
 from pywinauto.win32functions import SetForegroundWindow
 import time
 
+# constants for use with open_txt_file
+TAB_SPACE_SEPARATOR = 0
+COMMA_SEPARARTOR = 1
+SEMICOLON_SEPARATOR = 2
+
+ECG_DATA_TYPE = 0
+PPG_DATA_TYPE = 1
+RR_DATA_TYPE = 2
+
+UV_UNIT=0
+MV_UNIT=1
+V_UNIT=2
+
 class KubiosRunningError(Exception):
     """Marker error raised when we try to start Kubios and find it's already running"""
     pass
@@ -32,6 +45,81 @@ def open_rr_file(kubios_app, rr_file_path):
     while is_processing(kubios_app):
         pass
         # do nothing; just wait for it to finish opening the file
+
+def open_txt_file(kubios_app,
+txt_file_path,
+num_header_lines=0,
+col_separator=TAB_SPACE_SEPARATOR,
+data_type=PPG_DATA_TYPE,
+time_index_col=0,
+data_col=5,
+data_unit=V_UNIT,
+ppg_sample_rate=10000):
+    if time_index_col < 0 or time_index_col > 8:
+        raise Exception('Invalid value for time_index_col: It must be between 0 and 8 (inclusive).')
+
+    if data_col < 1 or data_col > 8:
+        raise Exception('Invalid value for data_col: It must be betwen 1 and 8 (inclusive).')
+
+    kubios_window = kubios_app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
+    kubios_window.wait('visible', 120)
+    kubios_window.type_keys('^O') # Ctrl-O
+    open_dlg = kubios_app.window(title='Get Data File')
+    combo_boxes = open_dlg.children(title='RR Interval ASCII-files (*.txt, *.dat, *.csv)')
+    if len(combo_boxes) != 1:
+        raise Exception('Could not find "File type" pull-down menu while opening.')
+    
+    file_type_combo_box = combo_boxes[0]
+    file_type_combo_box.select(2)
+    
+    open_dlg.type_keys(txt_file_path + '{ENTER}', with_spaces=True)
+    # ugh - at this point kubios just sits for ~90 seconds without even a processing dialog
+    max_sleep = 90
+    elapsed = 0
+    now = time.time()
+    dlgs = []
+    while len(dlgs) == 0 and elapsed < max_sleep:
+        time.sleep(2)
+        dlgs = kubios_app.windows(title='ASCII File Import')
+        elapsed = time.time() - now
+    
+    if len(dlgs) == 0 and elapsed >= max_sleep:
+        raise Exception('Timed out waiting for ASCII File Import dialog to open.')
+
+    # enter info into ASCII File Import dialog
+    ascii_dlg = dlgs[0]
+    ascii_dlg.type_keys('{TAB}')
+    ascii_dlg.type_keys(num_header_lines)
+    ascii_dlg.type_keys('{TAB}')
+
+    # hack to make sure the first entry in the combo box is selected - it will default 
+    # to the last entry used
+    for i in range(2): ascii_dlg.type_keys('{VK_UP}')
+    for i in range(col_separator): ascii_dlg.type_keys('{VK_DOWN}')
+    ascii_dlg.type_keys('{TAB}')
+
+    for i in range(2): ascii_dlg.type_keys('{VK_UP}')
+    if data_type == PPG_DATA_TYPE:
+        ascii_dlg.type_keys('{VK_DOWN}')
+    elif data_type == RR_DATA_TYPE:
+        ascii_dlg.type_keys('{VK_DOWN}{VK_DOWN}')
+    # ECG data type is selected by default - do nothing if we're using that
+    ascii_dlg.type_keys('{TAB}')
+
+    for i in range(7): ascii_dlg.type_keys('{VK_UP}')
+    for i in range(data_col - 1): ascii_dlg.type_keys('{VK_DOWN}')
+    ascii_dlg.type_keys('{TAB}')
+    
+    for i in range(2): ascii_dlg.type_keys('{VK_UP}')
+    for i in range(data_unit): ascii_dlg.type_keys('{VK_DOWN}')
+    ascii_dlg.type_keys('{TAB}')
+
+    for i in range(8): ascii_dlg.type_keys('{VK_UP}')
+    for i in range(time_index_col): ascii_dlg.type_keys('{VK_DOWN}')
+    ascii_dlg.type_keys('{TAB}')
+
+    ascii_dlg.type_keys(str(ppg_sample_rate))
+    ascii_dlg.type_keys('{TAB}{TAB}{VK_SPACE}')
 
 def save_results(kubios_app, results_file_path, input_fname):
     kubios_window = kubios_app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
