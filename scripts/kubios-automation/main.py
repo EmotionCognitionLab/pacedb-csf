@@ -3,6 +3,7 @@ import kubios
 from pathlib import Path, PurePath
 import sys
 import tempfile
+import time
 import traceback
 
 # Path to kubios application
@@ -23,10 +24,8 @@ FILE_TYPE_TO_EXTENSION = {
 }
 
 def get_run_info():
-    file_type = input("File type (emWave [{}], Pulse ACQ [a{}], Pulse Text [{}]): ".format(EMWAVE_FILE_TYPE, ACQ_FILE_TYPE, PULSE_TEXT_FILE_TYPE))
+    file_type = get_valid_response("File type (emWave [{}], Pulse ACQ [a{}], Pulse Text [{}]): ".format(EMWAVE_FILE_TYPE, ACQ_FILE_TYPE, PULSE_TEXT_FILE_TYPE), lambda res: [EMWAVE_FILE_TYPE, ACQ_FILE_TYPE, PULSE_TEXT_FILE_TYPE].count(res) == 1)
     input_dir = input("Directory with input files: ")
-    while file_type != EMWAVE_FILE_TYPE:
-        file_type = input("Currently only emWave files are supported. File type: ")
 
     return (file_type, input_dir)
 
@@ -73,51 +72,169 @@ def process_emwave_files(input_files):
             elif should_process == 'S' or should_process == 's':
                 break
 
+def safe_get_kubios():
+    """Returns a reference to the kubios app. If kubios is already running, will
+    prompt the user to confirm that everything in it is saved before continuing.
+    Gives the user the chance to quit, which, if taken, will immediately terminate
+    the running python code."""
+    try:
+        app = kubios.get_app(KUBIOS_PATH)
+        return app
+    except kubios.KubiosRunningError:
+        print('Kubios is already running.')
+        print('Please make sure that any open analyses are saved and closed before continuing.')
+        response = get_valid_response("Press 'c' to continue or 'q' to quit: ", lambda ans: ['c', 'C', 'y', 'Y'].count(ans) == 1)
+        if response == 'c':
+            return kubios.get_app(KUBIOS_PATH, True)
+        if response == 'q':
+            sys.exit(0)
+
+def save_and_close_kubios_results(app, kubios_window, input_file):
+    """Saves the currently-open analysis and closes it in kubios. Returns the dir+prefix
+    kubios results are saved with. (Typically there are three kubios results files, with
+    .txt, .pdf and .mat extensions.)"""
+    f_path = PurePath(input_file)
+    name_no_ext = f_path.stem
+    results_path = output_path / name_no_ext
+    kubios.save_results(app, str(results_path), f_path.name)
+    kubios.close_file(kubios_window)
+
+    return str(results_path)
+
+def confirm_expected_settings(results_path, sample_length, sample_start, ppg_sample_rate=None, ar_model=16, artifact_correction='Automatic correction'):
+    """Checks the matlab version of the kubios output at results_path to see
+    if the values it has for certain variables match what we expect. Returns an
+    empty list if everything matches and a list of (value_name, expected_value, actual_value)
+    tuples if not. Note that sample_length and sample_start are in seconds."""
+
+    expected = {}
+    expected['ar_model'] = ar_model
+    expected['artifact_correction']  = artifact_correction
+    expected['sample_start'] = sample_start
+    expected['sample_length'] = sample_length
+    if ppg_sample_rate: expected['ppg_sample_rate'] = ppg_sample_rate
+
+    print("Matlab file is {}".format(results_path + '.mat'))
+    settings = kubios.get_settings(results_path + '.mat')
+    return [(k, expected[k], settings[k]) for k in expected.keys() if expected[k] != settings[k]]
+    
+
 def export_rr_sessions_to_kubios(session_files, output_path, sample_length, sample_start):
     num_sessions = len(session_files)
-    expected = {}
-    expected['ar_model'] = 16
-    expected['artifact_correction']  = 'Automatic correction'
-    sample_start_sec = min_sec_to_sec(sample_start)
-    expected['sample_start'] = sample_start_sec
-    expected['sample_length'] = min_sec_to_sec(sample_length) + sample_start_sec
 
     for idx, f in enumerate(session_files):
-        try:
-            print("Session {} of {}...".format(idx + 1, num_sessions))
-            app = kubios.get_app(KUBIOS_PATH)
-        except kubios.KubiosRunningError:
-            print('Kubios is already running.')
-            print('Please make sure that any open analyses are saved and closed before continuing.')
-            response = ''
-            while response != 'c' and response != 'q':
-                response = input("Press 'c' to continue or 'q' to quit:")
-                if response == 'c':
-                    app = kubios.get_app(KUBIOS_PATH, True)
-                if response == 'q':
-                    sys.exit(0)
+        print("Session {} of {}...".format(idx + 1, num_sessions))           
+        app = safe_get_kubios()
 
         f = kubios.expand_windows_short_name(f)
         kubios.open_rr_file(app, f)
         kubios_window = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
         kubios.analyse(kubios_window, sample_length, sample_start)
 
-        f_path = PurePath(f)
-        name_no_ext = f_path.stem
-        results_path = output_path / name_no_ext
-        kubios.save_results(app, str(results_path), f_path.name)
-        kubios.close_file(kubios_window)
-        if not kubios.expected_output_files_exist(str(results_path)):
+        results_path = save_and_close_kubios_results(app, kubios_window, f)
+        if not kubios.expected_output_files_exist(results_path):
             wait_and_exit(1)
 
-        settings = kubios.get_settings(str(results_path) + '.mat')
-        has_error = False
-        for i in expected.items():
-            if settings[i[0]] != i[1]:
-                print("{0} should be '{1}' but is '{2}'. Please double-check Kubios and re-run.".format(i[0], i[1], settings[i[0]]))
-                has_error = True
+        sample_start_sec = min_sec_to_sec(sample_start)
+        sample_length_sec = min_sec_to_sec(sample_length) + sample_start_sec
+        unexpected_settings = confirm_expected_settings(results_path, sample_length_sec, sample_start_sec)
+        
+        for (name, expected, actual) in unexpected_settings:
+            print("{0} should be '{1}' but is '{2}'. Please double-check Kubios and re-run.".format(name, expected, actual))
 
-        if has_error: wait_and_exit(0)
+        if len(unexpected_settings) > 0: wait_and_exit(2)
+
+def is_int(maybe_int):
+    try:
+        int(maybe_int)
+        return True
+    except ValueError:
+        return False
+    
+def get_pulse_txt_processing_params():
+    """Asks the user for a number of parameters that control the processing of a
+    pulse txt file"""
+    resp = {}
+    num_header_lines = get_valid_response("How many header lines does each file have? ", lambda ans: is_int(ans) and int(ans) >= 0)
+    num_header_lines = int(num_header_lines)
+
+    col_sep = get_valid_response("What character separates the columns? [T(ab), C(omma), S(emicolon)] ", lambda ans: ['T', 't', 'C', 'c', 'S', 's'].count(ans) == 1)
+    if col_sep == 'T' or col_sep == 't':
+        col_sep = kubios.TAB_SPACE_SEPARATOR
+    elif col_sep == 'C' or col_sep == 'c':
+        col_sep = kubios.COMMA_SEPARARTOR
+    else:
+        col_sep = kubios.SEMICOLON_SEPARATOR
+    
+    time_col = get_valid_response("Which column is the time index in? (Enter 0 if there is no time index column.) ", lambda ans: is_int(ans) and 0 <= int(ans) <= 8)
+    time_col = int(time_col)
+    data_col = get_valid_response("Which column are the pulse data in? ", lambda ans: is_int(ans) and 1 <= int(ans) <= 8)
+    data_col = int(data_col)
+    data_unit = get_valid_response("What units are the data in? [(u)V, (m)V, V] ", lambda ans: ['u', 'U', 'm', 'M', 'V', 'v'].count(ans) == 1)
+    if data_unit == 'u' or data_unit == 'U':
+        data_unit = kubios.UV_UNIT
+    elif data_unit == 'm' or data_unit == 'M':
+        data_unit = kubios.MV_UNIT
+    else:
+        data_unit = kubios.V_UNIT
+
+    sample_rate = get_valid_response("What is the sample rate? ", lambda ans: is_int(ans) and int(ans) > 0)
+    sample_rate = int(sample_rate)
+
+    sample_start = get_valid_response("Where should the sample start? (mm:ss) ", is_valid_min_sec)
+    sample_length = get_valid_response("How long should the sample be? (mm:ss) ", is_valid_min_sec)
+        
+
+    resp['num_header_lines'] = num_header_lines
+    resp['column_separator'] = col_sep
+    resp['time_column'] = time_col
+    resp['data_column'] = data_col
+    resp['data_unit'] = data_unit
+    resp['sample_rate'] = sample_rate
+    resp['sample_start'] = sample_start
+    resp['sample_length'] = sample_length
+    return resp
+
+def process_pulse_txt_files(input_files):
+    input_params = get_pulse_txt_processing_params()
+    num_files = len(input_files)
+    for idx, f in enumerate(input_files):
+        f = str(f)
+        print("File {} of {}...".format(idx + 1, num_files))           
+        app = safe_get_kubios()
+
+        f = kubios.expand_windows_short_name(f)
+        kubios.open_txt_file(
+        app,
+        f,
+        input_params['num_header_lines'],
+        input_params['column_separator'],
+        kubios.PPG_DATA_TYPE,
+        input_params['time_column'],
+        input_params['data_column'],
+        input_params['data_unit'],
+        input_params['sample_rate'])
+        kubios_window = app.window(title_re='Kubios.*$', class_name='SunAwtFrame'
+        )
+        print('Sleeping before doing analysis')
+        time.sleep(120)
+        print('Starting analysis')
+        kubios.analyse(kubios_window, input_params['sample_length'], input_params['sample_start'])
+        print('Finished with analysis')
+
+        results_path = save_and_close_kubios_results(app, kubios_window, f)
+        if not kubios.expected_output_files_exist(results_path):
+            wait_and_exit(1)
+
+        sample_start_sec = min_sec_to_sec(input_params['sample_start'])
+        sample_length_sec = min_sec_to_sec(input_params['sample_length']) + sample_start_sec
+        unexpected_settings = confirm_expected_settings(results_path, sample_length_sec, sample_start_sec, input_params['sample_rate'])
+        
+        for (name, expected, actual) in unexpected_settings:
+            print("{0} should be '{1}' but is '{2}'. Please double-check Kubios and re-run.".format(name, expected, actual))
+
+        if len(unexpected_settings) > 0: wait_and_exit(2)
+
 
 def make_output_dir_if_not_exists(input_dir):
     input_path = Path(input_dir)
@@ -186,8 +303,10 @@ if __name__ == "__main__":
             wait_and_exit(0)
         if file_type == EMWAVE_FILE_TYPE:
             process_emwave_files(input_files)
+        elif file_type == PULSE_TEXT_FILE_TYPE:
+            process_pulse_txt_files(input_files)
         else:
-            print('Only emwave files are currently supported.')
+            print('Only emwave and pulse txt files are currently supported.')
             sys.exit()      
     except Exception as ex:
         print(ex)
