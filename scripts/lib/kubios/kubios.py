@@ -210,8 +210,12 @@ def get_settings(matlab_results):
         kubios_settings['artifact_correction'] = ''.join([chr(c) for c in file['Res']['HRV']['Param']['Artifact_correction'][()]])
         kubios_settings['sample_start'] = round(file['Res']['HRV']['Param']['Segments'][0][()][0])
         kubios_settings['sample_length'] = round(file['Res']['HRV']['Param']['Segments'][1][()][0])
-        if file['Res']['CNT']['rate']['EKG']:
+        try:
             kubios_settings['ppg_sample_rate'] = file['Res']['CNT']['rate']['EKG'][()][0][0]
+        except KeyError:
+            # not all files will have EKG sample rate - do nothing
+            pass
+            
 
     return kubios_settings
 
