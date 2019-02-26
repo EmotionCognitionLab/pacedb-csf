@@ -236,9 +236,14 @@ def analyse(kubios_window, sample_length='00:04:00', sample_start='00:00:30', de
     kubios_window.type_keys('{TAB 5}') # 5 tabs to select the sample length text field
     kubios_window.type_keys(sample_length) # set the length
     time.sleep(delay)
-    kubios_window.type_keys('+{TAB}')  # shift-tab to select the sample start text field
-    kubios_window.type_keys(sample_start) # set the start
-    kubios_window.type_keys('{TAB}')   # to get kubios to recognize the change we made to the start field
+    # if we type in '00:00:00' or '00:00' for the sample start kubios will change it to '00:00:01'
+    # so if the user wants to start at 0, skip setting the sample start field
+    if sample_start != '00:00:00' and sample_start != '00:00':
+        kubios_window.type_keys('+{TAB}')  # shift-tab to select the sample start text field
+        kubios_window.type_keys(sample_start) # set the start
+        kubios_window.type_keys('{TAB}')   # to get kubios to recognize the change we made to the start field
+    else:
+        kubios_window.type_keys('{TAB}') # just get kubios to recognize the change to sample length
     time.sleep(delay)
 
 def is_processing(kubios_app):
