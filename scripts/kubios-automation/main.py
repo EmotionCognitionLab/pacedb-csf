@@ -114,7 +114,6 @@ def confirm_expected_settings(results_path, sample_length, sample_start, ppg_sam
     expected['sample_length'] = sample_length
     if ppg_sample_rate: expected['ppg_sample_rate'] = ppg_sample_rate
 
-    print("Matlab file is {}".format(results_path + '.mat'))
     settings = kubios.get_settings(results_path + '.mat')
     return [(k, expected[k], settings[k]) for k in expected.keys() if expected[k] != settings[k]]
     
@@ -217,7 +216,7 @@ def process_pulse_txt_files(input_files):
         kubios_window = app.window(title_re='Kubios.*$', class_name='SunAwtFrame'
         )
         print('Sleeping before doing analysis')
-        time.sleep(120)
+        time.sleep(15)
         print('Starting analysis')
         kubios.analyse(kubios_window, input_params['sample_length'], input_params['sample_start'])
         print('Finished with analysis')
