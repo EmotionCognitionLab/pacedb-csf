@@ -121,6 +121,46 @@ ppg_sample_rate=10000):
     ascii_dlg.type_keys(str(ppg_sample_rate))
     ascii_dlg.type_keys('{TAB}{TAB}{VK_SPACE}')
 
+def open_acq_file(kubios_app, acq_file_path, pulse_chan_label):
+    kubios_window = kubios_app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
+    kubios_window.wait('visible', 120)
+    kubios_window.type_keys('^O') # Ctrl-O
+    open_dlg = kubios_app.window(title='Get Data File')
+    combo_boxes = open_dlg.children(title='RR Interval ASCII-files (*.txt, *.dat, *.csv)')
+    if len(combo_boxes) != 1:
+        raise Exception('Could not find "File type" pull-down menu while opening.')
+    
+    file_type_combo_box = combo_boxes[0]
+    file_type_combo_box.select(3)
+    time.sleep(1)
+    open_dlg.type_keys(acq_file_path + '{ENTER}', with_spaces=True)
+
+    # We should now get a warning about invalid channel labels
+    bad_chan_dlg = kubios_app.window(title='Invalid channel labels')
+    if not bad_chan_dlg:
+        time.sleep(2)
+        bad_chan_dlg = kubios_app.window(title='Invalid channel labels')
+
+    if bad_chan_dlg: # if we didn't find it then there may not have been bad channel labels
+        bad_chan_dlg.type_keys('{TAB}{VK_SPACE}')
+
+    while is_processing(kubios_app):
+        pass
+    # next up: dialog asking us to identify the ECG channel
+    ecg_chan_dlg = kubios_app.window(title='')
+    if not ecg_chan_dlg:
+        warn("Expected to be asked to identify the ECG channel label, but wasn't.")
+    else:
+        ecg_chan_dlg.type_keys('{TAB}')
+        ecg_chan_dlg.type_keys(pulse_chan_label, with_spaces=True)
+        ecg_chan_dlg.type_keys('{TAB}{VK_SPACE}')
+
+    while is_processing(kubios_app):
+        pass
+
+    return
+
+
 def save_results(kubios_app, results_file_path, input_fname):
     kubios_window = kubios_app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
     kubios_window.type_keys('^S') # Ctrl-S
@@ -205,9 +245,9 @@ def is_processing(kubios_app):
     test_start = datetime.now()
     test_end = datetime.now()
     while (test_end - test_start).seconds < 4:
-        proc_dlg_count = len(kubios_app.windows(title='Processing...'))
+        proc_dlg_count = len(kubios_app.windows(title_re='Processing...*'))
+        time.sleep(0.5)
         if proc_dlg_count == 0:
-                time.sleep(1)
                 test_end = datetime.now()
         else:
             test_start = datetime.now()
