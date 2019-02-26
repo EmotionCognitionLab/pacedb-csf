@@ -24,7 +24,7 @@ FILE_TYPE_TO_EXTENSION = {
 }
 
 def get_run_info():
-    file_type = get_valid_response("File type (emWave [{}], Pulse ACQ [a{}], Pulse Text [{}]): ".format(EMWAVE_FILE_TYPE, ACQ_FILE_TYPE, PULSE_TEXT_FILE_TYPE), lambda res: [EMWAVE_FILE_TYPE, ACQ_FILE_TYPE, PULSE_TEXT_FILE_TYPE].count(res) == 1)
+    file_type = get_valid_response("File type (emWave [{}], Pulse ACQ [{}], Pulse Text [{}]): ".format(EMWAVE_FILE_TYPE, ACQ_FILE_TYPE, PULSE_TEXT_FILE_TYPE), lambda res: [EMWAVE_FILE_TYPE, ACQ_FILE_TYPE, PULSE_TEXT_FILE_TYPE].count(res) == 1)
     input_dir = input("Directory with input files: ")
 
     return (file_type, input_dir)
@@ -234,6 +234,44 @@ def process_pulse_txt_files(input_files):
 
         if len(unexpected_settings) > 0: wait_and_exit(2)
 
+def get_pulse_acq_processing_params():
+    """Asks the user for a number of parameters that control the processing of an acq
+    file with pulse data"""
+    resp = {}
+    ecg_chan_label = input("What is the ECG channel label? (Please enter it exactly, including capitalization and any punctuation.) ")
+    sample_start = get_valid_response("Where should the sample start? (mm:ss) ", is_valid_min_sec)
+    sample_length = get_valid_response("How long should the sample be? (mm:ss) ", is_valid_min_sec)
+
+    resp['ecg_chan_label'] = ecg_chan_label
+    resp['sample_start'] = sample_start
+    resp['sample_length'] = sample_length
+    return resp
+
+def process_pulse_acq_files(input_files):
+    input_params = get_pulse_acq_processing_params()
+    num_files = len(input_files)
+    for idx, f in enumerate(input_files):
+        f = str(f)
+        print("File {} of {}...".format(idx + 1, num_files))           
+        app = safe_get_kubios()
+
+        f = kubios.expand_windows_short_name(f)
+        kubios.open_acq_file(app, f, input_params['ecg_chan_label'])
+        kubios_window = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
+        kubios.analyse(kubios_window, input_params['sample_length'], input_params['sample_start'])
+        results_path = save_and_close_kubios_results(app, kubios_window, f)
+        if not kubios.expected_output_files_exist(results_path):
+            wait_and_exit(1)
+
+        sample_start_sec = min_sec_to_sec(input_params['sample_start'])
+        sample_length_sec = min_sec_to_sec(input_params['sample_length']) + sample_start_sec
+        unexpected_settings = confirm_expected_settings(results_path, sample_length_sec, sample_start_sec)
+        
+        for (name, expected, actual) in unexpected_settings:
+            print("{0} should be '{1}' but is '{2}'. Please double-check Kubios and re-run.".format(name, expected, actual))
+
+        if len(unexpected_settings) > 0: wait_and_exit(2)
+
 
 def make_output_dir_if_not_exists(input_dir):
     input_path = Path(input_dir)
@@ -304,8 +342,10 @@ if __name__ == "__main__":
             process_emwave_files(input_files)
         elif file_type == PULSE_TEXT_FILE_TYPE:
             process_pulse_txt_files(input_files)
+        elif file_type == ACQ_FILE_TYPE:
+            process_pulse_acq_files(input_files)
         else:
-            print('Only emwave and pulse txt files are currently supported.')
+            print("'{}' is not a supported file type.".format(file_type))
             sys.exit()      
     except Exception as ex:
         print(ex)
