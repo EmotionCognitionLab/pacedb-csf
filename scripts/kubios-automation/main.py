@@ -72,13 +72,14 @@ def process_emwave_files(input_files):
             elif should_process == 'S' or should_process == 's':
                 break
 
-def safe_get_kubios():
-    """Returns a reference to the kubios app. If kubios is already running, will
-    prompt the user to confirm that everything in it is saved before continuing.
-    Gives the user the chance to quit, which, if taken, will immediately terminate
-    the running python code."""
+def safe_get_kubios(already_running_ok=False):
+    """Returns a reference to the kubios app. If kubios is already running,
+    and already_running_ok is false, will prompt the user to confirm that
+    everything in it is saved before continuing.
+    This prompt also gives the user the chance to quit, which, if taken,
+    will immediately terminate the running python code."""
     try:
-        app = kubios.get_app(KUBIOS_PATH)
+        app = kubios.get_app(KUBIOS_PATH, already_running_ok)
         return app
     except kubios.KubiosRunningError:
         print('Kubios is already running.')
@@ -122,8 +123,9 @@ def export_rr_sessions_to_kubios(session_files, output_path, sample_length, samp
     num_sessions = len(session_files)
 
     for idx, f in enumerate(session_files):
-        print("Session {} of {}...".format(idx + 1, num_sessions))           
-        app = safe_get_kubios()
+        print("Session {} of {}...".format(idx + 1, num_sessions)) 
+        already_running_ok = idx > 0 # get user to confirm kubios is ready on first file; assume it's ok on subsequent files
+        app = safe_get_kubios(already_running_ok)
 
         f = kubios.expand_windows_short_name(f)
         kubios.open_rr_file(app, f)
@@ -199,8 +201,9 @@ def process_pulse_txt_files(input_files):
     num_files = len(input_files)
     for idx, f in enumerate(input_files):
         f = str(f)
-        print("File {} of {}...".format(idx + 1, num_files))           
-        app = safe_get_kubios()
+        print("File {} of {}...".format(idx + 1, num_files))
+        already_running_ok = idx > 0        
+        app = safe_get_kubios(already_running_ok)
 
         f = kubios.expand_windows_short_name(f)
         kubios.open_txt_file(
@@ -252,8 +255,9 @@ def process_pulse_acq_files(input_files):
     num_files = len(input_files)
     for idx, f in enumerate(input_files):
         f = str(f)
-        print("File {} of {}...".format(idx + 1, num_files))           
-        app = safe_get_kubios()
+        print("File {} of {}...".format(idx + 1, num_files))
+        already_running_ok = idx > 0
+        app = safe_get_kubios(already_running_ok)
 
         f = kubios.expand_windows_short_name(f)
         kubios.open_acq_file(app, f, input_params['ecg_chan_label'])
