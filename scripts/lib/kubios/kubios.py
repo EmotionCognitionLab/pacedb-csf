@@ -165,7 +165,7 @@ def save_results(kubios_app, results_file_path, input_fname):
     kubios_window = kubios_app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
     kubios_window.type_keys('^S') # Ctrl-S
     save_dlg = kubios_app.window(title='Save as')
-    save_dlg.wait('ready')
+    save_dlg.wait('ready', 20)
 
     # Set the 'Save as' type
     combo_boxes = save_dlg.children(title='Save all (*.txt,*.mat,*.pdf)')
