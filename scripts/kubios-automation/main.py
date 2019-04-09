@@ -37,7 +37,7 @@ def get_input_files(input_dir, file_type):
 def write_emwave_data_to_files(fname, user_name):
     """Given a user_name and an fname pointing to an emWave database,
     writes a file with the RR data for each session found for that user.
-    Returns the list of files"""
+    Returns a list of (file name, session duration (ms)) tuples"""
     emwave_db = em.EmwaveDb(fname)
     emwave_db.open()
     sessions = emwave_db.fetch_session_rr_data(user_name)
@@ -46,18 +46,20 @@ def write_emwave_data_to_files(fname, user_name):
     rr_file_names = list()
     for idx, rr_data in enumerate(sessions):
         fname = tempfile.NamedTemporaryFile(suffix='.txt', prefix='{}-session{:02d}.'.format(user_name, idx), delete=False)
-        rr_file_names.append(fname.name)
+        duration = 0
         with open(fname.name, 'w') as f:
             for d in rr_data:
+                duration += int(d)
                 f.write("%d\n" % d)
-    
+        rr_file_names.append((fname.name, duration))
+
     return rr_file_names
 
 def process_emwave_files(input_files):
     for emdb in input_files:
         print("Processing {}...".format(emdb))
-        sample_start = get_valid_response("Where should the sample start? (mm:ss) ", is_valid_min_sec)
-        sample_length = get_valid_response("How long should the sample be? (mm:ss) ", is_valid_min_sec)
+        sample_start = get_valid_response("Where should the sample start? (mm:ss) [00:00] ", is_valid_min_sec)
+        sample_length = get_valid_response("How long should the sample be? (mm:ss) [use full session]", is_valid_min_sec)
         db = em.EmwaveDb(emdb)
         db.open()
         emwave_user_names = db.fetch_user_first_names()
@@ -65,8 +67,8 @@ def process_emwave_files(input_files):
         for name in emwave_user_names:
             should_process = get_valid_response("\tProcess user {}? [Y(es)/n(o)/s(kip) to next emWave file] ".format(name), lambda resp: ['', 'Y', 'y', 'N', 'n', 'S', 's'].count(resp) > 0)
             if should_process == '' or should_process == 'Y' or should_process == 'y':
-                rr_session_files = write_emwave_data_to_files(str(emdb), name)
-                export_rr_sessions_to_kubios(rr_session_files, output_path, sample_length, sample_start)
+                rr_sessions = write_emwave_data_to_files(str(emdb), name)
+                export_rr_sessions_to_kubios(rr_sessions, output_path, sample_length, sample_start)
             elif should_process == 'N' or should_process == 'n':
                 continue
             elif should_process == 'S' or should_process == 's':
@@ -111,18 +113,17 @@ def confirm_expected_settings(results_path, sample_length, sample_start, ppg_sam
     expected = {}
     expected['ar_model'] = ar_model
     expected['artifact_correction']  = artifact_correction
-    expected['sample_start'] = sample_start
-    expected['sample_length'] = sample_length
+    if (sample_start != None): expected['sample_start'] = sample_start
+    if (sample_length != None): expected['sample_length'] = sample_length
     if ppg_sample_rate: expected['ppg_sample_rate'] = ppg_sample_rate
 
     settings = kubios.get_settings(results_path + '.mat')
     return [(k, expected[k], settings[k]) for k in expected.keys() if expected[k] != settings[k]]
-    
 
-def export_rr_sessions_to_kubios(session_files, output_path, sample_length, sample_start):
-    num_sessions = len(session_files)
+def export_rr_sessions_to_kubios(sessions, output_path, sample_length, sample_start):
+    num_sessions = len(sessions)
 
-    for idx, f in enumerate(session_files):
+    for idx, (f, session_length) in enumerate(sessions):
         print("Session {} of {}...".format(idx + 1, num_sessions)) 
         already_running_ok = idx > 0 # get user to confirm kubios is ready on first file; assume it's ok on subsequent files
         app = safe_get_kubios(already_running_ok)
@@ -130,15 +131,22 @@ def export_rr_sessions_to_kubios(session_files, output_path, sample_length, samp
         f = kubios.expand_windows_short_name(f)
         kubios.open_rr_file(app, f)
         kubios_window = app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
-        kubios.analyse(kubios_window, sample_length, sample_start)
+        if sample_length == '':
+            sample_duration = millis_to_min_sec(session_length)
+        else:
+            sample_duration = sample_length
+        kubios.analyse(kubios_window, sample_duration, sample_start)
 
         results_path = save_and_close_kubios_results(app, kubios_window, f)
         if not kubios.expected_output_files_exist(results_path):
             wait_and_exit(1)
 
         sample_start_sec = min_sec_to_sec(sample_start)
-        sample_length_sec = min_sec_to_sec(sample_length) + sample_start_sec
-        unexpected_settings = confirm_expected_settings(results_path, sample_length_sec, sample_start_sec)
+        sample_duration_sec = min_sec_to_sec(sample_duration)
+        if sample_start_sec != None and sample_duration_sec != None:
+            # Kubios writes sum of length and start to the .mat file as length
+            sample_duration_sec = sample_duration_sec + sample_start_sec
+        unexpected_settings = confirm_expected_settings(results_path, sample_duration_sec, sample_start_sec)
         
         for (name, expected, actual) in unexpected_settings:
             print("{0} should be '{1}' but is '{2}'. Please double-check Kubios and re-run.".format(name, expected, actual))
@@ -300,7 +308,9 @@ def get_valid_response(msg, valid_response_fn):
         return resp
 
 def is_valid_min_sec(input):
-    """Returns true if input is in the form mm:ss or :ss, where mm and ss are between 0 and 59"""
+    """Returns true if input is empty or in the form mm:ss or :ss, 
+    where mm and ss are between 0 and 59"""
+    if input == '': return True
     parts = input.split(':')
     try:
         if len(parts) == 1:
@@ -316,11 +326,13 @@ def is_valid_min_sec(input):
         return False
 
 def min_sec_to_sec(min_sec):
-    """Given a string in the form mm:ss, returns the total number of seconds it represents"""
+    """Given an empty string, returns None.
+       Given a string in the form mm:ss, returns the total number of seconds it represents."""
     if not is_valid_min_sec(min_sec):
         print("{} is not a valid minutes/seconds (mm:ss) value".format(min_sec))
         wait_and_exit(0)
 
+    if min_sec == '': return None
     parts = min_sec.split(':')
     parts.reverse()
     secs = int(parts[0])
@@ -328,6 +340,21 @@ def min_sec_to_sec(min_sec):
         secs += int(parts[1]) * 60
 
     return secs
+
+def millis_to_min_sec(millis):
+    """Given a number of milliseconds, returns an mm:ss string"""
+    if millis > 3600000:
+        print("Session durations longer than an hour are not supported.\n")
+        raise ValueError
+       
+    if millis > 60000:
+        minutes = (millis % 3600000) // 60000
+        seconds = (millis - (minutes * 60000)) // 1000
+    else:
+        minutes = 0
+        seconds = millis // 1000
+
+    return "{:02d}:{:02d}".format(minutes, seconds)
 
 def wait_and_exit(code):
     """Prompts the user and waits for response before closing output window"""
