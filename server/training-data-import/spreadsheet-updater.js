@@ -207,6 +207,7 @@ function importForUser(user, startDate, endDate, weekInt, auth) {
             d.subjectId,
             d.groupId,
             weekInt + 2, //add 1 because researchers work with 1-based weeks and 1 because the study has a week before the online portion begins
+            ,  // blank row for the reward week column in the spreadsheet
             d.startTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
             d.endTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
             d.seconds,
@@ -604,7 +605,7 @@ function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data
     };
 }
 
-const SESSION_ID_COL = 'I'; // column for session id's in raw data sheet
+const SESSION_ID_COL = 'J'; // column for session id's in raw data sheet
 function getExistingSessionIds(auth) {
     return new Promise((resolve, reject) => {
         const sheets = google.sheets({version: 'v4', auth});
