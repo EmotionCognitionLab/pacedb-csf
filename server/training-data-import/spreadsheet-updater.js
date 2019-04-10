@@ -165,7 +165,14 @@ function importForGroup(groupName, groupStart, groupEnd, week, auth) {
             warn(`No users found for group ${groupName}. Skipping.`)
             return Promise.resolve();
         }
-        usersRes.Items.sort((u1, u2) => u2.subjectId < u1.subjectId).forEach(u => {
+        usersRes.Items.sort((u1, u2) => {
+            if (u2.subjectId == u1.subjectId) {
+                return 0;
+            } else if (u2.subjectId < u1.subjectId) {
+                return 1;
+            }
+            return -1;
+        }).forEach(u => {
             // we process users sequentially to avoid read/write races with Google Sheets
             if (weekInt > 0 && isNewWeek) {
                 promChain = promChain.then(() => importForUser(u, priorWeekStart, priorWeekEnd, priorWeekInt, auth));
