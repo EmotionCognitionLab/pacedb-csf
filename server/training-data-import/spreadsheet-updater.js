@@ -18,6 +18,8 @@ const db = new DynUtils.HrvDb({
     usersTable: process.env.USERS_TABLE,
     userDataTable: process.env.USER_DATA_TABLE
 });
+const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
+const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
 
 // used for authenticating with Google sheets
 const privateKey = require('./private-key.json');
@@ -34,7 +36,7 @@ const logFile = 'log.csv';
 const sqliteDb = 'emWave.emdb';
 
 const MAX_DATA_ENTRIES = 30; // maximum duration/calmness data points allowed
-const MAX_WEEKS = 6; // the maximum week index we handle
+const MAX_WEEKS = 8; // the maximum week index we handle
 
 const localTz = 'America/Los_Angeles';
 
@@ -44,7 +46,7 @@ exports.handler = (event, context, callback) => {
     const weekInt = Number.parseInt(event.week);
 
     if (event.week !== undefined && event.week !== null && event.week !== '' && (Number.isNaN(weekInt) || (Number.isInteger(weekInt) && (weekInt < 0 || weekInt > MAX_WEEKS)))) {
-        const errMsg = `The 'week' parameter should be between 0 and 6, but was ${event.week}.`;
+        const errMsg = `The 'week' parameter should be between 0 and ${MAX_WEEKS}, but was ${event.week}.`;
         console.log(errMsg);
         return callback(new Error(errMsg));
     }
@@ -67,7 +69,18 @@ exports.handler = (event, context, callback) => {
     } else if (event.getAllGroups) {
         groupProm = db.getAllGroups();
     } else {
-        groupProm = db.getActiveGroups();
+        const params = {
+            TableName: process.env.GROUPS_TABLE,
+            ExpressionAttributeValues: {
+                ':startDt': +moment().format('YYYYMMDD'),
+                // because of occasional scheduling wonkiness, spring break, etc.
+                // some participants will keep going up to a month after the official
+                // group end date
+                ':endDt': +moment().subtract(1, 'month').format('YYYYMMDD')
+            },
+            FilterExpression: "startDate <= :startDt AND endDate >= :endDt"
+        }
+        groupProm = dynamo.scan(params).promise();
     }
 
     authProm.then(() => groupProm)
@@ -79,7 +92,12 @@ exports.handler = (event, context, callback) => {
         }
         groupsRes.Items.forEach(g => {
             if (g.name !== process.env.ADMIN_GROUP && g.name !== process.env.DISABLED_GROUP) {
-                groupInfo[g.name] = { start: moment.tz(g.startDate.toString(), 'YYYYMMDD', localTz), end: moment.tz(g.endDate.toString(), 'YYYYMMDD', localTz) }
+                const groupStart = moment.tz(g.startDate.toString(), 'YYYYMMDD', localTz);
+                // because of occasional scheduling wonkiness, spring break, etc.
+                // some participants will keep going up to a month after the official
+                // group end date
+                const groupEnd = moment.tz(g.endDate.toString(), 'YYYYMMDD', localTz).add(1, 'month');
+                groupInfo[g.name] = { start: groupStart, end: groupEnd };
             }
         });
     })
@@ -388,11 +406,12 @@ const FIRST_SUBJECT_ID_ROW = 8;
 const LAST_SUBJECT_ID_ROW = 178; // there should never be a subject id below this row
 const MAX_SUBJECTS = 6; // no sheet should have more than this many subjects
 const INTER_SUBJECT_ROWS = 34; // number of rows between subject id's (inclusive)
-function startRowForSubjectId(subjectId, groupId, auth) {
+function startRowForSubjectId(subjectId, groupId, auth, weekNum) {
     let subjectsFound = 0;
     let lastSubjectRow = 0;
+    const sheets = google.sheets({version: 'v4', auth});
+
     return new Promise((resolve, reject) => {
-        const sheets = google.sheets({version: 'v4', auth});
         sheets.spreadsheets.values.get({
             spreadsheetId: REWARDS_SHEET_ID,
             range: `${groupId}!A${FIRST_SUBJECT_ID_ROW}:A${LAST_SUBJECT_ID_ROW}`
@@ -423,7 +442,44 @@ function startRowForSubjectId(subjectId, groupId, auth) {
         });
     })
     .then(subjRowNum => {
-        if (subjRowNum !== null) return Promise.resolve(subjRowNum);
+        if (subjRowNum !== null) {
+            if (weekNum <= MAX_REWARD_WEEK) {
+                return Promise.resolve(subjRowNum);
+            } else {
+                // Weeks after the MAX_REWARD_WEEK are all put into the final
+                // week in the rewards spreadsheet, so we have to be careful
+                // not to overwrite any data that may already be there.
+                // Read through the data until we find an empty row.
+                const durCol = colForNum(durationColumnForWeek(MAX_REWARD_WEEK));
+                const calmCol = colForNum(endColForWeek(MAX_REWARD_WEEK));
+                const range = `${groupId}!${durCol}${subjRowNum  + WEEKLY_DATA_ROW_OFFSET}:${calmCol}${subjRowNum  + WEEKLY_DATA_ROW_OFFSET + MAX_DATA_ENTRIES - 1}`;
+                return new Promise((resolve, reject) => {
+                    sheets.spreadsheets.values.get({
+                        spreadsheetId: REWARDS_SHEET_ID,
+                        range: range
+                    }, (err, res) => {
+                        if (err) {
+                            reject(err);
+                            return;
+                        }
+                        if (!res.data.values) {
+                            // then there were no data from previous weeks - just use our original row
+                            resolve(subjRowNum + WEEKLY_DATA_ROW_OFFSET);
+                            return;
+                        }
+                        const rows = res.data.values;
+                        for (let i = 0; i < rows.length; i++) {
+                            if (rows[i][0] == '' && rows[i][2] == '') { // rows[i][1] is always empty - there's a blank column between the two data points
+                                resolve(i + subjRowNum + WEEKLY_DATA_ROW_OFFSET);
+                                return;
+                            }
+                        }
+                        reject(`No empty data rows found in the final week for subject ${subjectId} in group ${groupId}.`);
+                    });
+                });
+            }
+            
+        }
            
         // we didn't find this subject id, so insert it
         if (subjectsFound >= MAX_SUBJECTS) {
@@ -441,7 +497,6 @@ function startRowForSubjectId(subjectId, groupId, auth) {
                 majorDimension: "COLUMNS",
                 values: [ [subjectId] ]
             };
-            const sheets = google.sheets({version: 'v4', auth});
             sheets.spreadsheets.values.update({
                 spreadsheetId: REWARDS_SHEET_ID,
                 range: range,
@@ -472,6 +527,7 @@ const WEEKLY_DATA_ROW_OFFSET = 4; // duration and calmness data start four rows 
 const AVE_CALM_ROW_OFFSET = 7; // average calmness score is seven rows below the FIRST ROW OF DURATION AND CALMNESS DATA
 const AVE_CALM_COL_OFFSET = 4; // average calmness col is four cols past the calmness column
 const LEADING_COLS = 6; // there are six columns before the first week with any duration/calmness data
+const MAX_REWARD_WEEK = 4; // in the rewards spreadsheet all weeks after week four (researcher week six) are put into week four
 
 function durationColumnForWeek(weekNum) {
     // each week is 5 cols wide (weekNum * 5)
@@ -513,7 +569,7 @@ function colForNum(num) {
  * Returns Promise of the number of rows updated
  */
 function writeRewardsData(subjectId, groupName, weekNum, data, auth) {
-    return startRowForSubjectId(subjectId, groupName, auth)
+    return startRowForSubjectId(subjectId, groupName, auth, weekNum)
     .then(startRow => {
         if (startRow === undefined) {
             return Promise.reject(`Could not find the row for subject id ${subjectId}.`)
@@ -524,11 +580,17 @@ function writeRewardsData(subjectId, groupName, weekNum, data, auth) {
     .then(startRow => {
         const aveCalmness = averageCalmness(data);
         const valueRanges = [ weeklyRewardDataToValueRange(startRow, groupName, weekNum, data, aveCalmness) ];
-        valueRanges.push({
-            range: `${groupName}!A${startRow}`,
-            majorDimension: "ROWS",
-            values: [[subjectId]]
-        });
+        if (weekNum <= MAX_REWARD_WEEK) {
+            // for weekNum values > MAX_REWARD_WEEK we don't write the
+            // subject id; we just append data to the values already
+            // entered in the "final" week
+            valueRanges.push({
+                range: `${groupName}!A${startRow}`,
+                majorDimension: "ROWS",
+                values: [[subjectId]]
+            });
+        }
+        
         return new Promise((resolve, reject) => {
             const sheets = google.sheets({version: 'v4', auth});
             sheets.spreadsheets.values.batchUpdate({
@@ -571,15 +633,22 @@ function averageCalmness(data) {
 function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data, aveCalmness) {
     if (data.length > MAX_DATA_ENTRIES) {
         throw new Error(`${data.length} rows of data to be written, but only ${MAX_DATA_ENTRIES} rows are permitted.`)
+    }    
+    let range;
+    if (weekNum <= MAX_REWARD_WEEK) {
+        const durCol = colForNum(durationColumnForWeek(weekNum));
+        const calmCol = colForNum(endColForWeek(weekNum));
+        range = `${groupId}!${durCol}${startRowForSubject + WEEKLY_DATA_ROW_OFFSET}:${calmCol}${startRowForSubject + WEEKLY_DATA_ROW_OFFSET + MAX_DATA_ENTRIES - 1}`;
+    } else {
+        const durCol = colForNum(durationColumnForWeek(MAX_REWARD_WEEK));
+        const calmCol = colForNum(endColForWeek(MAX_REWARD_WEEK));
+        // in this case the start row calculation has already factored in the WEEKLY_DATA_ROW_OFFSET
+        range = `${groupId}!${durCol}${startRowForSubject}:${calmCol}${startRowForSubject + MAX_DATA_ENTRIES - 1}`;
     }
-    const durCol = colForNum(durationColumnForWeek(weekNum));
-    const calmCol = colForNum(endColForWeek(weekNum));
-    const range = `${groupId}!${durCol}${startRowForSubject + WEEKLY_DATA_ROW_OFFSET}:${calmCol}${startRowForSubject + WEEKLY_DATA_ROW_OFFSET + MAX_DATA_ENTRIES - 1}`;
-
     const values = [];
     var i;
     for (i = 0; i < data.length; i++) {
-        if (i === AVE_CALM_ROW_OFFSET && weekNum < MAX_WEEKS) { // we don't write ave calmness in final week (MAX_WEEKS) because there is no next week
+        if (i === AVE_CALM_ROW_OFFSET && weekNum < MAX_REWARD_WEEK) { // we don't write ave calmness in final week (MAX_WEEKS) because there is no next week
             // put in duration, ave calmness, calmness
             // ave calmness goes under the next week b/c it's the target for that week
             values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1], , , , aveCalmness ]  );       
@@ -589,7 +658,7 @@ function weeklyRewardDataToValueRange(startRowForSubject, groupId, weekNum, data
             values.push( [ `=MROUND((${data[i][0]}/60), 0.25)`, , data[i][1] ]  );
         }
     }
-    if (i <= AVE_CALM_ROW_OFFSET && weekNum < MAX_WEEKS) {
+    if (i <= AVE_CALM_ROW_OFFSET && weekNum < MAX_REWARD_WEEK) {
         // we need to add blank rows until we get to the offset for ave calmness
         while (i < AVE_CALM_ROW_OFFSET) {
             values.push( [] );
