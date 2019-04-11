@@ -150,13 +150,13 @@ exports.handler = (event, context, callback) => {
  * @param {*} auth 
  */
 function importForGroup(groupName, groupStart, groupEnd, week, auth) {
-    const [weekStart, weekEnd, weekInt] = weekToDateRange(groupStart, groupEnd, week);
+    const weekInfo = weekToDateRange(groupStart, groupEnd, week);
     const isNewWeek = isWeekStart(groupStart);
-    let priorWeekStart, priorWeekEnd, priorWeekInt;
-    if (weekInt > 0 && isNewWeek) {
+    let priorWeekInfo;
+    if (weekInfo.weekInt > 0 && isNewWeek) {
         // at the start of a new week we process the prior week, just to make sure we don't
         // miss any data that may have been uploaded after the daily run yesterday
-        [priorWeekStart, priorWeekEnd, priorWeekInt] = weekToDateRange(groupStart, groupEnd, weekInt - 1);
+        priorWeekInfo = weekToDateRange(groupStart, groupEnd, weekInfo.weekInt - 1);
     }
     let promChain = Promise.resolve();
     return db.getUsersInGroups([groupName])
@@ -174,10 +174,10 @@ function importForGroup(groupName, groupStart, groupEnd, week, auth) {
             return -1;
         }).forEach(u => {
             // we process users sequentially to avoid read/write races with Google Sheets
-            if (weekInt > 0 && isNewWeek) {
-                promChain = promChain.then(() => importForUser(u, priorWeekStart, priorWeekEnd, priorWeekInt, auth));
+            if (weekInfo.weekInt > 0 && isNewWeek) {
+                promChain = promChain.then(() => importForUser(u, priorWeekInfo, auth));
             }
-            promChain = promChain.then(() => importForUser(u, weekStart, weekEnd, weekInt, auth));
+            promChain = promChain.then(() => importForUser(u, weekInfo, auth));
         });
         return promChain;
     });
@@ -188,7 +188,17 @@ function isWeekStart(groupStart) {
 }
 
 /**
- * Returns an array of [moment object weekStart, moment object weekEnd, number weekInt] items representing the start, end and number of the requested week for the given group start date.
+ * Returns an object with the following fields:
+ *   weekStart: moment object representing start date of week
+ *   weekEnd: moment object representing end date of week
+ *   weekInt: the week number
+ *   rewardWeekStart: moment object representing start of the reward week
+ *   rewardWeekEnd: moment object representing the end of the reward week
+ *   rewardWeekInt: the number of the reward week.
+ * All of the above are relative to the given group start date.
+ * For weeks < 4 the last three fields are the same as the first three.
+ * For week 4, the reward "week" will be five weeks long.
+ * For weeks > 4, the reward "week" will be the same as it would be for week 4.
  * @param {object} groupStart Moment object representing the group's start date
  * @param {object} groupEnd Moment object representing the group's end date
  * @param {*} week The week whose start/end dates you want. Leave undefined for the current week or use 0-5 for a specific week
@@ -207,31 +217,55 @@ function weekToDateRange(groupStart, groupEnd, week) {
     const weekStart = moment(groupStart).startOf('day');
     weekStart.add(weekInt * 7, 'days');
     const weekEnd = moment(weekStart).add(6, 'days').add(23, 'hours').add(59, 'minutes').add(59, 'seconds');
+
+    const rewardWeekInt = Math.min(weekInt, MAX_REWARD_WEEK);
+    const rewardWeekStart = moment(groupStart).startOf('day');
+    rewardWeekStart.add(rewardWeekInt * 7, 'days');
+    let rewardWeekEnd;
+    if (rewardWeekInt == MAX_REWARD_WEEK) {
+        // the final reward "week" is actually five weeks long, to cover situations like spring 
+        // break, scheduling wonkiness, etc.
+        rewardWeekEnd = moment(weekEnd).add(1, 'month');
+    } else {
+        rewardWeekEnd = moment(weekEnd);
+    }
     if (weekInt === 0) {
         // ugh. Users can start practicing before their group start date, so if it's
         // the first week we start early to capture this pre-practice.
         weekStart.subtract(1, 'year');
     } 
-    return [weekStart, weekEnd, weekInt];
+    return {
+        weekStart: weekStart,
+        weekEnd: weekEnd,
+        weekInt: weekInt,
+        rewardWeekStart: rewardWeekStart,
+        rewardWeekEnd: rewardWeekEnd,
+        rewardWeekInt: rewardWeekInt
+    };
 }
 
 
-function importForUser(user, startDate, endDate, weekInt, auth) {
-    console.log(`importing data from ${startDate} to ${endDate} (week ${weekInt}) for subject ${user.subjectId}`);
+function importForUser(user, weekInfo, auth) {
+    console.log(`importing data from ${weekInfo.weekStart}/${weekInfo.rewardWeekStart} to ${weekInfo.weekEnd}/${weekInfo.rewardWeekEnd} (week ${weekInfo.weekInt}/${weekInfo.rewardWeekInt}) for subject ${user.subjectId}`);
     let rawData = {};
 
-    return getRawDataForUser(user, startDate, endDate)
+    return getRawDataForUser(user, weekInfo.rewardWeekStart, weekInfo.rewardWeekEnd)
     .then(data => {
         if (data === undefined || data.length === 0) {
             // no file was found for the user or the file had no data for this date range. call it quits.
-            throw new NonFatalError(`no log file/sqlite db found (or no entries found for ${startDate.format('YYYY-MM-DD')} - ${endDate.format('YYYY-MM-DD')}) for subject ${user.subjectId}.`)
+            throw new NonFatalError(`no log file/sqlite db found (or no entries found for ${weekInfo.rewardWeekStart.format('YYYY-MM-DD')} - ${weekInfo.rewardWeekEnd.format('YYYY-MM-DD')}) for subject ${user.subjectId}.`);
         }
         rawData = data;
+        // filter out data from wider reward week range 
+        return data.filter(d => 
+            d.startTime.isSameOrAfter(weekInfo.weekStart) &&
+            d.startTime.isSameOrBefore(weekInfo.weekEnd)
+        )
         // transform raw data to spreadsheet format
-        return data.map(d => [
+        .map(d => [
             d.subjectId,
             d.groupId,
-            weekInt + 2, //add 1 because researchers work with 1-based weeks and 1 because the study has a week before the online portion begins
+            weekInfo.weekInt + 2, //add 1 because researchers work with 1-based weeks and 1 because the study has a week before the online portion begins
             ,  // blank row for the reward week column in the spreadsheet
             d.startTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
             d.endTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
@@ -250,7 +284,7 @@ function importForUser(user, startDate, endDate, weekInt, auth) {
         .filter(cur => cur.subjectId == user.subjectId)
         // very seldom we see negative or very large session durations - set those to 60 minutes for reward calc purposes
         .map(cur => [cur.seconds < 0 || cur.seconds > (60 * 60) ? 60 * 60 : cur.seconds, cur.calmness]);
-        return writeRewardsData(user.subjectId, user.group, weekInt, rewardData, auth);        
+        return writeRewardsData(user.subjectId, user.group, weekInfo.rewardWeekInt, rewardData, auth);        
     })
     .then(() => console.log(`Finished writing reward data for user ${user.subjectId}`))
     .catch((err) => {
