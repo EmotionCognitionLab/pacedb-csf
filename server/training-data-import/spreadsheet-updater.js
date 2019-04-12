@@ -773,6 +773,7 @@ function writeRawData(data, auth) {
 
 const TEMPLATE_SHEET = 'template - DO NOT EDIT!';
 function createSheet(groupName, auth) { 
+    let targetSheet;
     return new Promise((resolve, reject) => {
         const sheets = google.sheets({version: 'v4', auth});
         sheets.spreadsheets.get({
@@ -820,8 +821,52 @@ function createSheet(groupName, auth) {
             });
         })
     })
+    // Now that we've created the sheet, add all of the subject id's to it
     .then(newSheet => {
-        return newSheet.data.replies[0].duplicateSheet.properties.sheetId;
+        targetSheet = newSheet;
+        return db.getUsersInGroups([groupName]);
+    })
+    .then(usersRes => {
+        return usersRes.Items
+        .sort((u1, u2) => Number.parseInt(u1.subjectId) - Number.parseInt(u2.subjectId))
+        .map(u => u.subjectId);
+    })
+    .then(subjectIds => {
+        if (subjectIds.length == 0) return Promise.resolve();
+        if (subjectIds.length > MAX_SUBJECTS) {
+            return Promise.reject(`Group ${groupName} has ${subjectsIds.length} subjects (> the maximum number of possible subjects per group).`)
+        }
+        const valueRanges = [];
+        for (let i = 0; i < subjectIds.length; i++) {
+            valueRanges.push(
+                {
+                    range: `${groupName}!A${i * INTER_SUBJECT_ROWS + FIRST_SUBJECT_ID_ROW}`,
+                    majorDimension: "ROWS",
+                    values: [[subjectIds[i]]]
+                }
+            );
+        }
+        
+        return new Promise((resolve, reject) => {
+            const sheets = google.sheets({version: 'v4', auth});
+            sheets.spreadsheets.values.batchUpdate({
+                spreadsheetId: REWARDS_SHEET_ID,
+                resource: {
+                    "valueInputOption": "USER_ENTERED",
+                    "data": valueRanges
+                }
+            }, (err, res) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(res.data.totalUpdatedRows);
+                return;
+            });
+        });
+    })
+    .then(() => {
+        return targetSheet.data.replies[0].duplicateSheet.properties.sheetId;
     });
 }
 
