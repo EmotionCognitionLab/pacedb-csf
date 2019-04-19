@@ -349,13 +349,13 @@ function getCsvDataForUser(user, startDate, endDate) {
         Key: `${user.subjectId}/${logFile}`
     }).promise()
     .then(data => {
-        const buildObjFromRow = (r, entryDate) => {
+        const buildObjFromRow = (r, entryEnd, entryStart) => {
             return {
                 subjectId: r['User'],
                 groupId: user.group,
                 sessName: r['Session Name'],
-                startTime: moment(entryDate).subtract(r['Time Spent On This Attempt'], 'seconds'),
-                endTime: entryDate, 
+                startTime: entryStart,
+                endTime: entryEnd,
                 timeSpending: r['Time Spending for the Session'], 
                 seconds: r['Time Spent On This Attempt'],
                 calmness: r['Ave Calmness'],
@@ -369,13 +369,14 @@ function getCsvDataForUser(user, startDate, endDate) {
                     reject(err);
                 }
                 csvRecs.forEach(r => {
-                    const entryDate = moment.tz(r['Date'], 'MM-DD-YYYY-HH-mm-ss', localTz);
-                    if (entryDate.isBefore(startDate) || 
-                    entryDate.isAfter(endDate) || 
+                    const entryEnd = moment.tz(r['Date'], 'MM-DD-YYYY-HH-mm-ss', localTz);
+                    const entryStart = moment(entryEnd).subtract(r['Time Spent On This Attempt'], 'seconds');
+                    if (entryStart.isBefore(startDate) || 
+                    entryStart.isAfter(endDate) || 
                     !r['User'].toString().startsWith(user.subjectId) ||
                     r['Time Spending for the Session'] - r['Session Time'] > 1 || // bogus dupe session
                     r['Ave Calmness'] < 8) return; // also bogus dupe session
-                    rowsRead.push(buildObjFromRow(r, entryDate));
+                    rowsRead.push(buildObjFromRow(r, entryEnd, entryStart));
                 });
                 resolve(rowsRead);
             }
