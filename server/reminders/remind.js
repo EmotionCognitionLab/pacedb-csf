@@ -457,6 +457,12 @@ function getUsersWithoutReports(userMap, groupMap) {
     });
 }
 
+function isFirstWeek(startDate) {
+    const today = moment();
+    const startMoment = moment(startDate.toString())
+    return today.diff(startMoment, 'days') < 7;
+}
+
 function isFirstDayOfWeek(startDate) {
     const today = moment().day();
     const startMoment = moment(startDate.toString())
@@ -610,10 +616,18 @@ function getWeeklyStatusReport() {
         const groupMap = groupsAndUsers.groupMap;
         const usersByStartDate = new Map(); // Map<startDate:number, [User obj]>
         for (let user of userMap.values()) {
-            const startDate = groupMap.get(user.group).startDate;
+            let startDate = groupMap.get(user.group).startDate;
             // exclude first day of week groups because if today is the first day of the week you're not expected to have done anything yet
             // and exclude the admins because they aren't real participants and would skew the results
-            if (isFirstDayOfWeek(startDate) || user.group === adminGroup) continue; 
+            if (isFirstDayOfWeek(startDate) || user.group === adminGroup) continue;
+            
+            // if this is the first week for the group then the users will have different
+            // target minutes depending on when they started, so use personal
+            // start dates
+            if (isFirstWeek(startDate)) {
+                const userStart = user.dateCreated;
+                if (userStart > startDate) startDate = userStart;
+            }
 
             const usersWithStartDate = usersByStartDate.get(startDate) || [];
             usersWithStartDate.push(user);
