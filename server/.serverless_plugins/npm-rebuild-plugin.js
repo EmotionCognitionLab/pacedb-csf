@@ -29,7 +29,7 @@ class NpmRebuildPlugin {
         const funcPathsToCompile = this.funcPathsForOptions(options);
         funcPathsToCompile.forEach(f => {
             console.log(`Recompiling ${f} node_modules for use on AWS; don't worry about the warnings...`);
-            child_process.spawnSync('docker', ['run', '--rm', '-v', `"$PWD/${f}":/var/task`, 'lambci/lambda:build-nodejs6.10'], {stdio: 'inherit', shell: true});
+            child_process.spawnSync('docker', ['run', '--rm', '-v', `"$PWD/${f}":/var/task`, 'lambci/lambda:build-nodejs8.10'], {stdio: 'inherit', shell: true});
         }); 
     }
 
