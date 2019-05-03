@@ -621,7 +621,10 @@ function writeRewardsData(subjectId, groupName, weekNum, data, auth) {
         }
     })
     .then(startRow => {
-        const aveCalmness = averageCalmness(data);
+        let aveCalmness = averageCalmness(data);
+        if (aveCalmness == 0) {
+            aveCalmness = '=INDIRECT("R" & ROW() & "C" & COLUMN() - 5, FALSE)'; // use calmness val from previous week
+        }
         const valueRanges = [ weeklyRewardDataToValueRange(startRow, groupName, weekNum, data, aveCalmness) ];
         if (weekNum <= MAX_REWARD_WEEK) {
             // for weekNum values > MAX_REWARD_WEEK we don't write the
