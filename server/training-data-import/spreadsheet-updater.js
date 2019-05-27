@@ -36,7 +36,7 @@ const logFile = 'log.csv';
 const sqliteDb = 'emWave.emdb';
 
 const MAX_DATA_ENTRIES = 30; // maximum duration/calmness data points allowed
-const MAX_WEEKS = 8; // the maximum week index we handle
+const MAX_WEEKS = 10; // the maximum week index we handle
 
 const localTz = 'America/Los_Angeles';
 
