@@ -267,7 +267,7 @@ function importForUser(user, weekInfo, auth) {
             d.subjectId,
             d.groupId,
             weekInfo.weekInt + 2, //add 1 because researchers work with 1-based weeks and 1 because the study has a week before the online portion begins
-            ,  // blank row for the reward week column in the spreadsheet
+            weekInfo.weekInt + 2 < 6 ? weekInfo.weekInt + 2 : 6,  // reward week is always 6 for week 6 and all weeks after it
             d.startTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
             d.endTime.tz(localTz).format('YYYY-MM-DD HH:mm:ss'),
             d.seconds,
