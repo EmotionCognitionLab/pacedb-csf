@@ -1,7 +1,5 @@
 'use strict';
 
-require('dotenv').config({path: './prod-env.sh'})
-
 const fs = require('fs');
 
 const {google} = require('googleapis');
@@ -28,10 +26,8 @@ const privateKey = require('./private-key.json');
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 
 // id's for spreadsheets we work with
-// const REWARDS_SHEET_ID = '1AW34XLRt1o6L-it4YLRLATwuFu2q_s1xI3GJZzwMfZ4';
-const REWARDS_SHEET_ID = '1XcbkbyemrhIoVAjjCn-XcLaU3rwWml7DQOXKRzXWqQw';
-// const RAW_SHEET_ID = '1FKtWKGhbS_f7vPwxLU_1kF5QjXzfe17LO5SfqigEllc';
-const RAW_SHEET_ID = '1iaAqQDmYyvIdJDB-D7-e-aEhB6aczFEfoSgW4KHRKvo';
+const REWARDS_SHEET_ID = '1AW34XLRt1o6L-it4YLRLATwuFu2q_s1xI3GJZzwMfZ4';
+const RAW_SHEET_ID = '1FKtWKGhbS_f7vPwxLU_1kF5QjXzfe17LO5SfqigEllc';
 const RAW_SHEET_NAME = 'HRV Data - do not edit';
 
 // Data from subjects in the control group will be in logFile
