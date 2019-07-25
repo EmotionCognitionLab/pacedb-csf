@@ -5,6 +5,7 @@ import sys
 import tempfile
 import time
 import traceback
+from pywinauto.timings import TimeoutError
 
 # Path to kubios application
 KUBIOS_PATH = 'C:/Program Files/Kubios/Kubios HRV Premium/kubioshrv.exe'
@@ -67,8 +68,11 @@ def process_emwave_files(input_files):
         for name in emwave_user_names:
             should_process = get_valid_response("\tProcess user {}? [Y(es)/n(o)/s(kip) to next emWave file] ".format(name), lambda resp: ['', 'Y', 'y', 'N', 'n', 'S', 's'].count(resp) > 0)
             if should_process == '' or should_process == 'Y' or should_process == 'y':
-                rr_sessions = write_emwave_data_to_files(str(emdb), name)
-                export_rr_sessions_to_kubios(rr_sessions, output_path, sample_length, sample_start)
+                rr_session_files = write_emwave_data_to_files(str(emdb), name)
+                skip_count = get_valid_response(
+                    "\tFound {} sessions. How many sessions should be skipped? ".format(len(rr_session_files)), 
+                    lambda resp: is_int(resp) and 0 <= int(resp) < len(rr_session_files))
+                export_rr_sessions_to_kubios(rr_session_files, output_path, sample_length, sample_start, int(skip_count))
             elif should_process == 'N' or should_process == 'n':
                 continue
             elif should_process == 'S' or should_process == 's':
@@ -120,10 +124,14 @@ def confirm_expected_settings(results_path, sample_length, sample_start, ppg_sam
     settings = kubios.get_settings(results_path + '.mat')
     return [(k, expected[k], settings[k]) for k in expected.keys() if expected[k] != settings[k]]
 
-def export_rr_sessions_to_kubios(sessions, output_path, sample_length, sample_start):
-    num_sessions = len(sessions)
+def export_rr_sessions_to_kubios(session_files, output_path, sample_length, sample_start, skip_count):
+    num_sessions = len(session_files)
+    sessions_to_use = session_files[skip_count:]
+    enumerated_sessions = list(enumerate(sessions_to_use, skip_count))
 
-    for idx, (f, session_length) in enumerate(sessions):
+    i = 0
+    while i < len(enumerated_sessions):
+        idx, (f, session_length) = enumerated_sessions[i]
         print("Session {} of {}...".format(idx + 1, num_sessions)) 
         already_running_ok = idx > 0 # get user to confirm kubios is ready on first file; assume it's ok on subsequent files
         app = safe_get_kubios(already_running_ok)
@@ -137,9 +145,17 @@ def export_rr_sessions_to_kubios(sessions, output_path, sample_length, sample_st
             sample_duration = sample_length
         kubios.analyse(kubios_window, sample_duration, sample_start)
 
-        results_path = save_and_close_kubios_results(app, kubios_window, f)
-        if not kubios.expected_output_files_exist(results_path):
-            wait_and_exit(1)
+        try:
+            results_path = save_and_close_kubios_results(app, kubios_window, f)
+            i = i + 1
+            if not kubios.expected_output_files_exist(results_path):
+                wait_and_exit(1)
+        except pywinauto.timings.TimeoutError:
+            # sometimes kubios hangs when saving a file
+            # give up and process it again
+            print("Error analyzing; trying again...")
+            kubios.close_without_saving(app)
+            continue
 
         sample_start_sec = min_sec_to_sec(sample_start)
         sample_duration_sec = min_sec_to_sec(sample_duration)

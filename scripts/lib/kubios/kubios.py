@@ -214,6 +214,19 @@ def default_save_as_fname(input_fname):
 def close_file(kubios_window):
     kubios_window.type_keys('^W') # Ctrl-W
 
+def close_without_saving(kubios_app):
+    kubios_window = kubios_app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
+    kubios_window.type_keys('^W') # Ctrl-W
+    time.sleep(2)
+    close_confirmation_dlg = kubios_app.window(title='Save Results')
+    close_confirmation_dlg.wait('ready', 20)
+    # kubios doesn't like to accept keyboard input on this dialog (even from the user)
+    # so we click the "No" (don't save the results) button with the mouse
+    dlg_rect = close_confirmation_dlg.rectangle()
+    import pywinauto.mouse
+    pywinauto.mouse.click('left', (dlg_rect.left + 175, dlg_rect.top + 100))
+    time.sleep(5)
+
 def get_settings(matlab_results):
     """Given the matlab version of the kubios output, extracts some of the settings
     kubios was run with and returns them"""
