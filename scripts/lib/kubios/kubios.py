@@ -6,6 +6,8 @@ import os
 from pywinauto.application import Application
 from pywinauto.findwindows import ElementNotFoundError, find_windows
 from pywinauto.win32functions import SetForegroundWindow
+from pywinauto.controls.hwndwrapper import InvalidWindowHandle
+from pywinauto.timings import TimeoutError
 import time
 
 # constants for use with open_txt_file
@@ -40,8 +42,14 @@ def open_rr_file(kubios_app, rr_file_path):
     kubios_window.wait('visible', 120)
     kubios_window.type_keys('^O') # Ctrl-O
     open_dlg = kubios_app.window(title='Get Data File')
-    open_dlg.type_keys('foo') # hack to get the file name text entry box to have focus; the 'foo' isn't actually captured by it
-    open_dlg.get_focus().type_keys(rr_file_path + '{ENTER}', with_spaces=True)
+    try:
+        open_dlg.type_keys(rr_file_path + '{ENTER}', with_spaces=True)
+    except ElementNotFoundError:
+        # try one more time
+        kubios_window.type_keys('^O') # Ctrl-O
+        open_dlg = kubios_app.window(title='Get Data File')
+        open_dlg.type_keys(rr_file_path + '{ENTER}', with_spaces=True)
+
     while is_processing(kubios_app):
         pass
         # do nothing; just wait for it to finish opening the file
@@ -165,7 +173,12 @@ def save_results(kubios_app, results_file_path, input_fname):
     kubios_window = kubios_app.window(title_re='Kubios.*$', class_name='SunAwtFrame')
     kubios_window.type_keys('^S') # Ctrl-S
     save_dlg = kubios_app.window(title='Save as')
-    save_dlg.wait('ready', 20)
+    try:
+        save_dlg.wait('ready', 20)
+    except TimeoutError:
+        kubios_window.type_keys('^S') # Ctrl-S
+        save_dlg = kubios_app.window(title='Save as')
+        save_dlg.wait('ready', 20)
 
     # Set the 'Save as' type
     combo_boxes = save_dlg.children(title='Save all (*.txt,*.mat,*.pdf)')
@@ -254,7 +267,10 @@ def is_processing(kubios_app):
     test_start = datetime.now()
     test_end = datetime.now()
     while (test_end - test_start).seconds < 4:
-        proc_dlg_count = len(kubios_app.windows(title_re='Processing...*'))
+        try:
+            proc_dlg_count = len(kubios_app.windows(title_re='Processing...*'))
+        except InvalidWindowHandle:
+            pass # ignore it - we'll try again
         time.sleep(0.5)
         if proc_dlg_count == 0:
                 test_end = datetime.now()
