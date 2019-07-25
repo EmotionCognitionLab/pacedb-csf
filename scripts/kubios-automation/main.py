@@ -70,8 +70,9 @@ def process_emwave_files(input_files):
             if should_process == '' or should_process == 'Y' or should_process == 'y':
                 rr_session_files = write_emwave_data_to_files(str(emdb), name)
                 skip_count = get_valid_response(
-                    "\tFound {} sessions. How many sessions should be skipped? ".format(len(rr_session_files)), 
-                    lambda resp: is_int(resp) and 0 <= int(resp) < len(rr_session_files))
+                    "\tFound {} sessions. How many sessions should be skipped? [0] ".format(len(rr_session_files)), 
+                    lambda resp: resp == '' or (is_int(resp) and 0 <= int(resp) < len(rr_session_files)))
+                if skip_count == '': skip_count = 0
                 export_rr_sessions_to_kubios(rr_session_files, output_path, sample_length, sample_start, int(skip_count))
             elif should_process == 'N' or should_process == 'n':
                 continue
