@@ -43,10 +43,10 @@ const localTz = 'America/Los_Angeles';
 exports.handler = (event, context, callback) => {
 
     const groupInfo = {}; // map of group name -> { groupStart, groupEnd }
-    const weekInt = Number.parseInt(event.week);
+    const weekInt = Number.parseInt(event.queryStringParameters.week);
 
-    if (event.week !== undefined && event.week !== null && event.week !== '' && (Number.isNaN(weekInt) || (Number.isInteger(weekInt) && (weekInt < 0 || weekInt > MAX_WEEKS)))) {
-        const errMsg = `The 'week' parameter should be between 0 and ${MAX_WEEKS}, but was ${event.week}.`;
+    if (event.queryStringParameters.week !== undefined && event.queryStringParameters.week !== null && event.queryStringParameters.week !== '' && (Number.isNaN(weekInt) || (Number.isInteger(weekInt) && (weekInt < 0 || weekInt > MAX_WEEKS)))) {
+        const errMsg = `The 'week' parameter should be between 0 and ${MAX_WEEKS}, but was ${event.queryStringParameters.week}.`;
         console.log(errMsg);
         return callback(new Error(errMsg));
     }
@@ -64,9 +64,9 @@ exports.handler = (event, context, callback) => {
     });
 
     let groupProm; // promise for fetching groups
-    if (event.groupName) {
-        groupProm = db.getGroup(event.groupName)
-    } else if (event.getAllGroups) {
+    if (event.queryStringParameters.groupName) {
+        groupProm = db.getGroup(event.queryStringParameters.groupName)
+    } else if (event.queryStringParameters.getAllGroups) {
         groupProm = db.getAllGroups();
     } else {
         const params = {
@@ -86,8 +86,8 @@ exports.handler = (event, context, callback) => {
     authProm.then(() => groupProm)
     .then((groupsRes) => {
         if (groupsRes.Items.length === 0) {
-            const weekName = event.week === undefined || event.week === null || event.week === '' ? 'current week' : `week ${event.week}`;
-            const groupClause = event.groupName === undefined || event.groupName === null ? '' : ` or the group named ${event.groupName} was not found`
+            const weekName = event.queryStringParameters.week === undefined || event.queryStringParameters.week === null || event.queryStringParameters.week === '' ? 'current week' : `week ${event.queryStringParameters.week}`;
+            const groupClause = event.queryStringParameters.groupName === undefined || event.queryStringParameters.groupName === null ? '' : ` or the group named ${event.queryStringParameters.groupName} was not found`
             throw new Error(`No active groups found for ${weekName}${groupClause}. Exiting.`)
         }
         groupsRes.Items.forEach(g => {
@@ -119,7 +119,7 @@ exports.handler = (event, context, callback) => {
         let promChain = Promise.resolve();
         Object.keys(groupInfo).forEach(groupName => {
             // we process groups sequentially to avoid read/write races with Google Sheets
-            promChain = promChain.then(() => importForGroup(groupName, groupInfo[groupName].start, groupInfo[groupName].end, event.week, jwtClient))
+            promChain = promChain.then(() => importForGroup(groupName, groupInfo[groupName].start, groupInfo[groupName].end, event.queryStringParameters.week, jwtClient))
         });
         return promChain;
     })
