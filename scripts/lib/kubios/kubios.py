@@ -42,12 +42,14 @@ def open_rr_file(kubios_app, rr_file_path):
     kubios_window.wait('visible', 120)
     kubios_window.type_keys('^O') # Ctrl-O
     open_dlg = kubios_app.window(title='Get Data File')
+    open_dlg.wait('ready', 120)
     try:
         open_dlg.type_keys(rr_file_path + '{ENTER}', with_spaces=True)
     except ElementNotFoundError:
         # try one more time
         kubios_window.type_keys('^O') # Ctrl-O
         open_dlg = kubios_app.window(title='Get Data File')
+        open_dlg.wait('ready', 120)
         open_dlg.type_keys(rr_file_path + '{ENTER}', with_spaces=True)
 
     while is_processing(kubios_app):
@@ -73,6 +75,7 @@ ppg_sample_rate=10000):
     kubios_window.wait('visible', 120)
     kubios_window.type_keys('^O') # Ctrl-O
     open_dlg = kubios_app.window(title='Get Data File')
+    open_dlg.wait('ready', 120)
     combo_boxes = open_dlg.children(title='RR Interval ASCII-files (*.txt, *.dat, *.csv)')
     if len(combo_boxes) != 1:
         raise Exception('Could not find "File type" pull-down menu while opening.')
@@ -134,6 +137,7 @@ def open_acq_file(kubios_app, acq_file_path, pulse_chan_label):
     kubios_window.wait('visible', 120)
     kubios_window.type_keys('^O') # Ctrl-O
     open_dlg = kubios_app.window(title='Get Data File')
+    open_dlg.wait('ready', 120)
     combo_boxes = open_dlg.children(title='RR Interval ASCII-files (*.txt, *.dat, *.csv)')
     if len(combo_boxes) != 1:
         raise Exception('Could not find "File type" pull-down menu while opening.')
