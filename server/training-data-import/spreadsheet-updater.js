@@ -43,6 +43,7 @@ const localTz = 'America/Los_Angeles';
 exports.handler = (event, context, callback) => {
 
     const groupInfo = {}; // map of group name -> { groupStart, groupEnd }
+    if (event.queryStringParameters == undefined) event.queryStringParameters = {};
     const weekInt = Number.parseInt(event.queryStringParameters.week);
 
     if (event.queryStringParameters.week !== undefined && event.queryStringParameters.week !== null && event.queryStringParameters.week !== '' && (Number.isNaN(weekInt) || (Number.isInteger(weekInt) && (weekInt < 0 || weekInt > MAX_WEEKS)))) {
