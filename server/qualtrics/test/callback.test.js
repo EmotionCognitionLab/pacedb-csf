@@ -20,15 +20,18 @@ const defaultResponseId = 'R_yjpFuS1lQRM7YMF';
 const userRecords = [
     {
         id: '0def-abc',
-        subjectId: '123'
+        subjectId: '123',
+        survey: { consent: "Y" }
     },
     {
         id: '1a',
-        subjectId: 'too-many'
+        subjectId: 'too-many',
+        survey: { consent: "Y" }
     },
     {
         id: '1b',
-        subjectId: 'too-many'
+        subjectId: 'too-many',
+        survey: { consent: "Y" }
     },
 ];
 
@@ -57,7 +60,7 @@ describe('Callback for completed survey', function() {
             await runLambda(buildSurveyCallback());
             const result = await getUser(userRecords[0].id);
             assert(result.Item, `Expected to get 1 record back from dynamo for user id ${userRecords[0].id}; got 0 records.`)
-            assert.deepStrictEqual(result.Item.surveysCompleted, [{surveyId: defaultSurveyId, recordedDate: recordedDate}]);
+            assert.deepStrictEqual(result.Item.survey.completed, [{surveyId: defaultSurveyId, recordedDate: recordedDate}]);
             
         });
 
@@ -106,7 +109,7 @@ describe('Callback for completed survey', function() {
                 await runLambda(buildSurveyCallback())
                 const result = await getUser(userRecords[0].id);
                 assert(result.Item, `Exepcted to get 1 record back from dynamo for user id ${userRecords[0].id}; got 0 records.`)
-                assert.ifError(result.Item.surveysCompleted); // we should not have any surveysCompleted info in this case
+                assert.ifError(result.Item.survey.completed); // we should not have any survey.completed info in this case
             } catch (error) {
                 assert.fail(error);
             }
@@ -139,7 +142,7 @@ describe("callback for a second completed survey", function() {
         // confirm that we have one survey response
         let result = await getUser(userRecords[0].id);
         assert(result.Item, `Failed to find user record for user id ${userRecords[0].id}`);
-        assert.equal(result.Item.surveysCompleted.length, 1, "Expected only 1 survey completed record.");
+        assert.equal(result.Item.survey.completed.length, 1, "Expected only 1 survey completed record.");
 
         // call lambda function again to record second survey response
         recordedDate = '2010-08-01T23:59:59.398Z'
@@ -152,9 +155,9 @@ describe("callback for a second completed survey", function() {
 
         await runLambda(buildSurveyCallback(secondSurveyId));
         result = await getUser(userRecords[0].id);
-        assert.equal(result.Item.surveysCompleted.length, 2, 'Expected two survey completed records');
+        assert.equal(result.Item.survey.completed.length, 2, 'Expected two survey completed records');
         let has2ndSurveyResult = false;
-        result.Item.surveysCompleted.forEach(s => {
+        result.Item.survey.completed.forEach(s => {
             if (s.surveyId == secondSurveyId && s.recordedDate == recordedDate) has2ndSurveyResult = true;
         });
         assert(has2ndSurveyResult, 'Second survey result not written to database.');

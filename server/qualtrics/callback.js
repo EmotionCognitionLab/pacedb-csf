@@ -63,7 +63,7 @@ async function saveSurveyComplete(subjectId, surveyId, recordedDate) {
     const writeParams = {
         TableName: usersTable,
         Key: { 'id': userId },
-        UpdateExpression: 'set surveysCompleted = list_append(if_not_exists(surveysCompleted, :emptyList), :surveyComplete)',
+        UpdateExpression: 'set survey.completed = list_append(if_not_exists(survey.completed, :emptyList), :surveyComplete)',
         ExpressionAttributeValues: { ':emptyList': [], ':surveyComplete': [ { 'surveyId': surveyId, 'recordedDate': recordedDate } ] }
     };
     return await dynamo.update(writeParams).promise()
