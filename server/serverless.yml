@@ -415,16 +415,16 @@ functions:
         - logger/**
         - calibration/**
         - qualtrics/test/**
-      role: lambdaWithDynamoRole
-      handler: qualtrics/callback.handler
-      timeout: 120
-      events:
-        - http:
-            path: /
-            method: post
-      environment:
-        QUALTRICS_HOST: "https://usc.ca1.qualtrics.com"
-        QUALTRICS_API_KEY: ${opt:qualtricsApiKey}
+    role: lambdaWithDynamoRole
+    handler: qualtrics/callback.handler
+    timeout: 120
+    events:
+      - http:
+          path: /
+          method: post
+    environment:
+      QUALTRICS_HOST: "https://usc.ca1.qualtrics.com"
+      QUALTRICS_API_KEY: ${opt:qualtricsApiKey}
 
       
 plugins:
