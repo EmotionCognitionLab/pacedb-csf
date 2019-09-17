@@ -11,8 +11,9 @@ If you don't already have them, you'll also want to install moto (`pip install m
 Using [moto](https://github.com/spulec/moto) and [local DynamoDB](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html), it's possible to test this function locally. (TODO: Try replacing local DynamoDB with moto's version.) Testing it locally WON'T send any email or SMS messages, but it's still a good idea to write your test cases using addresses/phone numbers that you control or that are meant for testing (like @example.com).
 
 Assuming that you have moto and local dynamodb installed and ready to go (and running, in the case of local dynamodb), here's how to test it:
-* Execute moto_server sns -p4575 so spin up a fake SNS server
+* Execute moto_server sns -p4575 to spin up a fake SNS server
 * Execute moto_server ses -p4579 to spin up a fake SES server
+* Execute moto_server s3 -p4583 to spin up a fake S3 server
 * Run `npm test` to run the tests for the lambda function. You'll get log output in your terminal.
 
 ## Changing the test environment
