@@ -246,6 +246,7 @@ functions:
         - api/**
         - reminders/**
         - verification/verified.js
+        - verification/test/**
         - training-data-import/**
         - logger/**
         - common/**
@@ -261,6 +262,7 @@ functions:
         - api/**
         - reminders/**
         - verification/message_customizer.js
+        - verification/test/**
         - training-data-import/**
         - logger/**
         - common/**

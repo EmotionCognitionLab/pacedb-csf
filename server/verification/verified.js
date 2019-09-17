@@ -8,7 +8,8 @@
 const AWS = require('aws-sdk');
 const region = process.env.REGION;
 const usersTable = process.env.USERS_TABLE;
-const dynamo = new AWS.DynamoDB.DocumentClient({region: region});
+const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
+const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10', region: region});
 
 exports.handler = (event, context, callback) => {
     const userRec = buildUserRecord(event);
@@ -36,7 +37,8 @@ function buildUserRecord(event) {
             firstName: event.request.userAttributes["given_name"],
             lastName: event.request.userAttributes["family_name"],
             photoUrl: event.request.userAttributes["picture"],
-            dateCreated: todayYMD
+            dateCreated: todayYMD,
+            survey: {consent: "Y"}
         }
     };
     if (event.request.userAttributes["email"]) {
