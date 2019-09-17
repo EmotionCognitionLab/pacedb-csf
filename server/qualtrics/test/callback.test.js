@@ -55,7 +55,7 @@ describe('Callback for completed survey', function() {
             .reply(200, qualResp);
 
             await runLambda(buildSurveyCallback());
-            const result = await getUserSurveyData(userRecords[0].id);
+            const result = await getUser(userRecords[0].id);
             assert(result.Item, `Expected to get 1 record back from dynamo for user id ${userRecords[0].id}; got 0 records.`)
             assert.deepStrictEqual(result.Item.surveysCompleted, [{surveyId: defaultSurveyId, recordedDate: recordedDate}]);
             
@@ -104,7 +104,7 @@ describe('Callback for completed survey', function() {
 
             try {
                 await runLambda(buildSurveyCallback())
-                const result = await getUserSurveyData(userRecords[0].id);
+                const result = await getUser(userRecords[0].id);
                 assert(result.Item, `Exepcted to get 1 record back from dynamo for user id ${userRecords[0].id}; got 0 records.`)
                 assert.ifError(result.Item.surveysCompleted); // we should not have any surveysCompleted info in this case
             } catch (error) {
@@ -137,7 +137,7 @@ describe("callback for a second completed survey", function() {
         await runLambda(buildSurveyCallback());
 
         // confirm that we have one survey response
-        let result = await getUserSurveyData(userRecords[0].id);
+        let result = await getUser(userRecords[0].id);
         assert(result.Item, `Failed to find user record for user id ${userRecords[0].id}`);
         assert.equal(result.Item.surveysCompleted.length, 1, "Expected only 1 survey completed record.");
 
@@ -151,7 +151,7 @@ describe("callback for a second completed survey", function() {
         .reply(200, qualResp);
 
         await runLambda(buildSurveyCallback(secondSurveyId));
-        result = await getUserSurveyData(userRecords[0].id);
+        result = await getUser(userRecords[0].id);
         assert.equal(result.Item.surveysCompleted.length, 2, 'Expected two survey completed records');
         let has2ndSurveyResult = false;
         result.Item.surveysCompleted.forEach(s => {
@@ -196,11 +196,11 @@ function buildQualtricsSurveyDataResponse(subjectId, finished, recordedDate='201
     });
 }
 
-function getUserSurveyData(userId) {
+function getUser(userId) {
     const queryParams = {
         TableName: usersTable,
         Key: {
-            id: userRecords[0].id
+            id: userId
         }
     }
     return dynDocClient.get(queryParams).promise()
