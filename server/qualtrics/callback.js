@@ -19,11 +19,10 @@ const qualtricsHost = process.env.QUALTRICS_HOST;
 const usersTable = process.env.USERS_TABLE;
 
 exports.handler = async (event, context, callback) => {
-    try {
         const params = new URLSearchParams(event.body);
         const surveyId = params.get('SurveyID');
         const responseId = params.get('ResponseID');
-    
+    try {
         const response = await getSurveyResponse(responseId, surveyId);
         const subjectId = response['values']['subjid'];
         const recordedDate = response['values']['recordedDate'];
