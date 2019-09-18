@@ -69,6 +69,26 @@ HrvDb.prototype.getGroup = function(name) {
 }
 
 /**
+ * Gets groups by end date, filtering out groups like 'staff' and 'disabled'.
+ */
+HrvDb.prototype.getGroupsByEndDate = function(dateStart, dateEnd) {
+    const params = {
+        TableName: this.groupsTable,
+        ExpressionAttributeNames: {
+            '#N': 'name'
+        },
+        ExpressionAttributeValues: {
+            ':startDate': dateStart,
+            ':endDate': dateEnd,
+            ':disabled': process.env.DISABLED_GROUP,
+            ':staff': process.env.ADMIN_GROUP
+        },
+        FilterExpression: "endDate >= :startDate and endDate <= :endDate and #N <> :disabled and #N <> :staff"
+    }
+    return dynamo.scan(params).promise();
+}
+
+/**
  * Given a list of groups, returns promise of scan result with users who are members of those groups
  * @param {string[]} groups List of group names whose users should be returned
  * TODO handle group lists of more than 100 groups
