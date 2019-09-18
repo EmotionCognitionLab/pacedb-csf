@@ -16,3 +16,5 @@ STATUS_REPORTS_TABLE=hrv-status-reports-test
 CHART_BUCKET=hrv-reporting-test
 ADMIN_GROUP=staff
 DISABLED_GROUP=disabled
+ONE_YR_SURVEY_ID=123abc
+THREE_MO_SURVEY_ID=456def

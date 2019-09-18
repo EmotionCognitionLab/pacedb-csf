@@ -239,6 +239,8 @@ functions:
         Ref: statusReportsTable
       ADMIN_GROUP: "staff"
       DISABLED_GROUP: "disabled"
+      ONE_YR_SURVEY_ID: "123abc"
+      THREE_MO_SURVEY_ID: "456def"
 
 # DO NOT CHANGE the name of this function unless you also change it in setup/setup.js
   messageCustomizer:

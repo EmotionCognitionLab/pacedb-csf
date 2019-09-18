@@ -705,22 +705,22 @@ function getWeeklyStatusReport() {
 
 /**
  * Returns all of the users who are supposed to receive follow-up surveys: 3 months after group end date, 1 year,
- * and 1 year with re-consent for followup.
+ * and 1 year with re-consent for followup (excluding users who have already completed the given survey).
  */
 function getFollowupRecipients() {
     const result = [];
-    let rangeStart = moment().subtract(6, 'days').subtract(1, 'year');
+    let rangeStart = moment().subtract(13, 'days').subtract(1, 'year');
     let rangeEnd = moment().subtract(1, 'year');
-    return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'Y', 'followup_1yr')
+    return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'Y', 'followup_1yr', process.env.ONE_YR_SURVEY_ID)
     .then(oneYearMsgAndRecips => {
         result.push(oneYearMsgAndRecips);
-        return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'R', 'followup_reconsent')
+        return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'R', 'followup_reconsent', process.env.ONE_YR_SURVEY_ID)
     })
     .then(reconsentMsgAndRecips => {
         result.push(reconsentMsgAndRecips);
-        rangeStart = moment().subtract(6, 'days').subtract(3, 'months');
+        rangeStart = moment().subtract(13, 'days').subtract(3, 'months');
         rangeEnd = moment().subtract(3, 'months');
-        return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'Y', 'followup_3mo');
+        return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'Y', 'followup_3mo', process.env.THREE_MO_SURVEY_ID);
     })
     .then(threeMonthMsgAndRecips => {
         result.push(threeMonthMsgAndRecips);
@@ -728,13 +728,13 @@ function getFollowupRecipients() {
     });
 }
 
-function getFollowupRecipientsByDate(dateStart, dateEnd, consent, msgType) {
+function getFollowupRecipientsByDate(dateStart, dateEnd, consent, msgType, surveyId) {
     const recipients = [];
     return db.getGroupsByEndDate(dateStart, dateEnd)
     .then(result => result.Items.map(g => g.name))
-    .then(groups => getUsersByGroupsAndConsent(groups, consent))
+    .then(groups => getUsersByGroupsAndSurveyStatus(groups, consent, surveyId))
     .then(users => {
-        users.Items.forEach(u => recipients.push(u));
+        users.forEach(u => recipients.push(u));
         return getRandomMsgForType(msgType);
     })
     .then(message => {
@@ -744,11 +744,12 @@ function getFollowupRecipientsByDate(dateStart, dateEnd, consent, msgType) {
 
 /**
  * Helper function to fetch users who are in one of a given list of groups and have 
- * the given survey.consent value.
+ * the given survey.consent value and who have not yet completed the given surveyId.
  * @param {list} groups 
  * @param {string} consentStatus 
+ * @param {string} surveyId
  */
-function getUsersByGroupsAndConsent(groups, consentStatus) {
+function getUsersByGroupsAndSurveyStatus(groups, consentStatus, surveyId) {
     const attrVals = {':consentStatus': consentStatus};
     groups.forEach((g, idx) => {
         attrVals[':val'+idx] = g;
@@ -759,7 +760,8 @@ function getUsersByGroupsAndConsent(groups, consentStatus) {
         ExpressionAttributeNames: { '#G': 'group' },
         ExpressionAttributeValues: attrVals
     }
-    return dynamo.scan(params).promise();
+    return dynamo.scan(params).promise()
+    .then(users => users.Items.filter(u => !u.survey.completed || u.survey.completed.findIndex(s => s.surveyId == surveyId) == -1));
 }
 
 /**
