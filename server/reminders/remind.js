@@ -40,7 +40,7 @@ const db = new DynUtils.HrvDb({
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
 const NEW_EMOJI_MINUTES = 120; //emojis younger than this are new
 
-const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji', 'survey', 'status_report'];
+const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji', 'survey', 'status_report', 'followup'];
 
 exports.handler = (event, context, callback) => {
     const msgType = event.msgType;
@@ -86,6 +86,9 @@ exports.handler = (event, context, callback) => {
         case 'status_report': {
             getRecipients = getWeeklyStatusReport;
             break;
+        }
+        case 'followup': {
+            getRecipients = getFollowupRecipients;
         }
     }
     
@@ -698,6 +701,65 @@ function getWeeklyStatusReport() {
 
         return [{msg: msg, recipients: statusReportRecipients}];
     });
+}
+
+/**
+ * Returns all of the users who are supposed to receive follow-up surveys: 3 months after group end date, 1 year,
+ * and 1 year with re-consent for followup.
+ */
+function getFollowupRecipients() {
+    const result = [];
+    let rangeStart = moment().subtract(6, 'days').subtract(1, 'year');
+    let rangeEnd = moment().subtract(1, 'year');
+    return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'Y', 'followup_1yr')
+    .then(oneYearMsgAndRecips => {
+        result.push(oneYearMsgAndRecips);
+        return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'R', 'followup_reconsent')
+    })
+    .then(reconsentMsgAndRecips => {
+        result.push(reconsentMsgAndRecips);
+        rangeStart = moment().subtract(6, 'days').subtract(3, 'months');
+        rangeEnd = moment().subtract(3, 'months');
+        return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'Y', 'followup_3mo');
+    })
+    .then(threeMonthMsgAndRecips => {
+        result.push(threeMonthMsgAndRecips);
+        return result;
+    });
+}
+
+function getFollowupRecipientsByDate(dateStart, dateEnd, consent, msgType) {
+    const recipients = [];
+    return db.getGroupsByEndDate(dateStart, dateEnd)
+    .then(result => result.Items.map(g => g.name))
+    .then(groups => getUsersByGroupsAndConsent(groups, consent))
+    .then(users => {
+        users.Items.forEach(u => recipients.push(u));
+        return getRandomMsgForType(msgType);
+    })
+    .then(message => {
+        return { msg: message, recipients: recipients }
+    });
+}
+
+/**
+ * Helper function to fetch users who are in one of a given list of groups and have 
+ * the given survey.consent value.
+ * @param {list} groups 
+ * @param {string} consentStatus 
+ */
+function getUsersByGroupsAndConsent(groups, consentStatus) {
+    const attrVals = {':consentStatus': consentStatus};
+    groups.forEach((g, idx) => {
+        attrVals[':val'+idx] = g;
+    });
+    const params = {
+        TableName: usersTable,
+        FilterExpression: `survey.consent = :consentStatus and #G in (${Object.keys(attrVals).join(', ')})`,
+        ExpressionAttributeNames: { '#G': 'group' },
+        ExpressionAttributeValues: attrVals
+    }
+    return dynamo.scan(params).promise();
 }
 
 /**

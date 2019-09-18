@@ -238,6 +238,7 @@ functions:
       STATUS_REPORTS_TABLE:
         Ref: statusReportsTable
       ADMIN_GROUP: "staff"
+      DISABLED_GROUP: "disabled"
 
 # DO NOT CHANGE the name of this function unless you also change it in setup/setup.js
   messageCustomizer:

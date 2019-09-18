@@ -15,3 +15,4 @@ STATUS_REPORT_RECIPIENTS=["nobody@example.com"]
 STATUS_REPORTS_TABLE=hrv-status-reports-test
 CHART_BUCKET=hrv-reporting-test
 ADMIN_GROUP=staff
+DISABLED_GROUP=disabled

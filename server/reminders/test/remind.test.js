@@ -38,23 +38,41 @@ const sns = new AWS.SNS({endpoint: snsEndpoint, apiVersion: '2010-03-31', region
 const todayYMD = +moment().format('YYYYMMDD');
 const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
 
+const oneYearTestGroup = "one-year-followup-test";
+const threeMonthTestGroup = "three-month-followup-test";
+const disabledGroup = process.env.DISABLED_GROUP;
+const adminGroup = process.env.ADMIN_GROUP;
+
 // test data
 const users = [ {id: "1a", firstName: "One", lastName: "Eh", group: "g-one", email: "foo@example.com"},
                 {id: "1b", firstName: "One", lastName: "Bee", group: "g-one", phone: "12125551212"},
                 {id: "2b", firstName: "Two", lastName: "Bee", group: "g-two", email: "bar@example.com"},
                 {id: "ad9", firstName: "Ad", lastName: "Nine", group: "g-inactive", phone: "+12095551212"},
-                {id: "ad8", firstName: "Ad", lastName: "Eight", group: "g-inactive-2", email: "bash@example.com"}
+                {id: "ad8", firstName: "Ad", lastName: "Eight", group: "g-inactive-2", email: "bash@example.com"},
+                {id: "3a", firstName: "Three", lastName: "Eh", group: adminGroup, email: "baz@example.com", survey: {consent: "Y"}},
+                {id: "3b", firstName: "Three", lastName: "Bee", group: disabledGroup, email: "bad@example.com", survey: {consent: "Y"}},
+                {id: "4a", firstName: "Four", lastName: "Eh", group: threeMonthTestGroup, email: "four@example.com", survey: {consent: "Y"}},
+                {id: "4b", firstName: "Four", lastName: "Bee", group: threeMonthTestGroup, email: "foobar@example.com", survey: {consent: "N"}},
+                {id: "5a", firstName: "Five", lastName: "Eh", group: oneYearTestGroup, email: "yes@example.com", survey: {consent: "Y"}},
+                {id: "5b", firstName: "Five", lastName: "Bee", group: oneYearTestGroup, email: "no@example.com", survey: {consent: "N"}},
+                {id: "5c", firstName: "Five", lastName: "See", group: oneYearTestGroup, email: "reconsent@example.com", survey: {consent: "R"}}
             ];
 
 const group1startDate = moment().subtract(3, 'weeks');
 const group1endDate = moment().add(3, 'weeks');
 const group2startDate = moment().subtract(3, 'days');
 const group2endDate = moment().add(39, 'days');
+const oneYearFollowup = moment().subtract(4, 'days').subtract(1, 'year');
+const threeMonthFollowup = moment().subtract(4, 'days').subtract(3, 'months');
 const groups = [ 
     { name: "g-one", startDate: +group1startDate.format("YYYYMMDD"), endDate: +group1endDate.format("YYYYMMDD") },
     { name: "g-two", startDate: +group2startDate.format("YYYYMMDD"), endDate: +group2endDate.format("YYYYMMDD") },
     { name: "g-inactive", startDate: 20160914, endDate: 20161030 },
-    { name: "g-inactive-2", startDate: 20160915, endDate: 20161031 }
+    { name: "g-inactive-2", startDate: 20160915, endDate: 20161031 },
+    { name: adminGroup, startDate: 20160101, endDate: +oneYearFollowup.format("YYYYMMDD") }, 
+    { name: disabledGroup, startDate: 20160101, endDate: +oneYearFollowup.format("YYYYMMDD") },
+    { name: oneYearTestGroup, startDate: 20180101, endDate: +oneYearFollowup.format("YYYYMMDD") },
+    { name: threeMonthTestGroup, startDate: 20180101, endDate: +threeMonthFollowup.format("YYYYMMDD") }
 ];
 
 const nowMs = +moment().format('x');
@@ -65,6 +83,10 @@ const groupMsgs = [
     { group: "g-two", date: aWhileAgoMs, body: 'something', fromId: users.filter(u => u.group === "g-two")[0].id }
 ];
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
+
+const oneYearMessage = 'followup_1yr';
+const reconsentMessage = 'followup_reconsent';
+const threeMonthMessage = 'followup_3mo';
 
 const reminderMsgs = [
     {id: 1, active: true, msgType: 'train', subject: 'Please record yesterday\'s practice minutes!', html: 'Good morning!  Have you recorded yesterday\'s practice?  <a href="https://mindbodystudy.org/training">Add your minutes now</a> or enter 0 if you missed practice.', text: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: https://mindbodystudy.org/training', sms: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: http://bit.ly/2iGbuc6', sends: {email: 0, sms: 0}},
@@ -77,6 +99,9 @@ const reminderMsgs = [
     {id: 8, active: true, msgType: 'group_ok', subject: 's', html: 'h', text: 't', sms: 's', sends: {email: 3, sms: 4}},
     {id: 9, active: true, msgType: 'survey', subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
     {id: 10, active: true, msgType: 'status_report', subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 11, active: true, msgType: oneYearMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 12, active: true, msgType: reconsentMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 13, active: true, msgType: threeMonthMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
 ];
 
 const userData = [
@@ -855,6 +880,75 @@ describe('sending status report', function() {
     it('should have a chart in the email');
     it('should have the off-track users in the email');
     it('should say "All users are on track" in the email when no users are off-track')
+});
+
+describe('Sending followup survey', function() {
+    before(function() {
+        return prepTestEnv()
+        .then(() => {
+            return dbSetup.writeTestData(reminderMsgsTable, reminderMsgs);
+        });
+    });
+    it('should get users who agreed to followup in groups whose end date falls between 1 year and 1 year, 6 days ago', function() {
+        return runScheduledEvent({msgType: 'followup'}, function(body) {
+            assert(body.length > 0);
+            const targetUsers = users.filter(u => u.group == oneYearTestGroup && u.survey.consent == 'Y');
+            let targetMessage = reminderMsgs.filter(m => m.msgType == oneYearMessage);
+            assert.equal(targetMessage.length, 1, "Test appears to be invalid - found no text for one-year followup messages.")
+            targetMessage = targetMessage[0];
+            const oneYearMessages = body.filter(item => item.msg == targetMessage.id);
+            assert(oneYearMessages.length >= 1, 'Expected at least one one-year followup survey to be sent');
+            oneYearMessages.forEach(item => {
+                assert(targetUsers.findIndex(u => u.email == item.recip || u.phone == item.recip) != -1, `${item.recip} isn't a valid recipient`);
+            });
+        });
+    });
+    it('should get users who agreed to followup in groups whose end date falls between 3 months and 3 months, 6 days ago', function() {
+        return runScheduledEvent({msgType: 'followup'}, function(body) {
+            assert(body.length > 0);
+            const targetUsers = users.filter(u => u.group == threeMonthTestGroup && u.survey.consent == 'Y');
+            let targetMessage = reminderMsgs.filter(m => m.msgType == threeMonthMessage);
+            assert.equal(targetMessage.length, 1, "Test appears to be invalid - found no text for three-month followup messages.")
+            targetMessage = targetMessage[0];
+            const threeMonthMessages = body.filter(item => item.msg == targetMessage.id);
+            assert(threeMonthMessages.length >= 1, 'Expected at least one three-month followup survey to be sent');
+            threeMonthMessages.forEach(item => {
+                assert(targetUsers.findIndex(u => u.email == item.recip || u.phone == item.recip) != -1, `${item.recip} isn't a valid recipient`);
+            });
+        });
+    });
+    it('should exclude users who said they do not wish to be contacted for followups', function() {
+        return runScheduledEvent({msgType: 'followup'}, function(body) {
+            assert(body.length > 0);
+            const excludedUsers = users.filter(u => (u.group == threeMonthTestGroup || u.group == oneYearTestGroup) && u.survey.consent == 'N');
+            assert(excludedUsers.length > 0, `Test appears to be invalid - found no users who did not consent to followup.`)
+            body.forEach(item => {
+                assert(excludedUsers.findIndex(u => u.email == item.recip || u.phone == item.recip) == -1, `${item.recip} did not consent to followup but was emailed anyway`);
+            });
+        });
+    });
+    it('should exclude users in the disabled and staff groups', function() {
+        return runScheduledEvent({msgType: 'followup'}, function(body) {
+            assert(body.length > 0);
+            const excludedUsers = users.filter(u => (u.group == adminGroup || u.group == disabledGroup) && u.survey.consent == 'Y');
+            assert(excludedUsers.length > 0, `Test appears to be invalid - found no users in admin or disabled groups.`)
+            body.forEach(item => {
+                assert(excludedUsers.findIndex(u => u.email == item.recip || u.phone == item.recip) == -1, `${item.recip} is in admin or disabled group but was emailed anyway`);
+            });
+        });
+    });
+    it('should send a reconsent email to users who need to re-consent to followup', function() {
+        return runScheduledEvent({msgType: 'followup'}, function(body) {
+            assert(body.length > 0);
+            const targetUsers = users.filter(u => (u.group == threeMonthTestGroup || u.group == oneYearTestGroup) && u.survey.consent == 'R').map(u => u.email || u.phone);
+            assert(targetUsers.length > 0, `Test appears to be invalid - found no users who need followup reconsent.`)
+            let targetMessage = reminderMsgs.filter(m => m.msgType == reconsentMessage);
+            assert.equal(targetMessage.length, 1, `Test appears to be invalid - expected only one reconsent message but found ${targetMessage.length}`);
+            targetMessage = targetMessage[0];
+            const recips = body.filter(item => item.msg == targetMessage.id).map(item => item.recip);
+            assert.deepStrictEqual(recips, targetUsers);
+        });
+    });
 });
 
 function cleanDb() {
