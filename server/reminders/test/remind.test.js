@@ -41,7 +41,9 @@ const todayYMD = +moment().format('YYYYMMDD');
 const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
 
 const oneYearTestGroup = "one-year-followup-test";
+const oneYearReminderTestGroup = "one-year-followup-reminder-test"
 const threeMonthTestGroup = "three-month-followup-test";
+const threeMonthReminderTestGroup = "three-month-followup-reminder-test";
 const disabledGroup = process.env.DISABLED_GROUP;
 const adminGroup = process.env.ADMIN_GROUP;
 
@@ -55,11 +57,14 @@ const users = [ {id: "1a", firstName: "One", lastName: "Eh", group: "g-one", ema
                 {id: "3b", firstName: "Three", lastName: "Bee", group: disabledGroup, email: "bad@example.com", survey: {consent: "Y"}},
                 {id: "4a", firstName: "Four", lastName: "Eh", group: threeMonthTestGroup, email: "four@example.com", survey: {consent: "Y"}},
                 {id: "4b", firstName: "Four", lastName: "Bee", group: threeMonthTestGroup, email: "foobar@example.com", survey: {consent: "N"}},
+                {id: "4c", firstName: "Four", lastName: "See", group: threeMonthReminderTestGroup, email: "four-c@example.com", survey: {consent: "Y"}},
+                {id: "4d", firstName: "Four", lastName: "Dee", group: threeMonthReminderTestGroup, email: "four-d@example.com", survey: {consent: "Y", completed: [ {surveyId: threeMonthSurveyId, recordedDate: '2019-02-07 12:34:22'} ] }},
                 {id: "5a", firstName: "Five", lastName: "Eh", group: oneYearTestGroup, email: "yes@example.com", survey: {consent: "Y"}},
                 {id: "5b", firstName: "Five", lastName: "Bee", group: oneYearTestGroup, email: "no@example.com", survey: {consent: "N"}},
                 {id: "5c", firstName: "Five", lastName: "See", group: oneYearTestGroup, email: "reconsent@example.com", survey: {consent: "R"}},
-                {id: "5d", firstName: "Five", lastName: "Dee", group: oneYearTestGroup, email: "three-mo-complete@example.com", survey: {consent: "R", completed: [ {surveyId: threeMonthSurveyId, recordedDate: '2019-02-07 12:34:22'} ] }},
-                {id: "5e", firstName: "Five", lastName: "Eee", group: oneYearTestGroup, email: "one-yr-complete@example.com", survey: {consent: "R", completed: [ {surveyId: oneYearSurveyId, recordedDate: '2019-09-17 14:04:43'} ] }}
+                {id: "5d", firstName: "Five", lastName: "Dee", group: oneYearReminderTestGroup, email: "three-mo-complete@example.com", survey: {consent: "Y", completed: [ {surveyId: threeMonthSurveyId, recordedDate: '2019-02-07 12:34:22'} ] }},
+                {id: "5e", firstName: "Five", lastName: "Eee", group: oneYearReminderTestGroup, email: "one-yr-complete@example.com", survey: {consent: "Y", completed: [ {surveyId: oneYearSurveyId, recordedDate: '2019-09-17 14:04:43'} ] }}
+
             ];
 
 const group1startDate = moment().subtract(3, 'weeks');
@@ -67,7 +72,9 @@ const group1endDate = moment().add(3, 'weeks');
 const group2startDate = moment().subtract(3, 'days');
 const group2endDate = moment().add(39, 'days');
 const oneYearFollowup = moment().subtract(4, 'days').subtract(1, 'year');
+const oneYearFollowupReminder = moment().subtract(11, 'days').subtract(1, 'year');
 const threeMonthFollowup = moment().subtract(4, 'days').subtract(3, 'months');
+const threeMonthFollowupReminder = moment().subtract(11, 'days').subtract(3, 'months');
 const groups = [ 
     { name: "g-one", startDate: +group1startDate.format("YYYYMMDD"), endDate: +group1endDate.format("YYYYMMDD") },
     { name: "g-two", startDate: +group2startDate.format("YYYYMMDD"), endDate: +group2endDate.format("YYYYMMDD") },
@@ -76,7 +83,9 @@ const groups = [
     { name: adminGroup, startDate: 20160101, endDate: +oneYearFollowup.format("YYYYMMDD") }, 
     { name: disabledGroup, startDate: 20160101, endDate: +oneYearFollowup.format("YYYYMMDD") },
     { name: oneYearTestGroup, startDate: 20180101, endDate: +oneYearFollowup.format("YYYYMMDD") },
-    { name: threeMonthTestGroup, startDate: 20180101, endDate: +threeMonthFollowup.format("YYYYMMDD") }
+    { name: oneYearReminderTestGroup, startDate: 20180101, endDate: +oneYearFollowupReminder.format("YYYYMMDD") },
+    { name: threeMonthTestGroup, startDate: 20180101, endDate: +threeMonthFollowup.format("YYYYMMDD") },
+    { name: threeMonthReminderTestGroup, startDate: 20180101, endDate: +threeMonthFollowupReminder.format("YYYYMMDD")}
 ];
 
 const nowMs = +moment().format('x');
@@ -89,8 +98,11 @@ const groupMsgs = [
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
 
 const oneYearMessage = 'followup_1yr';
-const reconsentMessage = 'followup_reconsent';
+const oneYearReminderMessage = 'followup_1yr_reminder';
+const reconsentMessage = 'followup_1yr_consent';
+const reconsentReminderMessage = 'followup_1yr_consent_reminder';
 const threeMonthMessage = 'followup_3mo';
+const threeMonthReminderMessage = 'followup_3mo_reminder';
 
 const reminderMsgs = [
     {id: 1, active: true, msgType: 'train', subject: 'Please record yesterday\'s practice minutes!', html: 'Good morning!  Have you recorded yesterday\'s practice?  <a href="https://mindbodystudy.org/training">Add your minutes now</a> or enter 0 if you missed practice.', text: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: https://mindbodystudy.org/training', sms: 'Good morning!  Have you recorded yesterday\'s practice?  Add your minutes now, or enter 0 if you missed practice: http://bit.ly/2iGbuc6', sends: {email: 0, sms: 0}},
@@ -104,8 +116,11 @@ const reminderMsgs = [
     {id: 9, active: true, msgType: 'survey', subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
     {id: 10, active: true, msgType: 'status_report', subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
     {id: 11, active: true, msgType: oneYearMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
-    {id: 12, active: true, msgType: reconsentMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
-    {id: 13, active: true, msgType: threeMonthMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 12, active: true, msgType: oneYearReminderMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 13, active: true, msgType: reconsentMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 14, active: true, msgType: reconsentReminderMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 15, active: true, msgType: threeMonthMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
+    {id: 16, active: true, msgType: threeMonthReminderMessage, subject: 's', html: 'h', text: 's', sms: 's', sends: {email: 0, sms: 0}},
 ];
 
 const userData = [
@@ -886,6 +901,29 @@ describe('sending status report', function() {
     it('should say "All users are on track" in the email when no users are off-track')
 });
 
+function testFollowup(dateStart, dateEnd, consent, msgType, surveyId) {
+    const targetGroups = groups.filter(g => g.endDate >= dateStart &&
+            g.endDate <= dateEnd &&
+            g.name != disabledGroup &&
+            g.name != adminGroup
+        ).map(g => g.name);
+    const targetUsers = users.filter(u => targetGroups.includes(u.group) &&
+        u.survey && u.survey.consent == consent &&
+        (!u.survey.completed || u.survey.completed.findIndex(s => s.surveyId == surveyId) == -1)
+    ).map(u => u.email || u.phone);
+    assert(targetUsers.length >= 1, 'Test appears to be invalid - found no target users.');
+    let targetMessage = reminderMsgs.filter(m => m.msgType == msgType);
+    assert.equal(targetMessage.length, 1, `Test appears to be invalid - expoected one message of type ${msgType} but found ${targetMessage.length}.`);
+    targetMessage = targetMessage[0];
+    return runScheduledEvent({msgType: msgType}, function(response) {
+        assert(response.length > 0);
+        const messages = response.filter(item => item.msg == targetMessage.id);
+        assert(messages.length >= 1, 'Expected at least one message to be sent.')
+        const recipients = response.map(item => item.recip).flat();
+        assert.deepStrictEqual(recipients, targetUsers, "Expected recipients didn't match actual recipients.");
+    });
+}
+
 describe('Sending followup survey', function() {
     before(function() {
         return prepTestEnv()
@@ -893,95 +931,117 @@ describe('Sending followup survey', function() {
             return dbSetup.writeTestData(reminderMsgsTable, reminderMsgs);
         });
     });
-    it('should get users who agreed to followup in groups whose end date falls between 1 year and 1 year, 13 days ago', function() {
-        return runScheduledEvent({msgType: 'followup'}, function(body) {
-            assert(body.length > 0);
-            const targetUsers = users.filter(u => u.group == oneYearTestGroup && u.survey.consent == 'Y');
-            let targetMessage = reminderMsgs.filter(m => m.msgType == oneYearMessage);
-            assert.equal(targetMessage.length, 1, "Test appears to be invalid - found no text for one-year followup messages.")
-            targetMessage = targetMessage[0];
-            const oneYearMessages = body.filter(item => item.msg == targetMessage.id);
-            assert(oneYearMessages.length >= 1, 'Expected at least one one-year followup survey to be sent');
-            oneYearMessages.forEach(item => {
-                assert(targetUsers.findIndex(u => u.email == item.recip || u.phone == item.recip) != -1, `${item.recip} isn't a valid recipient`);
-            });
-        });
+    it('should reach users who agreed to followup in groups whose end date falls between 1 year and 1 year, 6 days ago', function() {
+        return testFollowup(+moment().subtract(1, 'year').subtract(6, 'days').format('YYYYMMDD'),
+            +moment().subtract(1, 'year').format('YYYYMMDD'),
+            'Y',
+            'followup_1yr',
+            oneYearSurveyId
+        );
     });
-    it('should get users who agreed to followup in groups whose end date falls between 3 months and 3 months, 13 days ago', function() {
-        return runScheduledEvent({msgType: 'followup'}, function(body) {
-            assert(body.length > 0);
-            const targetUsers = users.filter(u => u.group == threeMonthTestGroup && u.survey.consent == 'Y');
-            let targetMessage = reminderMsgs.filter(m => m.msgType == threeMonthMessage);
-            assert.equal(targetMessage.length, 1, "Test appears to be invalid - found no text for three-month followup messages.")
-            targetMessage = targetMessage[0];
-            const threeMonthMessages = body.filter(item => item.msg == targetMessage.id);
-            assert(threeMonthMessages.length >= 1, 'Expected at least one three-month followup survey to be sent');
-            threeMonthMessages.forEach(item => {
-                assert(targetUsers.findIndex(u => u.email == item.recip || u.phone == item.recip) != -1, `${item.recip} isn't a valid recipient`);
-            });
-        });
+    it('should remind users whose groups ended a year ago who were contacted but have not filled out the survey one week after contact', function() {
+        return testFollowup(+moment().subtract(1, 'year').subtract(13, 'days').format('YYYYMMDD'),
+            +moment().subtract(1, 'year').subtract(7, 'days').format('YYYYMMDD'),
+            'Y',
+            'followup_1yr_reminder',
+        oneYearSurveyId);
+    });
+    it('should reach users who agreed to followup in groups whose end date falls between 3 months and 3 months, 6 days ago', function() {
+        return testFollowup(+moment().subtract(3, 'months').subtract(6, 'days').format('YYYYMMDD'),
+            +moment().subtract(3, 'months').format('YYYYMMDD'),
+            'Y',
+            'followup_3mo',
+            threeMonthSurveyId
+        );
     });
     it('should exclude users who said they do not wish to be contacted for followups', function() {
-        return runScheduledEvent({msgType: 'followup'}, function(body) {
+        const start = moment().subtract(3, 'months').subtract(6, 'days');
+        const end = moment().subtract(3, 'months');
+        const targetGroups = groups.filter(g => g.endDate >= +start.format('YYYYMMDD') && g.endDate <= +end.format('YYYYMMDD'))
+        .map(g => g.name);
+        const excludedUsers = users.filter(u => targetGroups.includes(u.group) && u.survey.consent == 'N')
+        .map(u => u.email || u.phone);
+        assert(excludedUsers.length > 0, `Test appears to be invalid - found no users who did not consent to followup.`)
+            
+        return runScheduledEvent({msgType: 'followup_3mo'}, function(body) {
             assert(body.length > 0);
-            const excludedUsers = users.filter(u => (u.group == threeMonthTestGroup || u.group == oneYearTestGroup) && u.survey.consent == 'N');
-            assert(excludedUsers.length > 0, `Test appears to be invalid - found no users who did not consent to followup.`)
             body.forEach(item => {
-                assert(excludedUsers.findIndex(u => u.email == item.recip || u.phone == item.recip) == -1, `${item.recip} did not consent to followup but was emailed anyway`);
+                assert(!excludedUsers.includes(item.recip), `${item.recip} did not consent to followup but was emailed anyway`);
             });
         });
     });
     it('should exclude users in the disabled and staff groups', function() {
-        return runScheduledEvent({msgType: 'followup'}, function(body) {
+        const start = moment().subtract(1, 'year').subtract(6, 'days');
+        const end = moment().subtract(1, 'year');
+        const targetGroups = groups.filter(
+            g => g.endDate >= +start.format('YYYYMMDD') &&
+            g.endDate <= +end.format('YYYYMMDD') &&
+            (g.name == adminGroup || g.name == disabledGroup))
+        .map(g => g.name);
+        const excludedUsers = users.filter(u => targetGroups.includes(u.group) && u.survey.consent == 'Y')
+        .map(u => u.email || u.phone);
+        assert(excludedUsers.length > 0, `Test appears to be invalid - found no users in admin or disabled groups.`)
+            
+        return runScheduledEvent({msgType: 'followup_1yr'}, function(body) {
             assert(body.length > 0);
-            const excludedUsers = users.filter(u => (u.group == adminGroup || u.group == disabledGroup) && u.survey.consent == 'Y');
-            assert(excludedUsers.length > 0, `Test appears to be invalid - found no users in admin or disabled groups.`)
             body.forEach(item => {
-                assert(excludedUsers.findIndex(u => u.email == item.recip || u.phone == item.recip) == -1, `${item.recip} is in admin or disabled group but was emailed anyway`);
+                assert(!excludedUsers.includes(item.recip), `${item.recip} is in admin or disabled group but was emailed anyway`);
             });
         });
     });
     it('should send a reconsent email to users who need to re-consent to followup', function() {
-        return runScheduledEvent({msgType: 'followup'}, function(body) {
-            assert(body.length > 0);
-            const targetUsers = users.filter(u =>
-                (u.group == threeMonthTestGroup || u.group == oneYearTestGroup) &&
-                u.survey.consent == 'R' &&
-                (!u.survey.completed ||
-                u.survey.completed.findIndex(s => s.surveyId == oneYearSurveyId) == -1))
-                .map(u => u.email || u.phone);
-            assert(targetUsers.length > 0, `Test appears to be invalid - found no users who need followup reconsent.`)
-            let targetMessage = reminderMsgs.filter(m => m.msgType == reconsentMessage);
-            assert.equal(targetMessage.length, 1, `Test appears to be invalid - expected only one reconsent message but found ${targetMessage.length}`);
-            targetMessage = targetMessage[0];
-            const recips = body.filter(item => item.msg == targetMessage.id).map(item => item.recip);
-            assert.deepStrictEqual(recips, targetUsers);
-        });
+        return testFollowup(+moment().subtract(1, 'year').subtract(6, 'days').format('YYYYMMDD'),
+            +moment().subtract(1, 'year').format('YYYYMMDD'),
+            'R',
+            'followup_1yr_consent',
+            oneYearSurveyId
+        );
     });
     it('should exclude users who have already completed the survey', function() {
+        const start = moment().subtract(1, 'year').subtract(13, 'days');
+        const end = moment().subtract(1, 'year').subtract(7, 'days');
+        const targetGroups = groups.filter(
+            g => g.endDate >= +start.format('YYYYMMDD') &&
+            g.endDate <= +end.format('YYYYMMDD'))
+        .map(g => g.name);
         const oneYrCompleteUsers = users.filter(u => u.survey && 
+            u.survey.consent == 'Y' &&
             u.survey.completed && 
-            u.survey.completed.findIndex(s => s.surveyId == process.env.ONE_YR_SURVEY_ID) != -1
+            u.survey.completed.findIndex(s => s.surveyId == process.env.ONE_YR_SURVEY_ID) != -1 &&
+            targetGroups.includes(u.group)
         ).map(u => u.email || u.phone);
         assert(oneYrCompleteUsers.length > 0, 'Test appears to be invalid - expected at least one user who had completed the one year followup survey.');
-        return runScheduledEvent({msgType: 'followup'}, function(body) {
+        return runScheduledEvent({msgType: 'followup_1yr_reminder'}, function(body) {
             assert(body.length > 0);
             body.forEach(i => {
                 assert(!oneYrCompleteUsers.includes(i.recip), `${i.recip} has already completed the survey but still got a followup`);
             })
         });
     });
-    it('should exclude groups whose end date falls outside of the 3 month/1 year range', function () {
-        const oneYrStart = moment().subtract(13, 'days').subtract(1, 'year').format('YYYYMMDD');
+    it('should exclude groups whose end date falls outside of the 1 year range', function () {
+        const oneYrStart = moment().subtract(6, 'days').subtract(1, 'year').format('YYYYMMDD');
         const oneYrEnd = moment().subtract(1, 'year').format('YYYYMMDD');
-        const threeMoStart = moment().subtract(13, 'days').subtract(3, 'months').format('YYYYMMDD');
+        const excludedGroups = groups.filter(g => {
+            return g.endDate < +oneYrStart || g.endDate > +oneYrEnd
+        }).map(g => g.name);
+        const excludedUsers = users.filter(u => excludedGroups.includes(u.group) && u.survey && u.survey.consent == 'Y')
+        .map(u => u.email || u.phone);
+        assert(excludedUsers.length > 0, 'Test appears to be invalid - expected at least one user in a group outside the followup range.')
+        return runScheduledEvent({msgType: 'followup_1yr'}, function(body) {
+            assert(body.length > 0);
+            body.forEach(i => assert(!excludedUsers.includes(i.recip), `${i.recip} belongs to a group whose end date doesn't fall in followup range, but still got a followup.`))
+        });
+    });
+    it('should exclude groups whose end date falls outside of the 3 month range', function () {
+        const threeMoStart = moment().subtract(6, 'days').subtract(3, 'months').format('YYYYMMDD');
         const threeMoEnd = moment().subtract(3, 'months').format('YYYYMMDD');
         const excludedGroups = groups.filter(g => {
-            return g.endDate < +oneYrStart || g.endDate > +threeMoEnd || (g.endDate > +oneYrEnd && g.endDate < +threeMoStart)
+            return g.endDate < +threeMoStart || g.endDate > +threeMoEnd
         }).map(g => g.name);
-        assert(excludedGroups.length > 0, 'Test appears to be invalid - expected at least one group with an end date outside of followup range.');
-        const excludedUsers = users.filter(u => excludedGroups.includes(u.group)).map(u => u.email || u.phone);
-        return runScheduledEvent({msgType: 'followup'}, function(body) {
+        const excludedUsers = users.filter(u => excludedGroups.includes(u.group) && u.survey && u.survey.consent == 'Y')
+        .map(u => u.email || u.phone);
+        assert(excludedUsers.length > 0, 'Test appears to be invalid - expected at least one user in a group outside the followup range.')
+        return runScheduledEvent({msgType: 'followup_3mo'}, function(body) {
             assert(body.length > 0);
             body.forEach(i => assert(!excludedUsers.includes(i.recip), `${i.recip} belongs to a group whose end date doesn't fall in followup range, but still got a followup.`))
         });

@@ -40,7 +40,9 @@ const db = new DynUtils.HrvDb({
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
 const NEW_EMOJI_MINUTES = 120; //emojis younger than this are new
 
-const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji', 'survey', 'status_report', 'followup'];
+const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji', 'survey', 'status_report',
+    'followup_1yr', 'followup_1yr_reminder', 'followup_1yr_consent', 'followup_1yr_consent_reminder', 'followup_3mo',
+    'followup_3mo_reminder'];
 
 exports.handler = (event, context, callback) => {
     const msgType = event.msgType;
@@ -87,8 +89,41 @@ exports.handler = (event, context, callback) => {
             getRecipients = getWeeklyStatusReport;
             break;
         }
-        case 'followup': {
-            getRecipients = getFollowupRecipients;
+        case 'followup_1yr': {
+            const start = moment().subtract(1, 'year').subtract(6, 'days');
+            const end = moment().subtract(1, 'year');
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', msgType, process.env.ONE_YR_SURVEY_ID);
+            break;
+        }
+        case 'followup_1yr_reminder': {
+            const start = moment().subtract(1, 'year').subtract(13, 'days');
+            const end = moment().subtract(1, 'year').subtract(7, 'days');
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', msgType, process.env.ONE_YR_SURVEY_ID);
+            break;
+        }
+        case 'followup_1yr_consent': {
+            const start = moment().subtract(1, 'year').subtract(6, 'days');
+            const end = moment().subtract(1, 'year');
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', msgType, process.env.ONE_YR_SURVEY_ID);
+            break;
+        }
+        case 'followup_1yr_consent_reminder': {
+            const start = moment().subtract(1, 'year').subtract(13, 'days');
+            const end = moment().subtract(1, 'year').subtract(7, 'days');
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', msgType, process.env.ONE_YR_SURVEY_ID);
+            break;
+        }
+        case 'followup_3mo': {
+            const start = moment().subtract(3, 'months').subtract(6, 'days');
+            const end = moment().subtract(3, 'months');
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', msgType, process.env.THREE_MO_SURVEY_ID);
+            break;
+        }
+        case 'followup_3mo_reminder': {
+            const start = moment().subtract(3, 'months').subtract(13, 'days');
+            const end = moment().subtract(3, 'months').subtract(7, 'days');
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', msgType, process.env.THREE_MO_SURVEY_ID);
+            break;
         }
     }
     
@@ -704,30 +739,17 @@ function getWeeklyStatusReport() {
 }
 
 /**
- * Returns all of the users who are supposed to receive follow-up surveys: 3 months after group end date, 1 year,
- * and 1 year with re-consent for followup (excluding users who have already completed the given survey).
+ * Returns a Promise<[{msg: msg obj, recipients: [user obj]}]> 
+ * where msg is of type 'msgType' and recipients are users who 
+ * (a) belong to a group with and end date between 'dateStart' and 'dateEnd' and
+ * (b) who have survey.consent value of 'consent' and
+ * (c) who have not completed a survey with id 'surveyId'
+ * @param {number} dateStart YYYYMMDD format for start date of range
+ * @param {number} dateEnd YYYYMMDD format for end date of range
+ * @param {string} consent either 'Y' (user has consented to followup) or 'R' (user must reconsent to followup)
+ * @param {string} msgType 
+ * @param {string} surveyId id of the Qualtrics survey the user will be filling out
  */
-function getFollowupRecipients() {
-    const result = [];
-    let rangeStart = moment().subtract(13, 'days').subtract(1, 'year');
-    let rangeEnd = moment().subtract(1, 'year');
-    return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'Y', 'followup_1yr', process.env.ONE_YR_SURVEY_ID)
-    .then(oneYearMsgAndRecips => {
-        result.push(oneYearMsgAndRecips);
-        return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'R', 'followup_reconsent', process.env.ONE_YR_SURVEY_ID)
-    })
-    .then(reconsentMsgAndRecips => {
-        result.push(reconsentMsgAndRecips);
-        rangeStart = moment().subtract(13, 'days').subtract(3, 'months');
-        rangeEnd = moment().subtract(3, 'months');
-        return getFollowupRecipientsByDate(+rangeStart.format('YYYYMMDD'), +rangeEnd.format('YYYYMMDD'), 'Y', 'followup_3mo', process.env.THREE_MO_SURVEY_ID);
-    })
-    .then(threeMonthMsgAndRecips => {
-        result.push(threeMonthMsgAndRecips);
-        return result;
-    });
-}
-
 function getFollowupRecipientsByDate(dateStart, dateEnd, consent, msgType, surveyId) {
     const recipients = [];
     return db.getGroupsByEndDate(dateStart, dateEnd)
@@ -737,9 +759,7 @@ function getFollowupRecipientsByDate(dateStart, dateEnd, consent, msgType, surve
         users.forEach(u => recipients.push(u));
         return getRandomMsgForType(msgType);
     })
-    .then(message => {
-        return { msg: message, recipients: recipients }
-    });
+    .then(message => [{ msg: message, recipients: recipients }]);
 }
 
 /**
