@@ -17,6 +17,7 @@ const qualtricsApiKey = process.env.QUALTRICS_API_KEY;
 const qualtricsHost = process.env.QUALTRICS_HOST;
 
 const usersTable = process.env.USERS_TABLE;
+const reconsentSurveyId = process.env.ONE_YR_CONSENT_SURVEY_ID;
 
 exports.handler = async (event, context, callback) => {
         const params = new URLSearchParams(event.body);
@@ -59,12 +60,16 @@ async function saveSurveyComplete(subjectId, surveyId, recordedDate) {
     }
 
     const userId = data.Items[0].id;
+    let surveyConsent = data.Items[0].survey.consent;
+    if (surveyConsent == 'R' && surveyId == reconsentSurveyId) {
+        surveyConsent = 'Y';
+    }
 
     const writeParams = {
         TableName: usersTable,
         Key: { 'id': userId },
-        UpdateExpression: 'set survey.completed = list_append(if_not_exists(survey.completed, :emptyList), :surveyComplete)',
-        ExpressionAttributeValues: { ':emptyList': [], ':surveyComplete': [ { 'surveyId': surveyId, 'recordedDate': recordedDate } ] }
+        UpdateExpression: 'set survey.completed = list_append(if_not_exists(survey.completed, :emptyList), :surveyComplete), survey.consent = :surveyConsent',
+        ExpressionAttributeValues: { ':emptyList': [], ':surveyComplete': [ { 'surveyId': surveyId, 'recordedDate': recordedDate } ], ':surveyConsent': surveyConsent }
     };
     return await dynamo.update(writeParams).promise()
 }

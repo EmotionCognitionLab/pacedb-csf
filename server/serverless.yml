@@ -428,6 +428,7 @@ functions:
     environment:
       QUALTRICS_HOST: "https://usc.ca1.qualtrics.com"
       QUALTRICS_API_KEY: ${opt:qualtricsApiKey}
+      ONE_YR_CONSENT_SURVEY_ID: "789ghi"
 
       
 plugins:
