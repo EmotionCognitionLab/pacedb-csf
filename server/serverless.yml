@@ -185,11 +185,13 @@ functions:
     events:
       - schedule:
           rate: cron(00 05 * * ? *)
+          enabled: false
           description: Reminds users who haven't yet done their training for the day to do so.
           input:
             msgType: train
       - schedule:
           rate: cron(4 15 * * ? *)
+          enabled: false
           description: Reminds users who haven't reported their training minutes for yesterday to do so.
           input:
             msgType: report
