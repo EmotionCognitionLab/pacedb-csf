@@ -294,8 +294,8 @@ functions:
     timeout: 120
     events:
       - schedule:
-          rate: cron(40 04 * * ? *)
-          description: Checks for training data before the reminder to train is sent out.
+          rate: rate(7 minutes)
+          description: Imports any new training data for today.
           input:
             day: today
       - schedule:
