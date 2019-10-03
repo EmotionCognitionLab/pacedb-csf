@@ -751,15 +751,25 @@ function getWeeklyStatusReport() {
  * @param {string} surveyId id of the Qualtrics survey the user will be filling out
  */
 function getFollowupRecipientsByDate(dateStart, dateEnd, consent, msgType, surveyId) {
-    const recipients = [];
+    const results = [];
+    let followupUsers;
     return db.getGroupsByEndDate(dateStart, dateEnd)
     .then(result => result.Items.map(g => g.name))
     .then(groups => getUsersByGroupsAndSurveyStatus(groups, consent, surveyId))
     .then(users => {
-        users.forEach(u => recipients.push(u));
+        followupUsers = users;
         return getRandomMsgForType(msgType);
     })
-    .then(message => [{ msg: message, recipients: recipients }]);
+    .then(msg => {
+        followupUsers.forEach(u => {
+            const msgForUser = msg;
+            msgForUser.html = msgForUser.html.replace('%%SUBJ_ID%%', u.subjectId);
+            msgForUser.text = msgForUser.text.replace('%%SUBJ_ID%%', u.subjectId);
+            msgForUser.sms = msgForUser.sms.replace('%%SUBJ_ID%%', u.subjectId);
+            results.push({msg: msgForUser, recipients: [u]})
+        });
+        return results;
+    });
 }
 
 /**

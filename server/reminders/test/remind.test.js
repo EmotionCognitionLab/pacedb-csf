@@ -1046,6 +1046,8 @@ describe('Sending followup survey', function() {
             body.forEach(i => assert(!excludedUsers.includes(i.recip), `${i.recip} belongs to a group whose end date doesn't fall in followup range, but still got a followup.`))
         });
     });
+    // testing this requires replacing moto_ses with something that allows us to examine sent emails
+    it('should include the subject id in the email');
 });
 
 function cleanDb() {
