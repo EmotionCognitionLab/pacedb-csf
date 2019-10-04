@@ -201,12 +201,12 @@ functions:
           input:
             msgType: survey
       - schedule:
-          rate: rate(2 hours)
+          rate: cron(0/120 16-1 ? * * *)
           description: Informs users in groups with new messages that new messages exist.
           input:
             msgType: new_group_msg
       - schedule:
-          rate: cron(53 0/2 * * ? *)
+          rate: cron(0/120 16-1 ? * * *)
           description: Informs users who have recently received emoji of the fact.
           input:
             msgType: new_emoji
