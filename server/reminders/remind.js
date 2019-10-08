@@ -104,13 +104,13 @@ exports.handler = (event, context, callback) => {
         case 'followup_1yr_consent': {
             const start = moment().subtract(1, 'year').subtract(6, 'days');
             const end = moment().subtract(1, 'year');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', msgType, process.env.ONE_YR_SURVEY_ID);
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', msgType, process.env.ONE_YR_CONSENT_SURVEY_ID);
             break;
         }
         case 'followup_1yr_consent_reminder': {
             const start = moment().subtract(1, 'year').subtract(13, 'days');
             const end = moment().subtract(1, 'year').subtract(7, 'days');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', msgType, process.env.ONE_YR_SURVEY_ID);
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', msgType, process.env.ONE_YR_CONSENT_SURVEY_ID);
             break;
         }
         case 'followup_3mo': {

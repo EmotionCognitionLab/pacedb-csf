@@ -20,6 +20,7 @@ const statusReportsTable = process.env.STATUS_REPORTS_TABLE;
 const chartBucket = process.env.CHART_BUCKET;
 const threeMonthSurveyId = process.env.THREE_MO_SURVEY_ID;
 const oneYearSurveyId = process.env.ONE_YR_SURVEY_ID;
+const oneYearConsentSurveyId = process.env.ONE_YR_CONSENT_SURVEY_ID;
 
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
@@ -994,7 +995,7 @@ describe('Sending followup survey', function() {
             +moment().subtract(1, 'year').format('YYYYMMDD'),
             'R',
             'followup_1yr_consent',
-            oneYearSurveyId
+            oneYearConsentSurveyId
         );
     });
     it('should exclude users who have already completed the survey', function() {
