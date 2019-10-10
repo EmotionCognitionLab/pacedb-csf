@@ -426,7 +426,7 @@ functions:
     timeout: 120
     events:
       - http:
-          path: /
+          path: /qualtrics/followup
           method: post
     environment:
       QUALTRICS_HOST: "https://usc.ca1.qualtrics.com"
