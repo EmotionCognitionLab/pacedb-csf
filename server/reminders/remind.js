@@ -762,7 +762,7 @@ function getFollowupRecipientsByDate(dateStart, dateEnd, consent, msgType, surve
     })
     .then(msg => {
         followupUsers.forEach(u => {
-            const msgForUser = msg;
+            const msgForUser = Object.assign({}, msg);
             msgForUser.html = msgForUser.html.replace('%%SUBJ_ID%%', u.subjectId).replace('%%NAME%%', u.firstName);
             msgForUser.text = msgForUser.text.replace('%%SUBJ_ID%%', u.subjectId).replace('%%NAME%%', u.firstName);
             msgForUser.sms = msgForUser.sms.replace('%%SUBJ_ID%%', u.subjectId).replace('%%NAME%%', u.firstName);
