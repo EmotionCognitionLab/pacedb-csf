@@ -8,7 +8,7 @@ process.env['PATH'] = process.env['PATH'] + ':' + process.env['LAMBDA_TASK_ROOT'
 
 const AWS = require('aws-sdk');
 const axios = require('axios');
-require('url');
+const {URLSearchParams} = require('url');
 
 const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
 const region = process.env.REGION;
