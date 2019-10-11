@@ -14,7 +14,7 @@ const dbSetup = require('../../common-test/db-setup.js');
 
 const usersTable = process.env.USERS_TABLE;
 
-const defaultSurveyId = 'SV_37SzcRddmWjbkk';
+const defaultSurveyId = process.env.ONE_YR_SURVEY_ID;
 const defaultResponseId = 'R_yjpFuS1lQRM7YMF';
 const reconsentSurveyId = process.env.ONE_YR_CONSENT_SURVEY_ID;
 
@@ -114,6 +114,24 @@ describe('Callback for completed survey', function() {
             const result = await getUser(userRecords[3].id);
             assert(result.Item, `Expected to get 1 record back from dynamo for user id ${userRecords[3].id}; got 0 records.`)
             assert.equal(result.Item.survey.consent, "Y");
+        });
+        it('should record a user who completes the one year reconsent survey as also having completed the regular one year survey', async () => {
+            // we record them as having completed both so they don't get a reminder about the regular survey after completing
+            // the reconsent version of it
+            const subjId = userRecords[3].subjectId;
+            assert.equal(userRecords[3].survey.consent, 'R', `Invalid test setup - expected the survey.consent value for user id ${userRecords[3].id} to be 'R', but it was ${userRecords[3].survey.consent}`);
+            const recordedDate = '2010-01-01T23:59:59.398Z';
+            const qualResp = buildQualtricsSurveyDataResponse(subjId, finished, recordedDate);
+
+            nock(process.env.QUALTRICS_HOST)
+            .get(`/API/v3/surveys/${reconsentSurveyId}/responses/${defaultResponseId}`)
+            .reply(200, qualResp);
+
+            await runLambda(buildSurveyCallback(reconsentSurveyId));
+            const result = await getUser(userRecords[3].id);
+            assert(result.Item, `Expected to get 1 record back from dynamo for user id ${userRecords[3].id}; got 0 records.`)
+            assert(result.Item.survey.completed.findIndex(s => s.surveyId == reconsentSurveyId) != -1, `Expected reconsent survey to be marked as completed`);
+            assert(result.Item.survey.completed.findIndex(s => s.surveyId == defaultSurveyId) != -1, `Expected default survey id to be marked as completed`);
         });
     });
 
