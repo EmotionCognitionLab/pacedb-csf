@@ -89,6 +89,30 @@ exports.handler = (event, context, callback) => {
             getRecipients = getWeeklyStatusReport;
             break;
         }
+        case 'followup_1yr_or_more': {
+            const start = moment().subtract(10, 'years').subtract(6, 'days');
+            const end = moment().subtract(1, 'year');
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', 'followup_1yr', process.env.ONE_YR_SURVEY_ID);
+            break;
+        }
+        case 'followup_1yr_or_more_reminder': {
+            const start = moment().subtract(10, 'years').subtract(13, 'days');
+            const end = moment().subtract(1, 'year').subtract(7, 'days');
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', 'followup_1yr_reminder', process.env.ONE_YR_SURVEY_ID);
+            break;
+        }
+        case 'followup_1yr_or_more_consent': {
+            const start = moment().subtract(10, 'years').subtract(6, 'days');
+            const end = moment().subtract(1, 'year');
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', 'followup_1yr_consent', process.env.ONE_YR_CONSENT_SURVEY_ID);
+            break;
+        }
+        case 'followup_1y_or_more_consent_reminder': {
+            const start = moment().subtract(10, 'years').subtract(13, 'days');
+            const end = moment().subtract(1, 'year').subtract(7, 'days');
+            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', 'followup_1yr_consent_reminder', process.env.ONE_YR_CONSENT_SURVEY_ID);
+            break;
+        }
         case 'followup_1yr': {
             const start = moment().subtract(1, 'year').subtract(6, 'days');
             const end = moment().subtract(1, 'year');
