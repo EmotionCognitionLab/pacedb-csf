@@ -780,6 +780,12 @@ function getFollowupRecipientsByDate(dateStart, dateEnd, consent, msgType, surve
  * @param {string} surveyId
  */
 function getUsersByGroupsAndSurveyStatus(groups, consentStatus, surveyId) {
+    const surveyIds = [ surveyId ];
+    if (surveyId == process.env.ONE_YR_SURVEY_ID) {
+        // if they've completed the 1-year-with-consent-to-future-contact
+        // version of the survey we don't have to remind them to do the regular version
+        surveyIds.push(process.env.ONE_YR_CONSENT_SURVEY_ID)
+    }
     const attrVals = {':consentStatus': consentStatus};
     groups.forEach((g, idx) => {
         attrVals[':val'+idx] = g;
@@ -791,7 +797,7 @@ function getUsersByGroupsAndSurveyStatus(groups, consentStatus, surveyId) {
         ExpressionAttributeValues: attrVals
     }
     return dynamo.scan(params).promise()
-    .then(users => users.Items.filter(u => !u.survey.completed || u.survey.completed.findIndex(s => s.surveyId == surveyId) == -1));
+    .then(users => users.Items.filter(u => !u.survey.completed || u.survey.completed.findIndex(s => surveyIds.includes(s.surveyId)) == -1));
 }
 
 /**
