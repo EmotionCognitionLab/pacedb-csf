@@ -18,7 +18,6 @@ const qualtricsHost = process.env.QUALTRICS_HOST;
 
 const usersTable = process.env.USERS_TABLE;
 const reconsentSurveyId = process.env.ONE_YR_CONSENT_SURVEY_ID;
-const oneYrSurveyId = process.env.ONE_YR_SURVEY_ID;
 
 exports.handler = async (event, context, callback) => {
         const params = new URLSearchParams(event.body);
@@ -62,20 +61,15 @@ async function saveSurveyComplete(subjectId, surveyId, recordedDate) {
 
     const userId = data.Items[0].id;
     let surveyConsent = data.Items[0].survey.consent;
-    const surveyComplete = [ { surveyId: surveyId, recordedDate: recordedDate } ];
     if (surveyConsent == 'R' && surveyId == reconsentSurveyId) {
         surveyConsent = 'Y';
-        // record them as having completed the regular (not reconsent) survey as well,
-        // so they don't get a reminder to do so later. The two surveys are identical
-        // aside from one including a form consenting to future contact.
-        surveyComplete.push({surveyId: oneYrSurveyId, recordedDate: recordedDate});
     }
 
     const writeParams = {
         TableName: usersTable,
         Key: { 'id': userId },
         UpdateExpression: 'set survey.completed = list_append(if_not_exists(survey.completed, :emptyList), :surveyComplete), survey.consent = :surveyConsent',
-        ExpressionAttributeValues: { ':emptyList': [], ':surveyComplete': surveyComplete, ':surveyConsent': surveyConsent }
+        ExpressionAttributeValues: { ':emptyList': [], ':surveyComplete': [ { 'surveyId': surveyId, 'recordedDate': recordedDate } ], ':surveyConsent': surveyConsent }
     };
     return await dynamo.update(writeParams).promise()
 }
