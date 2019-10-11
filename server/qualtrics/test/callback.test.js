@@ -16,7 +16,6 @@ const usersTable = process.env.USERS_TABLE;
 
 const defaultSurveyId = 'SV_37SzcRddmWjbkk';
 const defaultResponseId = 'R_yjpFuS1lQRM7YMF';
-const reconsentSurveyId = process.env.ONE_YR_CONSENT_SURVEY_ID;
 
 const userRecords = [
     {
@@ -99,21 +98,6 @@ describe('Callback for completed survey', function() {
             } catch(error) {
                 assert.strictEqual(error.errorMessage, 'Failed to save survey information');
             }
-        });
-
-        it('should update the survey.consent value from "R" to "Y" if the user completes a reconsent survey', async () => {
-            const subjId = userRecords[3].subjectId;
-            assert.equal(userRecords[3].survey.consent, 'R', `Invalid test setup - expected the survey.consent value for user id ${userRecords[3].id} to be 'R', but it was ${userRecords[3].survey.consent}`);
-            const qualResp = buildQualtricsSurveyDataResponse(subjId, finished);
-
-            nock(process.env.QUALTRICS_HOST)
-            .get(`/API/v3/surveys/${reconsentSurveyId}/responses/${defaultResponseId}`)
-            .reply(200, qualResp);
-
-            await runLambda(buildSurveyCallback(reconsentSurveyId));
-            const result = await getUser(userRecords[3].id);
-            assert(result.Item, `Expected to get 1 record back from dynamo for user id ${userRecords[3].id}; got 0 records.`)
-            assert.equal(result.Item.survey.consent, "Y");
         });
     });
 
