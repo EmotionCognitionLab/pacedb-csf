@@ -64,8 +64,8 @@ const users = [ {id: "1a", firstName: "One", lastName: "Eh", group: "g-one", ema
                 {id: "5b", firstName: "Five", lastName: "Bee", group: oneYearTestGroup, email: "no@example.com", survey: {consent: "N"}},
                 {id: "5c", firstName: "Five", lastName: "See", group: oneYearTestGroup, email: "reconsent@example.com", survey: {consent: "R"}},
                 {id: "5d", firstName: "Five", lastName: "Dee", group: oneYearReminderTestGroup, email: "three-mo-complete@example.com", survey: {consent: "Y", completed: [ {surveyId: threeMonthSurveyId, recordedDate: '2019-02-07 12:34:22'} ] }},
-                {id: "5e", firstName: "Five", lastName: "Eee", group: oneYearReminderTestGroup, email: "one-yr-complete@example.com", survey: {consent: "Y", completed: [ {surveyId: oneYearSurveyId, recordedDate: '2019-09-17 14:04:43'} ] }},
-                {id: "5f", firstName: "Five", lastName: "Ef", group: oneYearReminderTestGroup, email: "one-yr-consent-complete@example.com", survey: {consent: "Y", completed: [ {surveyId: oneYearConsentSurveyId, recordedDate: '2019-10-01 10:44:23'}]}}
+                {id: "5e", firstName: "Five", lastName: "Eee", group: oneYearReminderTestGroup, email: "one-yr-complete@example.com", survey: {consent: "Y", completed: [ {surveyId: oneYearSurveyId, recordedDate: '2019-09-17 14:04:43'} ] }}
+
             ];
 
 const group1startDate = moment().subtract(3, 'weeks');
@@ -903,12 +903,6 @@ describe('sending status report', function() {
 });
 
 function testFollowup(dateStart, dateEnd, consent, msgType, surveyId) {
-    const surveyIds = [surveyId];
-    if (surveyId == oneYearSurveyId) {
-        // the actual code checks for completion of either the regular
-        // or the with-consent version of the one year survey
-        surveyIds.push(oneYearConsentSurveyId);
-    }
     const targetGroups = groups.filter(g => g.endDate >= dateStart &&
             g.endDate <= dateEnd &&
             g.name != disabledGroup &&
@@ -916,7 +910,7 @@ function testFollowup(dateStart, dateEnd, consent, msgType, surveyId) {
         ).map(g => g.name);
     const targetUsers = users.filter(u => targetGroups.includes(u.group) &&
         u.survey && u.survey.consent == consent &&
-        (!u.survey.completed || u.survey.completed.findIndex(s => surveyIds.includes(s.surveyId)) == -1)
+        (!u.survey.completed || u.survey.completed.findIndex(s => s.surveyId == surveyId) == -1)
     ).map(u => u.email || u.phone);
     assert(targetUsers.length >= 1, 'Test appears to be invalid - found no target users.');
     let targetMessage = reminderMsgs.filter(m => m.msgType == msgType);
@@ -1056,27 +1050,6 @@ describe('Sending followup survey', function() {
     // testing these requires replacing moto_ses with something that allows us to examine sent emails
     it('should include the subject id in the email');
     it('should include the participant name in the email');
-    it('should not remind users who filled out the reconsent survey to fill out the regular survey', function() {
-        const start = moment().subtract(1, 'year').subtract(13, 'days');
-        const end = moment().subtract(1, 'year').subtract(7, 'days');
-        const targetGroups = groups.filter(
-            g => g.endDate >= +start.format('YYYYMMDD') &&
-            g.endDate <= +end.format('YYYYMMDD'))
-        .map(g => g.name);
-        const oneYrConsentCompleteUsers = users.filter(u => u.survey && 
-            u.survey.consent == 'Y' &&
-            u.survey.completed && 
-            u.survey.completed.findIndex(s => s.surveyId == process.env.ONE_YR_CONSENT_SURVEY_ID) != -1 &&
-            targetGroups.includes(u.group)
-        ).map(u => u.email || u.phone);
-        assert(oneYrConsentCompleteUsers.length > 0, 'Test appears to be invalid - expected at least one user who had completed the one year consent followup survey.');
-        return runScheduledEvent({msgType: 'followup_1yr_reminder'}, function(body) {
-            assert(body.length > 0);
-            body.forEach(i => {
-                assert(!oneYrConsentCompleteUsers.includes(i.recip), `${i.recip} has already completed the reconsent survey but got a followup to complete the regular version.`);
-            })
-        });
-    })
 });
 
 function cleanDb() {
