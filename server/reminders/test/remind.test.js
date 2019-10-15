@@ -21,15 +21,18 @@ const chartBucket = process.env.CHART_BUCKET;
 const threeMonthSurveyId = process.env.THREE_MO_SURVEY_ID;
 const oneYearSurveyId = process.env.ONE_YR_SURVEY_ID;
 const oneYearConsentSurveyId = process.env.ONE_YR_CONSENT_SURVEY_ID;
+const followupLogGroup = process.env.FOLLOWUP_LOG_GROUP;
 
 const targetMinutesByWeek = JSON.parse(process.env.TARGET_MINUTES_BY_WEEK);
 const DEFAULT_TARGET_MINUTES = 20;
 
 const sesEndpoint = process.env.SES_ENDPOINT;
+const cloudwatchLogsEndpoint = process.env.CLOUDWATCH_LOGS_ENDPOINT;
 const AWS = require('aws-sdk');
 const ses = new AWS.SES({endpoint: sesEndpoint, apiVersion: '2010-12-01', region: 'us-east-1'});
 const s3Endpoint = process.env.S3_ENDPOINT;
 const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePathStyle: true});
+const cloudwatchlogs = new AWS.CloudWatchLogs({endpoint: cloudwatchLogsEndpoint, apiVersion: '2014-03-28', region: process.env.REGION});
 
 // Keeps the tests from erroring out with an 'email not verified' error
 ses.verifyEmailIdentity({EmailAddress: 'uscemotioncognitionlab@gmail.com'}).promise()
@@ -930,6 +933,14 @@ describe('Sending followup survey', function() {
         return prepTestEnv()
         .then(() => {
             return dbSetup.writeTestData(reminderMsgsTable, reminderMsgs);
+        })
+        .then(() => {
+            return cloudwatchlogs.describeLogGroups().promise()
+            .then(result => {
+                if (!result.logGroups.map(lg => lg.logGroupName).includes(followupLogGroup)) {
+                    return cloudwatchlogs.createLogGroup({logGroupName: followupLogGroup}).promise();
+                }
+            });
         });
     });
     it('should reach users who agreed to followup in groups whose end date falls between 1 year and 1 year, 6 days ago', function() {

@@ -6,6 +6,7 @@ const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
 const sesEndpoint = process.env.SES_ENDPOINT;
 const snsEndpoint = process.env.SNS_ENDPOINT;
 const s3Endpoint = process.env.S3_ENDPOINT;
+const cloudwatchLogsEndpoint = process.env.CLOUDWATCH_LOGS_ENDPOINT;
 const region = process.env.REGION;
 const emailSender = process.env.EMAIL_SENDER;
 const statusReportRecipients = JSON.parse(process.env.STATUS_REPORT_RECIPIENTS)
@@ -13,11 +14,13 @@ const statusReportRecipients = JSON.parse(process.env.STATUS_REPORT_RECIPIENTS)
     return { email: email };
 });
 const chartBucket = process.env.CHART_BUCKET;
+const followupLogGroup = process.env.FOLLOWUP_LOG_GROUP;
 
 const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVersion: '2012-08-10'});
 const ses = new AWS.SES({endpoint: sesEndpoint, apiVersion: '2010-12-01', region: region});
 const sns = new AWS.SNS({endpoint: snsEndpoint, apiVersion: '2010-03-31', region: region});
 const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePathStyle: true});
+const cloudwatchlogs = new AWS.CloudWatchLogs({endpoint: cloudwatchLogsEndpoint, apiVersion: '2014-03-28', region: region});
 
 const moment = require('moment');
 const http = require('http');
@@ -176,6 +179,21 @@ exports.handler = (event, context, callback) => {
     })
     .then(() => saveSendData(recipients))
     .then(() => {
+        if (msgType.startsWith('followup')) {
+            return createLogStream(followupLogGroup, context)
+            .then(() => {
+                const now = new Date;
+                return cloudwatchlogs.putLogEvents({
+                    logGroupName: followupLogGroup,
+                    logStreamName: getLogStreamName(context),
+                    logEvents: [{ message: JSON.stringify(recipients), timestamp: now.getTime() }]
+                }).promise();
+            });
+        } else {
+            return Promise.resolve();
+        }
+    })
+    .then(() => {
         console.log(`Done running reminders for message type ${msgType}`);
         callback(null, JSON.stringify(recipients));
     })
@@ -240,6 +258,30 @@ function sendEmail(recip, msg) {
         console.log(`Error sending email to ${recip}. (Message: ${msg.text})`);
         console.log(err);  
     });
+}
+
+function getLogStreamName(context) {
+    const name = context.logStreamName || context.createInvokeId; // context.logStreamName can be null in the test env
+    const now = moment().format('YYYY/MM/DD')
+    // TODO what if this is called on one side of midnight when creating the stream
+    // and the other side when using it?
+    return `${now}/[$LATEST]${name}`
+}
+
+// Creates a new log stream
+function createLogStream(logGroupName, context) {
+    if (logGroupName == context.logGroupName) {
+        throw new Error(`You must create the log stream in a new log group, not the log group associated with the context.`)
+    }
+    const streamName = getLogStreamName(context);
+    return cloudwatchlogs.describeLogStreams({logGroupName: logGroupName}).promise()
+    .then((result) => {
+        if (!result.logStreams.map(ls => ls.logStreamName).includes(streamName)) {
+            return cloudwatchlogs.createLogStream({logGroupName: logGroupName, logStreamName: getLogStreamName(context) }).promise();
+        } else {
+            return Promise.resolve();
+        }
+    });        
 }
 
 // Returns Promise<[{msg: msg obj, recipients: [user obj]}]>

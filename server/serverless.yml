@@ -263,6 +263,7 @@ functions:
       SNS_ENDPOINT: 
         Fn::Sub: "https://sns.${self:provider.region}.amazonaws.com"
       S3_ENDPOINT: "https://s3.${self:provider.region}.amazonaws.com"
+      CLOUDWATCH_LOGS_ENDPOINT: "https://logs.${self:provider.region}.amazonaws.com"
       EMAIL_SENDER: "uscemotioncognitionlab@gmail.com"
       CHART_BUCKET:
          Fn::Sub: "${self:service}-${self:provider.stage}-reporting"
@@ -274,6 +275,8 @@ functions:
       ONE_YR_SURVEY_ID: "123abc"
       ONE_YR_CONSENT_SURVEY_ID: "789ghi"
       THREE_MO_SURVEY_ID: "456def"
+      FOLLOWUP_LOG_GROUP:
+        Ref: followupCloudwatchLogGroup
 
 # DO NOT CHANGE the name of this function unless you also change it in setup/setup.js
   messageCustomizer:
@@ -736,3 +739,10 @@ resources:
         ManagedPolicyArns:
           - { Fn::ImportValue: "${self:service}-${self:provider.stage}-cloudwatchWriteAccess" }
           - { Fn::ImportValue: "${self:service}-${self:provider.stage}-dataBucketReadAccess" }
+
+# Cloudwatch log group for followup survey logging
+    followupCloudwatchLogGroup:
+      Type: "AWS::Logs::LogGroup"
+      Properties:
+        LogGroupName: ${self:service}-${self:provider.stage}-followup
+        RetentionInDays: 2
