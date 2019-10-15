@@ -745,4 +745,4 @@ resources:
       Type: "AWS::Logs::LogGroup"
       Properties:
         LogGroupName: ${self:service}-${self:provider.stage}-followup
-        RetentionInDays: 2
+        RetentionInDays: 3
