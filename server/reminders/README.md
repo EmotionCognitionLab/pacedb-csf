@@ -14,6 +14,7 @@ Assuming that you have moto and local dynamodb installed and ready to go (and ru
 * Execute moto_server sns -p4575 to spin up a fake SNS server
 * Execute moto_server ses -p4579 to spin up a fake SES server
 * Execute moto_server s3 -p4583 to spin up a fake S3 server
+* Execute moto_server logs -p4582 to spin up a fake cloudwatch logs server
 * Run `npm test` to run the tests for the lambda function. You'll get log output in your terminal.
 
 ## Changing the test environment
