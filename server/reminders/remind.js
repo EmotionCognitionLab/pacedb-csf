@@ -178,21 +178,21 @@ exports.handler = (event, context, callback) => {
         return Promise.all(allPromises);
     })
     .then(() => saveSendData(recipients))
-    .then(() => {
-        if (msgType.startsWith('followup')) {
-            return createLogStream(followupLogGroup, context)
-            .then(() => {
-                const now = new Date;
-                return cloudwatchlogs.putLogEvents({
-                    logGroupName: followupLogGroup,
-                    logStreamName: getLogStreamName(context),
-                    logEvents: [{ message: JSON.stringify(recipients), timestamp: now.getTime() }]
-                }).promise();
-            });
-        } else {
-            return Promise.resolve();
-        }
-    })
+    // .then(() => {
+    //     if (msgType.startsWith('followup')) {
+    //         return createLogStream(followupLogGroup, context)
+    //         .then(() => {
+    //             const now = new Date;
+    //             return cloudwatchlogs.putLogEvents({
+    //                 logGroupName: followupLogGroup,
+    //                 logStreamName: getLogStreamName(context),
+    //                 logEvents: [{ message: JSON.stringify(recipients), timestamp: now.getTime() }]
+    //             }).promise();
+    //         });
+    //     } else {
+    //         return Promise.resolve();
+    //     }
+    // })
     .then(() => {
         console.log(`Done running reminders for message type ${msgType}`);
         callback(null, JSON.stringify(recipients));
