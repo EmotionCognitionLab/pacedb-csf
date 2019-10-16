@@ -260,12 +260,9 @@ function sendEmail(recip, msg) {
     });
 }
 
+// this exists b/c context.logStreamName can be null in the test env
 function getLogStreamName(context) {
-    const name = context.logStreamName || context.createInvokeId; // context.logStreamName can be null in the test env
-    const now = moment().format('YYYY/MM/DD')
-    // TODO what if this is called on one side of midnight when creating the stream
-    // and the other side when using it?
-    return `${now}/[$LATEST]${name}`
+    return context.logStreamName || context.createInvokeId;
 }
 
 // Creates a new log stream
