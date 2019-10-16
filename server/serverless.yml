@@ -272,9 +272,9 @@ functions:
         Ref: statusReportsTable
       ADMIN_GROUP: "staff"
       DISABLED_GROUP: "disabled"
-      ONE_YR_SURVEY_ID: "123abc"
-      ONE_YR_CONSENT_SURVEY_ID: "789ghi"
-      THREE_MO_SURVEY_ID: "456def"
+      ONE_YR_SURVEY_ID: "SV_cOaHdrcz6lvRiZv"
+      ONE_YR_CONSENT_SURVEY_ID: "SV_8B70EFGwYCZpt0p"
+      THREE_MO_SURVEY_ID: "SV_eg0g6vNdyVvB5JP"
       FOLLOWUP_LOG_GROUP:
         Ref: followupCloudwatchLogGroup
 
