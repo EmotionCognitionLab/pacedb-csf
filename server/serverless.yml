@@ -221,26 +221,6 @@ functions:
           input:
             msgType: status_report
       - schedule:
-          rate: cron(00 17 16 OCT ? 2019)
-          description: Sends out the more-than-one-year regular followup email
-          input:
-            msgType: followup_1yr_or_more
-      - schedule:
-          rate: cron(03 17 16 OCT ? 2019)
-          description: Sends out the more-than-one-year consent followup email
-          input:
-            msgType: followup_1yr_or_more_consent
-      - schedule:
-          rate: cron(00 17 22 OCT ? 2019)
-          description: Sends out the more-than-one-year regular followup reminder
-          input:
-            msgType: followup_1yr_or_more_reminder
-      - schedule:
-          rate: cron(03 17 22 OCT ? 2019)
-          description: Sends out the more-than-one-year consent followup reminder
-          input:
-            msgType: followup_1yr_or_more_consent_reminder
-      - schedule:
           rate: cron(01 17 ? * WED *)
           description: Sends out the 3 month followup email
           input:

@@ -45,7 +45,7 @@ const NEW_EMOJI_MINUTES = 120; //emojis younger than this are new
 
 const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji', 'survey', 'status_report',
     'followup_1yr', 'followup_1yr_reminder', 'followup_1yr_consent', 'followup_1yr_consent_reminder', 'followup_3mo',
-    'followup_3mo_reminder', 'followup_1yr_or_more', 'followup_1yr_or_more_reminder', 'followup_1yr_or_more_consent', 'followup_1yr_or_more_consent_reminder'];
+    'followup_3mo_reminder'];
 
 exports.handler = (event, context, callback) => {
     const msgType = event.msgType;
@@ -90,30 +90,6 @@ exports.handler = (event, context, callback) => {
         }
         case 'status_report': {
             getRecipients = getWeeklyStatusReport;
-            break;
-        }
-        case 'followup_1yr_or_more': {
-            const start = moment().subtract(10, 'years').subtract(6, 'days');
-            const end = moment().subtract(1, 'year');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', 'followup_1yr', process.env.ONE_YR_SURVEY_ID);
-            break;
-        }
-        case 'followup_1yr_or_more_reminder': {
-            const start = moment().subtract(10, 'years').subtract(13, 'days');
-            const end = moment().subtract(1, 'year').subtract(7, 'days');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', 'followup_1yr_reminder', process.env.ONE_YR_SURVEY_ID);
-            break;
-        }
-        case 'followup_1yr_or_more_consent': {
-            const start = moment().subtract(10, 'years').subtract(6, 'days');
-            const end = moment().subtract(1, 'year');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', 'followup_1yr_consent', process.env.ONE_YR_CONSENT_SURVEY_ID);
-            break;
-        }
-        case 'followup_1yr_or_more_consent_reminder': {
-            const start = moment().subtract(10, 'years').subtract(13, 'days');
-            const end = moment().subtract(1, 'year').subtract(7, 'days');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', 'followup_1yr_consent_reminder', process.env.ONE_YR_CONSENT_SURVEY_ID);
             break;
         }
         case 'followup_1yr': {
