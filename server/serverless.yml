@@ -226,8 +226,8 @@ functions:
           input:
             msgType: followup_3mo
       - schedule:
-          rate: cron(02 17 22 OCT ? 2019)
-          description: Sends out the FIRST 3 month reminder email
+          rate: cron(02 17 ? * TUE *)
+          description: Sends out the 3 month reminder email
           input:
             msgType: followup_3mo_reminder
             
