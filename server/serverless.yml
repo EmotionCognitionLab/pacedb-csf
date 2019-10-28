@@ -230,6 +230,27 @@ functions:
           description: Sends out the 3 month reminder email
           input:
             msgType: followup_3mo_reminder
+      - schedule:
+          rate: cron(00 17 ? * WED *)
+          description: Sends out the 1 year followup email
+          input:
+            msgType: followup_1yr
+      - schedule:
+          rate: cron(03 17 ? * TUE *)
+          description: Sends out the 1 year reminder email
+          input:
+            msgType: followup_1yr_reminder
+      - schedule:
+          rate: cron(04 17 ? * WED *)
+          description: Sends out the 1 year followup and consent email
+          input:
+            msgType: followup_1yr_consent
+      - schedule:
+          rate: cron(05 17 ? * TUE *)
+          description: Sends out the 1 year followup and consent reminder email
+          input:
+            msgType: followup_1yr_consent_reminder
+
             
 #    Define function environment variables here
     environment:
