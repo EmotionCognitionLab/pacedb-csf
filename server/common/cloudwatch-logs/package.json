@@ -1,0 +1,14 @@
+{
+  "name": "cloudwatch-logs",
+  "version": "1.0.0",
+  "description": "Very basic logger for cloudwatch logs",
+  "main": "cw-logger.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.566.0"
+  }
+}

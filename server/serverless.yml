@@ -278,6 +278,7 @@ functions:
       THREE_MO_SURVEY_ID: "SV_eg0g6vNdyVvB5JP"
       FOLLOWUP_LOG_GROUP:
         Ref: followupCloudwatchLogGroup
+      FOLLOWUP_LOG_STREAM: "sent"
 
 # DO NOT CHANGE the name of this function unless you also change it in setup/setup.js
   messageCustomizer:
