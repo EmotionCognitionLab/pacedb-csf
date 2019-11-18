@@ -2,7 +2,7 @@ module.paths = module.paths.concat(module.parent.paths);
 
 const AWS = require('aws-sdk');
 const s3Endpoint = process.env.S3_ENDPOINT;
-const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePathStyle: true});
+const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePathStyle: true, region: process.env.REGION});
 
 exports.ensureEmptyBucketExists = function (bucket) {
     return s3.listBuckets().promise()
