@@ -60,6 +60,9 @@ You'll get some warnings about offline mode not supporting local authorizers, bu
 
 Caveat: If something goes wrong with the offline start, it may fire up the local dynamodb but not kill it. The next time you try to run the offline start it will complain that port 8000 is already in use. The solution is to use `ps` to find the running local dynamodb process and to kill it.
 
+# Upgrading node version
+If you want to change the version of node used there are two files you need to change: serverless.yml (the provider.runtime key) and .serverless_plugins/npm_rebuild.js. In that file change the tag on the lambci/lambda docker image that's used to compile native dependencies.
+
 # TODO
 * Add (optional) Route53 configuration into the setup
 * Improve documentation
