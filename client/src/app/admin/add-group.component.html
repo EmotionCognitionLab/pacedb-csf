@@ -10,7 +10,7 @@
             <input type="text" class="form-control short" placeholder="Start date"
             name="dp-s" [(ngModel)]="selectedStartDate" ngbDatepicker 
             required 
-            validDateRange earliestDate="{{earliestDate.toDateString()}}" latestDate="2019/10/31" 
+            validDateRange earliestDate="{{earliestDate.toDateString()}}" latestDate="2025/10/31"
             [(markDisabled)]="invalidDateOption" (focus)="ds.open(); de.close()"
             #ds="ngbDatepicker" #start="ngModel" style="float: left;">
             <button class="input-group-addon left" (click)="ds.toggle()" type="button">
@@ -20,7 +20,7 @@
             <input type="text" class="form-control short" placeholder="End date"
             name="dp-e" [(ngModel)]="selectedEndDate" ngbDatepicker 
             required 
-            validDateRange earliestDate="{{earliestDate.toDateString()}}" latestDate="2019/12/31" 
+            validDateRange earliestDate="{{earliestDate.toDateString()}}" latestDate="2025/12/31"
             [(markDisabled)]="invalidDateOption" (focus)="de.open(); ds.close()"
             #de="ngbDatepicker" #end="ngModel" style="float: left;">
             <button class="input-group-addon left" (click)="de.toggle()" type="button">
