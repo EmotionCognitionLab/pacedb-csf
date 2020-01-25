@@ -365,7 +365,7 @@ function getCsvDataForUser(user, startDate, endDate) {
             }
         }
         return new Promise((resolve, reject) => {
-            parse(data.Body, {trim: true, columns: true, auto_parse: true, skip_empty_lines: true, skip_lines_with_empty_values: false},
+            parse(data.Body, {trim: true, columns: true, cast: true, skip_empty_lines: true, skip_lines_with_empty_values: false},
             function(err, csvRecs) {
                 if (err) {
                     reject(err);

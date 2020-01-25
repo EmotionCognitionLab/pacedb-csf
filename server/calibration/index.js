@@ -182,7 +182,7 @@ function getCsvData(csvFile, userId, startDate) {
     const calibUserId = `${userId}_calibration`;
 
     return new Promise((resolve, reject) => {
-        parse(csvData, {trim: true, columns: true, auto_parse: true, skip_empty_lines: true, skip_lines_with_empty_values: false},
+        parse(csvData, {trim: true, columns: true, cast: true, skip_empty_lines: true, skip_lines_with_empty_values: false},
             function(err, csvRecs) {
                 if(err) {
                    reject(err);
