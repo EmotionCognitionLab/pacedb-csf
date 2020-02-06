@@ -447,8 +447,8 @@ function weekNumForDate(date, groupStartDate, groupEndDate) {
 }
 
 const FIRST_SUBJECT_ID_ROW = 8;
-const LAST_SUBJECT_ID_ROW = 178; // there should never be a subject id below this row
-const MAX_SUBJECTS = 6; // no sheet should have more than this many subjects
+const LAST_SUBJECT_ID_ROW = 246; // there should never be a subject id below this row
+const MAX_SUBJECTS = 8; // no sheet should have more than this many subjects
 const INTER_SUBJECT_ROWS = 34; // number of rows between subject id's (inclusive)
 function startRowForSubjectId(subjectId, groupId, auth, weekNum) {
     let subjectsFound = 0;
