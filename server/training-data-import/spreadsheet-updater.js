@@ -840,7 +840,7 @@ function createSheet(groupName, auth) {
     .then(subjectIds => {
         if (subjectIds.length == 0) return Promise.resolve();
         if (subjectIds.length > MAX_SUBJECTS) {
-            return Promise.reject(`Group ${groupName} has ${subjectsIds.length} subjects (> the maximum number of possible subjects per group).`)
+            return Promise.reject(`Group ${groupName} has ${subjectIds.length} subjects (> the maximum number of possible subjects per group).`)
         }
         const valueRanges = [];
         for (let i = 0; i < subjectIds.length; i++) {
