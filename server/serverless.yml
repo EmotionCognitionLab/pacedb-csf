@@ -66,7 +66,6 @@ functions:
         - training-data-import/**
         - logger/**
         - calibration/**
-        - qualtrics/**
     role: lambdaWithDynamoRole
     handler: api/api.handler
     events:
@@ -179,7 +178,6 @@ functions:
         - training-data-import/**
         - logger/**
         - calibration/**
-        - qualtrics/**
     role: reminderRole
     handler: reminders/remind.handler
     events:
@@ -292,7 +290,6 @@ functions:
         - logger/**
         - common/**
         - calibration/**
-        - qualtrics/**
     role: lambdaWithDynamoRole
     handler: verification/message-customizer.handler
 
@@ -308,7 +305,6 @@ functions:
         - logger/**
         - common/**
         - calibration/**
-        - qualtrics/**
     role: lambdaWithDynamoRole
     handler: verification/verified.handler
 
@@ -324,7 +320,6 @@ functions:
         - training-data-import/private-key.json
         - logger/**
         - calibration/**
-        - qualtrics/**
     role: lambdaWithDynamoRole
     handler: training-data-import/import.handler
     timeout: 120
@@ -358,7 +353,6 @@ functions:
         - training-data-import/import.js
         - logger/**
         - calibration/**
-        - qualtrics/**
     role: lambdaWithDynamoRole
     handler: training-data-import/spreadsheet-updater.handler
     timeout: 300
@@ -396,7 +390,6 @@ functions:
         - training-data-import/**
         - common/**
         - calibration/**
-        - qualtrics/**
     role: lambdaWithDynamoRole
     handler: logger/index.handler
     events:
@@ -424,7 +417,6 @@ functions:
         - training-data-import/**
         - logger/**
         - calibration/test/**
-        - qualtrics/**
     role: lambdaWithS3Role
     handler: calibration/index.handler
     timeout: 120
@@ -445,27 +437,6 @@ functions:
         Fn::Sub: "${self:service}-${self:provider.stage}-usr-data"
       S3_ENDPOINT: "https://s3.us-west-2.amazonaws.com"
       TIMEZONE: "America/Los_Angeles"
-
-  qualtrics:
-    package:
-      exclude:
-        - api/**
-        - reminders/**
-        - verification/**
-        - training-data-import/**
-        - logger/**
-        - calibration/**
-        - qualtrics/test/**
-    role: lambdaWithDynamoRole
-    handler: qualtrics/callback.handler
-    timeout: 120
-    events:
-      - http:
-          path: /qualtrics/followup
-          method: post
-    environment:
-      QUALTRICS_HOST: "https://usc.ca1.qualtrics.com"
-      QUALTRICS_API_KEY: ${opt:qualtricsApiKey}
       
 plugins:
   - serverless-dynamodb-local
