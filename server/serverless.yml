@@ -6,7 +6,7 @@
 # setup/cognito-user-pool.json.tmpl, rolemappings.yml.tmpl and the setup/setup.js
 # script itself.
 
-service: ${opt:service, 'hrv'}
+service: ${opt:service, 'pbcsf'}
 
 custom:
   dynamodb:
@@ -527,7 +527,7 @@ resources:
           unauthenticated: { Fn::ImportValue: "${self:service}-${self:provider.stage}-cognitoUnauthorizedRole" }
         RoleMappings: ${file(./rolemappings.yml)}
 
-# policy to allow writing to some hrv dynamodb tables
+# policy to allow writing to some dynamodb tables
     dynamoWriteAccess:
       Type: "AWS::IAM::ManagedPolicy"
       Properties:
