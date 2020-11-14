@@ -22,7 +22,7 @@ Parameters:
     Description: The id of the cognito user pool that will hold all of our users
   ServiceParam:
     Type: String
-    Default: hrv
+    Default: pbcsf
     Description: The name of the service that you're creating with this stack
   StageParam:
     Type: String
@@ -217,11 +217,11 @@ Resources:
                 Resource: "*"
 # end of cognito setup
 
-# policy to allow reading all hrv dynamodb tables
+# policy to allow reading all dynamodb tables
   dynamoReadAccess:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      Description: Allows read access to hrv tables
+      Description: Allows read access to tables
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -289,6 +289,46 @@ Resources:
                   - "s3:PutObject"
                 Resource:
                   - Fn::Sub: "arn:aws:s3:::${dataBucket}/*"
+
+# access key for the data uploader user
+  dataUploaderKey:
+    Type: "AWS::IAM::AccessKey"
+    Properties:
+      UserName:
+        Ref: dataUploader
+
+# user account for the software on subject machines to read upload bucket info
+  keyReader:
+    Type: "AWS::IAM::User"
+    Properties:
+      Policies:
+        - PolicyName: "smReader"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Effect: "Allow"
+              Action:
+                - "secretsmanager:GetSecretValue"
+              Resource:
+                - Fn::Sub: "${dataUploaderSecret}"
+
+# access key for the sm reader user
+  smReaderKey:
+    Type: "AWS::IAM::AccessKey"
+    Properties:
+      UserName:
+        Ref: keyReader
+
+# secret holding data bucket name and credentials
+  dataUploaderSecret:
+    Type: "AWS::SecretsManager::Secret"
+    Properties:
+      Description: "Name of and credentials for bucket that subject practice data is uploaded to."
+      Name:
+          Fn::Sub: ${ServiceParam}/${StageParam}/uploader
+      SecretString:
+          Fn::Sub: '{"bucket": "${dataBucket}", "key": "${dataUploaderKey}", "secret": "${dataUploaderKey.SecretAccessKey}"}'
+
 
 # role for client app admins
   clientAdminRole:
