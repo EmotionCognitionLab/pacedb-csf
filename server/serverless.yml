@@ -26,7 +26,7 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-west-2'}
   apiKeys:
-    - ${opt:stage}-calibration  # API key to be used when calling the calibrationData function
+    - ${opt:service}-${opt:stage}-calibration  # API key to be used when calling the calibrationData function
 
 # you can define service wide environment variables here
   environment:
