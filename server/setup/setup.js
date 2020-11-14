@@ -189,7 +189,6 @@ function createCognitoUserPool(serviceName, stage, email, accountId, cognitoSNSR
         SERVICE: serviceName,
         STAGE: stage,
         REPLY_TO_EMAIL: email,
-        EMAIL_SENDER_ARN: `arn:aws:ses:${region}:${accountId}:identity/${email}`,
         COGNITO_SNS_ROLE_ARN: cognitoSNSRoleARN
     };
     const poolParams = mergeTemplateWithData(cognitoPoolTemplate, mergeData);
