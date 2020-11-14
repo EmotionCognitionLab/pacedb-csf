@@ -1,7 +1,7 @@
 Parameters:
   ServiceParam:
     Type: String
-    Default: hrv
+    Default: pbcsf
     Description: The name of the service that you're creating with this stack
   StageParam:
     Type: String

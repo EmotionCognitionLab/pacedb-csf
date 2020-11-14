@@ -324,7 +324,7 @@ async function main() {
         const statusReportRecipients = await requestJsonArray('Array of email addresses of status report recipients (e.g. ["somebody@example.com", "someone-else@example.com"]');
         
         console.log('Next we need some information about deploying this to AWS.')
-        const serviceName = await requestGeneral('Service name', 'hrv', /[-A-z0-9]{1,128}/);
+        const serviceName = await requestGeneral('Service name', 'pbcsf', /[-A-z0-9]{1,128}/);
         const stage = await requestGeneral('Stage', 'dev', /dev|prod/);
         const bucket = await requestGeneral('Bucket to store CloudFormation template in. (It will be created if it does not exist.)', `${serviceName}-cf-bkt`)
         const exists = await bucketExists(bucket);
