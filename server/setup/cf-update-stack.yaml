@@ -453,6 +453,12 @@ Outputs:
         Ref: sesSendAccess
       Export:
         Name: !Sub "${ServiceParam}-${StageParam}-sesSendAccess"
+  SmReaderKey:
+      Value:
+        Ref: smReaderKey
+  SmReaderSecret:
+      Value:
+        Fn::GetAtt: [smReaderKey, SecretAccessKey]
   SnsPublishAccess:
       Value:
         Ref: snsPublishAccess
