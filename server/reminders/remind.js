@@ -735,7 +735,7 @@ function getWeeklyStatusReport() {
         } else {
             offTargetUsers.forEach(u => {
                 offTargetHtml += 
-                `<tr><td>${u.firstName} ${u.lastName.slice(0, 1)}.</td><td>${u.trained}/${u.target}</td><td><a href='http://mindbodystudy.org/group?group_name=${u.group}'>${u.group}</a></td></tr>`
+                `<tr><td>${u.firstName} ${u.lastName.slice(0, 1)}.</td><td>${u.trained}/${u.target}</td><td><a href='http://brainandbreath.org/group?group_name=${u.group}'>${u.group}</a></td></tr>`
                 offTargetText +=
                 `${u.firstName} ${u.lastName.slice(0, 1)}\t${u.trained}/${u.target}\t${u.group}\n`;
             });

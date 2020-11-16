@@ -16,9 +16,9 @@ exports.handler = (event, context, callback) => {
         const code = event.request.codeParameter;
         const uname = encodeURIComponent(event.request.userAttributes.email || event.request.userAttributes.phone_number);
         const resp = {
-            smsMessage: `Please go to https://mindbodystudy.org/login?do=reset&u=${uname} and enter your password reset code: ${code}`,
-            emailMessage: `Your mindbodystudy.org password reset code is: ${code}. \n<p>Please go to https://mindbodystudy.org/login?do=reset&u=${uname} to reset your password.</p><p>\n\nIf you did not request a password reset, please ignore this message.</p>`,
-            emailSubject: 'Password reset request for mindbodystudy.org'
+            smsMessage: `Please go to https://brainandbreath.org/login?do=reset&u=${uname} and enter your password reset code: ${code}`,
+            emailMessage: `Your brainandbreath.org password reset code is: ${code}. \n<p>Please go to https://brainandbreath.org/login?do=reset&u=${uname} to reset your password.</p><p>\n\nIf you did not request a password reset, please ignore this message.</p>`,
+            emailSubject: 'Password reset request for brainandbreath.org'
         }
         event.response = resp;
      }
