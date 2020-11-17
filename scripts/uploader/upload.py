@@ -7,6 +7,7 @@ import conf
 import configparser
 import json
 from pathlib import Path
+import traceback
 
 region_name = "us-west-2"
 
@@ -66,9 +67,11 @@ if __name__ == "__main__":
         print('No internet connection found. Please check your connection and try again.')
     except FileNotFoundError as fnf:
         print('This computer is not configured correctly. Your data could not be uploaded. Please email the following to the experiment administrator to help resolve this:') 
-        raise fnf
+        traceback.print_exc()
     except SystemExit:
         pass # caused when training data not found; we've already printed everything we want to
     except Exception:
         print('An unexpected error ocurred. Please send the following information to the experiment administrator: ')
-        raise
+        traceback.print_exc()
+    finally:
+        input("Press the Enter key to close the window...")
