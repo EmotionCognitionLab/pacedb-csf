@@ -2,7 +2,7 @@
 
 import boto3
 import base64
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, EndpointConnectionError
 import conf
 import configparser
 import json
@@ -19,43 +19,15 @@ def get_secret():
         region_name=region_name
     )
 
-    # In this sample we only handle the specific exceptions for the 'GetSecretValue' API.
-    # See https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
-    # We rethrow the exception by default.
+    get_secret_value_response = client.get_secret_value(SecretId=conf.secret_name)
 
-    try:
-        get_secret_value_response = client.get_secret_value(SecretId=conf.secret_name)
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'DecryptionFailureException':
-            # Secrets Manager can't decrypt the protected secret text using the provided KMS key.
-            # Deal with the exception here, and/or rethrow at your discretion.
-            raise e
-        elif e.response['Error']['Code'] == 'InternalServiceErrorException':
-            # An error occurred on the server side.
-            # Deal with the exception here, and/or rethrow at your discretion.
-            raise e
-        elif e.response['Error']['Code'] == 'InvalidParameterException':
-            # You provided an invalid value for a parameter.
-            # Deal with the exception here, and/or rethrow at your discretion.
-            raise e
-        elif e.response['Error']['Code'] == 'InvalidRequestException':
-            # You provided a parameter value that is not valid for the current state of the resource.
-            # Deal with the exception here, and/or rethrow at your discretion.
-            raise e
-        elif e.response['Error']['Code'] == 'ResourceNotFoundException':
-            # We can't find the resource that you asked for.
-            # Deal with the exception here, and/or rethrow at your discretion.
-            raise e
+    # Depending on whether the secret is a string or binary, one of these fields will be populated.
+    if 'SecretString' in get_secret_value_response:
+        secret = get_secret_value_response['SecretString']
     else:
-        # Decrypts secret using the associated KMS CMK.
-        # Depending on whether the secret is a string or binary, one of these fields will be populated.
-        if 'SecretString' in get_secret_value_response:
-            secret = get_secret_value_response['SecretString']
-        else:
-            decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
+        secret = base64.b64decode(get_secret_value_response['SecretBinary'])
 
-        return secret
-    # Your code goes here. 
+    return secret
 
 
 def upload_file(file_path, bucket, key, secret, dest_name):
@@ -65,35 +37,38 @@ def upload_file(file_path, bucket, key, secret, dest_name):
         service_name='s3',
         region_name=region_name
     )
-    try:
-        response = client.upload_file(file_path, bucket, dest_name)
-    except ClientError as e:
-        raise e
-        return False
+    response = client.upload_file(file_path, bucket, dest_name)
     return True
 
 def get_subject_id():
-    try:
-        conf_file = Path.home() / 'AppData' / 'Roaming' / 'emWave_Pilot' / 'Info' / 'info.ini'
-        if not conf_file.exists() or not conf_file.is_file():
-            raise Exception('Configuration file not found.')
-        parser = configparser.ConfigParser()
-        parser.read(str(conf_file))
-        return parser['SUBJECT']['sid']
-    except:
-        print('This computer is not configured correctly. Your data could not be uploaded. Please email the following to the experiment administrator to help resolve this:') 
-        raise
+    conf_file = Path.home() / 'AppData' / 'Roaming' / 'emWave_Pilot' / 'Info' / 'info.ini'
+    if not conf_file.exists() or not conf_file.is_file():
+        raise FileNotFoundError('Configuration file not found.')
+    parser = configparser.ConfigParser()
+    parser.read(str(conf_file))
+    return parser['SUBJECT']['sid']
 
 
 if __name__ == "__main__":
-    secret = json.loads(get_secret())
-    emwave_db = Path.home() / 'Documents' / 'emWave' / 'emWave.emdb'
-    if not emwave_db.exists() or not emwave_db.is_file():
-        print('No training data found. Please contact the experiment administrator for help fixing this problem.')
-        sys.exit(2)
-    sid = get_subject_id()
-    dest = sid + '/emWave.emdb'
-    if upload_file(str(emwave_db), secret['bucket'], secret['key'], secret['secret'], dest):
-        print('Upload successful')
-    else:
-        print('Upload failed')
+    try:
+        secret = json.loads(get_secret())
+        emwave_db = Path.home() / 'Documents' / 'emWave' / 'emWave.emdb'
+        if not emwave_db.exists() or not emwave_db.is_file():
+            print('No training data found. Please contact the experiment administrator for help fixing this problem.')
+            sys.exit(2)
+        sid = get_subject_id()
+        dest = sid + '/emWave.emdb'
+        if upload_file(str(emwave_db), secret['bucket'], secret['key'], secret['secret'], dest):
+            print('Upload successful')
+        else:
+            print('Upload failed')
+    except EndpointConnectionError as e:
+        print('No internet connection found. Please check your connection and try again.')
+    except FileNotFoundError as fnf:
+        print('This computer is not configured correctly. Your data could not be uploaded. Please email the following to the experiment administrator to help resolve this:') 
+        raise fnf
+    except SystemExit:
+        pass # caused when training data not found; we've already printed everything we want to
+    except Exception:
+        print('An unexpected error ocurred. Please send the following information to the experiment administrator: ')
+        raise
