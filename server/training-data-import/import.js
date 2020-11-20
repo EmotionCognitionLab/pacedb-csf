@@ -9,7 +9,6 @@ const dynamo = new AWS.DynamoDB.DocumentClient({endpoint: dynamoEndpoint, apiVer
 const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePathStyle: true});
 
 const sqlite3 = require('better-sqlite3');
-const parse = require('csv-parse');
 const moment = require('moment-timezone');
 
 const DynUtils = require('../common/dynamo');
@@ -87,17 +86,13 @@ function importForUser(user, date) {
     .then(seconds => {
         if (seconds === undefined || seconds === 0) {
             // no file was found for the user or the file had no data for 'date'. call it quits.
-            console.log(`no log file/sqlite db found (or no entries found for ${date.format('YYYY-MM-DD')}) for subject ${user.subjectId}`)
+            console.log(`no sqlite db found (or no entries found for ${date.format('YYYY-MM-DD')}) for subject ${user.subjectId}`)
             return;
         } else {
             const minutes = Math.round(seconds / 60);
             return db.writeTrainingMinutes(user, date, minutes, 'software');
         }
     });
-}
-
-function userIsDecreaseSubject(subjectId) {
-    return subjectId.startsWith('6') || subjectId.startsWith('8');
 }
 
 /**
@@ -112,58 +107,10 @@ function getDataForUser(user, date) {
         Prefix: user.subjectId
     }).promise()
     .then(fileInfo => {
-        if (userIsDecreaseSubject(user.subjectId)) {
-            // data for participants in decrease condition is in log.csv file
-            const logIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${logFile}`);
-            if (logIdx !== -1) {
-                return getCsvDataForUser(user, date);
-            }
-        } else {
-            // ...and data for participants in increase condition is in sqlite file
-            const dbIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${sqliteDb}`);
-            if (dbIdx !== -1) {
-                return getSqliteDataForUser(user, date);
-            }
+        const dbIdx = fileInfo.Contents.findIndex(fi => fi.Key === `${user.subjectId}/${sqliteDb}`);
+        if (dbIdx !== -1) {
+            return getSqliteDataForUser(user, date);
         }
-    });
-}
-
-/**
- * Returns the number of seconds of training the given user did on the given date, as recorded in  the csv file their system uploaded.
- * @param {Object} user 
- * @param {Object} date
- */
-function getCsvDataForUser(user, date) {
-    const logFileDate = date.format('MM-DD-YYYY');
-    const rowsRead = [];
-    return s3.getObject({
-        Bucket: bucket,
-        Key: `${user.subjectId}/${logFile}`
-    }).promise()
-    .then(data => {
-        return new Promise((resolve, reject) => {
-            parse(data.Body, {trim: true, columns: true, cast: true, skip_empty_lines: true, skip_lines_with_empty_values: false},
-            function(err, csvRecs) {
-                if (err) {
-                    reject(err);
-                }
-                csvRecs.forEach(r => {
-                    if (!r.Date.startsWith(logFileDate)) return;
-                    const dupeIdx = rowsRead.findIndex(a => a.sessName === r['Session Name']);
-                    if (dupeIdx === -1) {
-                        rowsRead.push({sessName: r['Session Name'], timeSpending: r['Time Spending for the Session'], seconds: r['Time Spent On This Attempt']});
-                    } else {
-                        // we have a dupe - keep the one with the lowest 'Time Spending for the Session' value
-                        const dupeRow = rowsRead[dupeIdx];
-                        if (dupeRow.timeSpending > r['Time Spending for the Session']) {
-                            rowsRead.splice(dupeIdx, 1, {sessName: r['Session Name'], timeSpending: r['Time Spending for the Session'], seconds: r['Time Spent On This Attempt']});
-                        }
-                    }
-                });
-                const totalSeconds = rowsRead.reduce((acc, cur) => acc + cur.seconds, 0);
-                resolve(totalSeconds);
-            }
-        )});
     });
 }
 
