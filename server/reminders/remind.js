@@ -44,9 +44,7 @@ const cwLogger = new cwlogs.CloudwatchLogger({logGroup: process.env.FOLLOWUP_LOG
 const NEW_MSG_MINUTES = 120; //group messages younger than this are new
 const NEW_EMOJI_MINUTES = 120; //emojis younger than this are new
 
-const validMsgTypes = ['train', 'report', 'group_status', 'new_group_msg', 'new_emoji', 'survey', 'status_report',
-    'followup_1yr', 'followup_1yr_reminder', 'followup_1yr_consent', 'followup_1yr_consent_reminder', 'followup_3mo',
-    'followup_3mo_reminder'];
+const validMsgTypes = ['train', 'status_report'];
 
 exports.handler = (event, context, callback) => {
     const msgType = event.msgType;
@@ -69,64 +67,8 @@ exports.handler = (event, context, callback) => {
             getRecipients = getUsersToBeReminded;
             break;
         }
-        case 'report': {
-            getRecipients = getUsersMissingReporting;
-            break;
-        }
-        case 'group_status': {
-            getRecipients = getGroupStatus;
-            break;
-        }
-        case 'new_group_msg': {
-            getRecipients = getUsersInGroupsWithNewMessages;
-            break;
-        }
-        case 'new_emoji': {
-            getRecipients = getUsersWithNewEmoji;
-            break;
-        }
-        case 'survey': {
-            getRecipients = getActiveUsersForSurvey;
-            break;
-        }
         case 'status_report': {
             getRecipients = getWeeklyStatusReport;
-            break;
-        }
-        case 'followup_1yr': {
-            const start = moment().subtract(1, 'year').subtract(6, 'days');
-            const end = moment().subtract(1, 'year');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', msgType, process.env.ONE_YR_SURVEY_ID);
-            break;
-        }
-        case 'followup_1yr_reminder': {
-            const start = moment().subtract(1, 'year').subtract(13, 'days');
-            const end = moment().subtract(1, 'year').subtract(7, 'days');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', msgType, process.env.ONE_YR_SURVEY_ID);
-            break;
-        }
-        case 'followup_1yr_consent': {
-            const start = moment().subtract(1, 'year').subtract(6, 'days');
-            const end = moment().subtract(1, 'year');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', msgType, process.env.ONE_YR_CONSENT_SURVEY_ID);
-            break;
-        }
-        case 'followup_1yr_consent_reminder': {
-            const start = moment().subtract(1, 'year').subtract(13, 'days');
-            const end = moment().subtract(1, 'year').subtract(7, 'days');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'R', msgType, process.env.ONE_YR_CONSENT_SURVEY_ID);
-            break;
-        }
-        case 'followup_3mo': {
-            const start = moment().subtract(3, 'months').subtract(6, 'days');
-            const end = moment().subtract(3, 'months');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', msgType, process.env.THREE_MO_SURVEY_ID);
-            break;
-        }
-        case 'followup_3mo_reminder': {
-            const start = moment().subtract(3, 'months').subtract(13, 'days');
-            const end = moment().subtract(3, 'months').subtract(7, 'days');
-            getRecipients = getFollowupRecipientsByDate.bind(this, +start.format('YYYYMMDD'), +end.format('YYYYMMDD'), 'Y', msgType, process.env.THREE_MO_SURVEY_ID);
             break;
         }
     }
@@ -244,192 +186,6 @@ function getUsersToBeReminded() {
 }
 
 /**
- * Returns a Promise<[{msg: msg obj, recipients: [user obj]}]> of users in active groups who failed to report any minutes yesterday.
- */
-function getUsersMissingReporting() {
-    let userMap;
-    return getActiveGroupsAndUsers()
-    .then((result) => getUsersWithoutReports(result.userMap, result.groupMap))
-    .then((recipientMap) => {
-        userMap = recipientMap;
-        return getRandomMsgForType('report');
-    })
-    .then((msg) => [{ msg: msg, recipients: Array.from(userMap.values()) }]);
-}
-
-/**
- * Returns a Promise<[{msg: msg obj, recipients: [user obj]}]> with one entry
- * for users in groups that are doing well (all users on target for training)
- * and another for users in groups that are not doing well (at least one user off target).
- */
-function getGroupStatus() {
-    let offTargetRecips, onTargetRecips;
-    let result = [];
-    let userMap, groupMap;
-    return getActiveGroupsAndUsers()
-    .then((groupsAndUsers) => {
-        userMap = groupsAndUsers.userMap;
-        groupMap = groupsAndUsers.groupMap;
-        return filterGroupsByTarget(userMap, groupMap, false)
-    })
-    .then((result) => {
-        offTargetRecips = result.offTarget;
-        onTargetRecips = result.onTarget;
-        return getRandomMsgForType('group_behind');
-    })
-    .then((msgBehind) => {
-        result.push({ msg: msgBehind, recipients: offTargetRecips });
-        return getRandomMsgForType('group_ok');
-    })
-    .then((msgOk) => {
-        result.push({ msg: msgOk, recipients: onTargetRecips });
-        return result;
-    });
-}
-
-/**
- * Returns Promise<[{msg: msg obj, recipients: [user obj]}]> of users in groups that have new messages
- */
-function getUsersInGroupsWithNewMessages() {
-    let users;
-    return db.getActiveGroups()
-    .then((groupsResult) => groupsResult.Items.map(g => g.name))
-    .then((activeGroups) => {
-        if (activeGroups.length > 100) throw new Error('Too many groups! No more than 100 are allowed.');
-
-        const newLimit = +moment().subtract(NEW_MSG_MINUTES, 'minutes').format('x');
-        const attrVals = {}
-        attrVals[':newLimit'] = newLimit;
-        activeGroups.forEach((g, idx) => {
-            attrVals[':val'+idx] = g;
-        });
-        const groupAndTimeConstraint = `#G in (${Object.keys(attrVals).join(', ')}) and #D >= :newLimit`;
-        const params = {
-            TableName: groupMsgsTable,
-            ExpressionAttributeNames: {
-                '#G': 'group',
-                '#D': 'date'
-            },
-            ExpressionAttributeValues: attrVals,
-            FilterExpression: groupAndTimeConstraint,
-            ProjectionExpression: '#G'
-        }
-        return dynamo.scan(params).promise();
-    })
-    .then((groupsWithNewMsgsResult) => {
-        if (groupsWithNewMsgsResult.Items.length === 0) return Promise.reject([]); // no groups have new messages; just return
-          
-        return db.getUsersInGroups(groupsWithNewMsgsResult.Items.map(gm => gm.group));  
-    })
-    .then(usersResult => {
-        users = usersResult.Items;
-        return getRandomMsgForType('new_group_msg');
-    })
-    .then((msg) => [{ msg: msg, recipients: users }])
-    .catch((maybeErr) => {
-        if (maybeErr instanceof Array && maybeErr.length === 0) return maybeErr; // there weren't any groups with new messages
-            
-        throw maybeErr;
-    });
-}
-
-/**
- * Returns Promise<[{msg: msg obj, recipients: [user obj]}]> of users with new emoji
- */
-function getUsersWithNewEmoji() {
-    // TODO restrict query to users in active groups
-    let users;
-    return db.getUserDataForDate(todayYMD, ['emoji'])
-    .then((results) => {
-        const newEmojiLimit = +moment().subtract(NEW_EMOJI_MINUTES, 'minutes').format('x');
-        const users = new Set();
-        results.Items.filter(i => i.emoji.findIndex(em => em.datetime >= newEmojiLimit) !== -1)
-        .forEach(i => users.add(i.userId));
-        return users;
-    })
-    .then((users) => {
-        if (users.size > 100) throw new Error('Too many users have new emojis in the past two hours - only 100 can be handled.')
-        
-        if (users.size === 0) return Promise.reject([]); // nobody has any new emoji - abort
-
-        const keys = [];
-        users.forEach(u => keys.push({id: u}));
-        const params = { RequestItems: {} };
-        params.RequestItems[usersTable] = { Keys: keys };
-        return dynamo.batchGet(params).promise()
-    })
-    .then((usersResult) => {
-        users = usersResult.Responses[usersTable];
-        return getRandomMsgForType('new_emoji');
-    })
-    .then((msg) => [{ msg: msg, recipients: users }])
-    .catch((maybeErr) => {
-        if (maybeErr instanceof Array && maybeErr.length === 0) return maybeErr; // there weren't any users with new emoji
-            
-        throw maybeErr;
-    })
-}
-
-/**
- * Returns a Promise<[{msg: msg obj, recipients: [user obj]}]> 
- * where msg is of type 'survey' and recipients are all the users in active groups.
- */
-function getActiveUsersForSurvey() {
-    let userMap;
-    return getActiveGroupsAndUsers()
-    .then((result) => {
-        userMap = result.userMap;
-        return getRandomMsgForType('survey');
-    })
-    .then((msg) => [{ msg: msg, recipients: Array.from(userMap.values()) }]);
-}
-
-
-/**
- * Given the params, returns a Promise<{onTarget: [user obj], offTarget: [user obj]> of users where:
- * (1) all members of the group have done the target number of practice minutes
- * for the week so far (onTarget) 
- * or
- * (2) at least one member of the group has not done the target number of practice minutes
- * for the week so far (offTarget).
- * Note that 'so far' means 'up until yesterday' and that if today happens to be the first
- * day of the week for a particular group no users from that group will be returned.
- * @param {*} userMap Map<user id, user obj>
- * @param {*} groupMap Map<group name, group>
- */
-function filterGroupsByTarget(userMap, groupMap) {
-    const usersByGroup = new Map(); // Map<Group obj, [User obj]>
-    for (let user of userMap.values()) {
-        const curGroup = groupMap.get(user.group);
-        if (isFirstDayOfWeek(curGroup.startDate)) continue;
-
-        const curUsers = usersByGroup.get(curGroup) || [];
-        curUsers.push(user);
-        usersByGroup.set(curGroup, curUsers);
-    }
-
-    const result = { onTarget: [], offTarget: [] };
-    const targetCheckPromises = [];
-    for (let [group, users] of usersByGroup.entries()) {
-        const prom = allOnTarget(group.startDate, users)
-        .then((allOnTarget) => {
-            if (allOnTarget) {
-                result.onTarget.push(...users);
-            } else {
-                result.offTarget.push(...users);
-            }
-        })
-        .catch((err) => {
-            console.log(`Error checking if members of group ${group.name} are all on target: ${err.message}`);
-            console.log(err);
-        });
-
-        targetCheckPromises.push(prom);
-    }
-    return Promise.all(targetCheckPromises).then(() => result);
-}
-
-/**
  * Returns Promise<{userMap:Map, groupMap: Map}>, where userMap maps user id -> user obj
  * and groupMap group name -> group obj.
  */
@@ -490,23 +246,6 @@ function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
     });
 }
 
-/**
- * 
- * @param {Map} userMap user id -> user object map
- * @param {Map} groupMap group id -> group object map
- */
-function getUsersWithoutReports(userMap, groupMap) {
-    const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
-
-    return db.getUserDataForDate(yesterdayYMD, ['minutes'])
-    .then(userData => {
-        userData.Items.forEach(ud => {
-            userMap.delete(ud.userId);
-        });
-        return userMap;
-    });
-}
-
 function isFirstWeek(startDate) {
     const today = moment();
     const startMoment = moment(startDate.toString())
@@ -519,17 +258,6 @@ function isFirstDayOfWeek(startDate) {
     const start = startMoment.day();
     const dayOfWeek = today >= start ? today - start : 7 - (start - today);
     return dayOfWeek === 0;
-}
-
-/**
- * Returns Promise<true> if all of the users have done the target number of training minutes
- * expected for the week to date (not including the current day), Promise<false> otherwise.
- * @param {number} startDate of the group the users are in, in YYYYMMDD format
- * @param {[user obj]} users All of the users in the group
- */
-function allOnTarget(startDate, users) {
-    return usersWithTargetAndTrained(startDate, users) 
-    .then(userInfo => userInfo.reduce((acc, curVal) => curVal.trained >= curVal.target ? acc : false, true));
 }
 
 /**
@@ -748,62 +476,6 @@ function getWeeklyStatusReport() {
 
         return [{msg: msg, recipients: statusReportRecipients}];
     });
-}
-
-/**
- * Returns a Promise<[{msg: msg obj, recipients: [user obj]}]> 
- * where msg is of type 'msgType' and recipients are users who 
- * (a) belong to a group with and end date between 'dateStart' and 'dateEnd' and
- * (b) who have survey.consent value of 'consent' and
- * (c) who have not completed a survey with id 'surveyId'
- * @param {number} dateStart YYYYMMDD format for start date of range
- * @param {number} dateEnd YYYYMMDD format for end date of range
- * @param {string} consent either 'Y' (user has consented to followup) or 'R' (user must reconsent to followup)
- * @param {string} msgType 
- * @param {string} surveyId id of the Qualtrics survey the user will be filling out
- */
-function getFollowupRecipientsByDate(dateStart, dateEnd, consent, msgType, surveyId) {
-    const results = [];
-    let followupUsers;
-    return db.getGroupsByEndDate(dateStart, dateEnd)
-    .then(result => result.Items.map(g => g.name))
-    .then(groups => getUsersByGroupsAndSurveyStatus(groups, consent, surveyId))
-    .then(users => {
-        followupUsers = users;
-        return getRandomMsgForType(msgType);
-    })
-    .then(msg => {
-        followupUsers.forEach(u => {
-            const msgForUser = Object.assign({}, msg);
-            msgForUser.html = msgForUser.html.replace('%%SUBJ_ID%%', u.subjectId).replace('%%NAME%%', u.firstName);
-            msgForUser.text = msgForUser.text.replace('%%SUBJ_ID%%', u.subjectId).replace('%%NAME%%', u.firstName);
-            msgForUser.sms = msgForUser.sms.replace('%%SUBJ_ID%%', u.subjectId).replace('%%NAME%%', u.firstName);
-            results.push({msg: msgForUser, recipients: [u]})
-        });
-        return results;
-    });
-}
-
-/**
- * Helper function to fetch users who are in one of a given list of groups and have 
- * the given survey.consent value and who have not yet completed the given surveyId.
- * @param {list} groups 
- * @param {string} consentStatus 
- * @param {string} surveyId
- */
-function getUsersByGroupsAndSurveyStatus(groups, consentStatus, surveyId) {
-    const attrVals = {':consentStatus': consentStatus};
-    groups.forEach((g, idx) => {
-        attrVals[':val'+idx] = g;
-    });
-    const params = {
-        TableName: usersTable,
-        FilterExpression: `survey.consent = :consentStatus and #G in (${Object.keys(attrVals).join(', ')})`,
-        ExpressionAttributeNames: { '#G': 'group' },
-        ExpressionAttributeValues: attrVals
-    }
-    return dynamo.scan(params).promise()
-    .then(users => users.Items.filter(u => !u.survey.completed || u.survey.completed.findIndex(s => s.surveyId == surveyId) == -1));
 }
 
 /**
