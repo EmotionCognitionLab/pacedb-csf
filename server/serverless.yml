@@ -63,6 +63,7 @@ functions:
         - reminders/**
         - api/test/**
         - api/node_modules/** # api function doesn't have any dependencies; delete this line if you add any
+        - training-data-import/**
         - logger/**
         - calibration/**
     role: lambdaWithDynamoRole
@@ -174,6 +175,7 @@ functions:
         - reminders/test/**
         - reminders/README.md
         - reminders/.*
+        - training-data-import/**
         - logger/**
         - calibration/**
     role: reminderRole
@@ -234,6 +236,7 @@ functions:
         - reminders/**
         - verification/verified.js
         - verification/test/**
+        - training-data-import/**
         - logger/**
         - common/**
         - calibration/**
@@ -248,11 +251,85 @@ functions:
         - reminders/**
         - verification/message_customizer.js
         - verification/test/**
+        - training-data-import/**
         - logger/**
         - common/**
         - calibration/**
     role: lambdaWithDynamoRole
     handler: verification/verified.handler
+
+  dataImporter:
+    package:
+      exclude:
+        - api/**
+        - reminders/**
+        - verification/**
+        - training-data-import/test/**
+        - training-data-import/spreadsheet-init.js
+        - training-data-import/spreadsheet-updater.js
+        - training-data-import/private-key.json
+        - logger/**
+        - calibration/**
+    role: lambdaWithDynamoRole
+    handler: training-data-import/import.handler
+    timeout: 120
+    events:
+      - schedule:
+          rate: rate(7 minutes)
+          description: Imports any new training data for today.
+          input:
+            day: today
+      - schedule:
+          rate: cron(45 15 * * ? *)
+          description: Checks for training data before the reminder to enter training data is sent out.
+          input:
+            day: yesterday
+    environment:
+      DATA_BUCKET:
+        Fn::Sub: "${self:service}-${self:provider.stage}-usr-data"
+      GROUPS_TABLE:
+        Ref: groupsTable
+      S3_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
+      TIMEZONE: "America/Los_Angeles"
+
+  spreadsheetUpdater:
+    package:
+      exclude:
+        - api/**
+        - reminders/**
+        - verification/**
+        - training-data-import/test/**
+        - training-data-import/spreadsheet-init.js
+        - training-data-import/import.js
+        - logger/**
+        - calibration/**
+    role: lambdaWithDynamoRole
+    handler: training-data-import/spreadsheet-updater.handler
+    timeout: 300
+    events:
+      - schedule:
+          rate: cron(40 13 * * ? *)
+          description: Uploads training data to various spreadsheets
+      - http:
+          path: spreadsheets/update
+          method: get
+          cors: true
+          authorizer:
+            arn: ${opt:cognitoUserPoolArn}
+          request:
+            parameters:
+              querystrings:
+                getAllGroups: false
+                groupName: false
+                week: false
+    environment:
+      DATA_BUCKET:
+        Fn::Sub: "${self:service}-${self:provider.stage}-usr-data"
+      GROUPS_TABLE:
+        Ref: groupsTable
+      S3_ENDPOINT: "https://s3.us-west-2.amazonaws.com"
+      ADMIN_GROUP: "staff"
+      DISABLED_GROUP: "disabled"
 
   logger:
     package:
@@ -260,6 +337,7 @@ functions:
         - api/**
         - reminders/**
         - verification/**
+        - training-data-import/**
         - common/**
         - calibration/**
     role: lambdaWithDynamoRole
@@ -286,6 +364,7 @@ functions:
         - api/**
         - reminders/**
         - verification/**
+        - training-data-import/**
         - logger/**
         - calibration/test/**
     role: lambdaWithS3Role
