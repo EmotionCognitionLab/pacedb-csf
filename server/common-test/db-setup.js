@@ -173,15 +173,11 @@ exports.createStatusReportTable = function(tableName) {
 }
 
 exports.writeTestData = function(tableName, data) {
-    const items = [];
-    data.forEach(d => {
-        items.push({
-            PutRequest: {
-                Item: d
-            }
-        });
-    });
-    const pushCmd = {};
-    pushCmd[tableName] = items;
-    return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
+    while (data.length > 0) {
+        const subset = data.slice(0, 25);
+        const items = subset.map(d => { return { PutRequest: { Item: d }} });
+        const pushCmd = {};
+        pushCmd[tableName] = items;
+        return dynDocClient.batchWrite({RequestItems: pushCmd}).promise();
+    }
 }
