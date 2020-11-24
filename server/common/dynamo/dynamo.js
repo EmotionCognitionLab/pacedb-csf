@@ -178,23 +178,26 @@ HrvDb.prototype.getUserDataForDate = function(date, requiredAttributes) {
 /**
  * Writes a given number of training minutes for a given user and date to dynamo.
  * @param {string|object} user - either the user id (string) or a user object with an id field
- * @param {number | object} date - either a YYYYMMDD *number* or a moment object
- * @param {number} minutes - the number of minutes trained
+ * @param {[object]} data - array of {date, minutes} session objects, where date is a YYYYMMDDHHMMSS *number*
  * @param {string} from - the source of the information; should be either 'software' or 'user'
  */
-HrvDb.prototype.writeTrainingMinutes = function(user, date, minutes, from) {
-    if (minutes < 0) {
-        return Promise.reject(new Error(`Expected the number of minutes trained to be >= 0, but it was ${minutes}.`));
+HrvDb.prototype.writeTrainingData = function(user, data, from) {
+    if (data.length === 0) {
+        return Promise.resolve();
     }
     const userId = typeof(user) === 'string' ? user : user.id;
-    const theDate = typeof(date) === 'number' ? date : +date.format('YYYYMMDD'); // assume date is a moment object if it's not a number
-    const updateParams = {
-        TableName: this.userDataTable,
-        Key: { 'userId': userId, 'date': theDate},
-        UpdateExpression: 'set minutes = :minutes, minutesFrom = :minFrom',
-        ExpressionAttributeValues: {':minutes': minutes, ':minFrom': from}
-    }
-    return dynamo.update(updateParams).promise()
+    const promises = data.map(item => {
+        const updateParams = {
+            TableName: this.userDataTable,
+            Key: { 'userId': userId, 'date': item.date},
+            UpdateExpression: 'set minutes = :minutes, minutesFrom = :minFrom',
+            ExpressionAttributeValues: {':minutes': item.minutes, ':minFrom': from}
+        }
+        return dynamo.update(updateParams).promise().catch(err => {
+            console.log(`Error writing training data (date ${item.date}: ${item.minutes} minutes) for user ${userId}`)
+        })
+    })
+    return Promise.all(promises)
 }
 
 /**

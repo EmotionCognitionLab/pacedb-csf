@@ -42,7 +42,6 @@ const scheduledEvent = {
 };
 
 const todayYMD = +moment().format('YYYYMMDD');
-const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
 const activeGroup = {name: 'active', startDate: +moment().subtract(10, 'days').format('YYYYMMDD'), endDate: +moment().add(10, 'days').format('YYYYMMDD')};
 const activeGroup2 = {name: 'active2', startDate: +moment().subtract(10, 'days').format('YYYYMMDD'), endDate: +moment().add(10, 'days').format('YYYYMMDD')};
 
@@ -77,11 +76,6 @@ const yesterdaySqlite = {
     ],
     users: sqliteUsers
 }
-
-const negativeSqlite = {
-    data: [{PulseStartTime: moment().unix(), PulseEndTime: moment().subtract(95, 'seconds').unix(), ValidStatus: 1, DeleteFlag: null}],
-    users: sqliteUsers
-};
 
 const multiUser = {
     data: basic.data,
@@ -163,7 +157,7 @@ describe("Importing sqlite data", function() {
             return runScheduledEvent('today');
         })
         .then(function() {
-            return confirmResult(basic.users[0].id, todayYMD, Math.round((basic.data[0].PulseEndTime - basic.data[0].PulseStartTime) / 60));
+            return confirmResult(basic.users[0].id, dynamoDateFormat(basic.data[0].PulseStartTime), Math.round((basic.data[0].PulseEndTime - basic.data[0].PulseStartTime) / 60));
         })
         .catch(function(err) {
             console.log(err);
@@ -181,7 +175,7 @@ describe("Importing sqlite data", function() {
         })
         .then(function() {
             const expectedMin = sumSqliteMinutes(invalidStatus.data, (d) => d.ValidStatus === 1);
-            return confirmResult(invalidStatus.users[0].id, todayYMD, expectedMin);
+            return confirmResult(invalidStatus.users[0].id, dynamoDateFormat(invalidStatus.data[0].PulseStartTime), expectedMin);
         })
         .catch(function(err) {
             console.log(err);
@@ -199,7 +193,7 @@ describe("Importing sqlite data", function() {
         })
         .then(function() {
             const expectedMin = sumSqliteMinutes(deleteFlag.data, (d) => d.ValidStatus === 1 && d.DeleteFlag === null);
-            return confirmResult(deleteFlag.users[0].id, todayYMD, expectedMin);
+            return confirmResult(deleteFlag.users[0].id, dynamoDateFormat(deleteFlag.data[0].PulseStartTime), expectedMin);
         })
         .catch(function(err) {
             console.log(err);
@@ -217,27 +211,7 @@ describe("Importing sqlite data", function() {
         })
         .then(function() {
             const expectedMin = sumSqliteMinutes(yesterdaySqlite.data, (d) => d.PulseStartTime >= moment().subtract(1, 'days').startOf('day').unix());
-            return confirmResult(yesterdaySqlite.users[0].id, yesterdayYMD, expectedMin);
-        })
-        .catch(function(err) {
-            console.log(err);
-            throw(err);
-        });
-    });
-    it('should not record a negative number of minutes', function() {
-        makeSqliteData(negativeSqlite.data, sqliteFname);
-        return saveFileToS3(sqliteFname, emWaveS3Key(negativeSqlite.users[0].subjectId))
-        .then(function() {
-            return dbSetup.writeTestData(usersTable, negativeSqlite.users);
-        })
-        .then(function() {
-            return runScheduledEvent('today');
-        })
-        .then(function() {
-            return getUserDataForDate(negativeSqlite.users[0].id, todayYMD);
-        })
-        .then(function(userData) {
-            assert.equal(userData.length, 0);
+            return confirmResult(yesterdaySqlite.users[0].id, dynamoDateFormat(yesterdaySqlite.data[0].PulseStartTime), expectedMin);
         })
         .catch(function(err) {
             console.log(err);
@@ -264,11 +238,11 @@ describe("Importing sqlite data", function() {
             return getUserDataForDate(multiUser.users[0].id, todayYMD);
         })
         .then(function(userData) {
-            assert.equal(userData.length, 0);
+            assert.strictEqual(userData.length, 0);
         })
         .then(function() {
             const expectedMin = sumSqliteMinutes(multiUser.data, d => d);
-            return confirmResult(multiUser.users[1].id, todayYMD, expectedMin);
+            return confirmResult(multiUser.users[1].id, dynamoDateFormat(multiUser.data[0].PulseStartTime), expectedMin);
         })
         .catch(function(err) {
             console.log(err);
@@ -286,25 +260,7 @@ describe("Importing sqlite data", function() {
         })
         .then(function() {
             const expectedMin = sumSqliteMinutes(multiDay.data, d => d.PulseStartTime >= moment().startOf('day').unix());
-            return confirmResult(multiDay.users[0].id, todayYMD, expectedMin);
-        })
-        .catch(function(err) {
-            console.log(err);
-            throw(err);
-        });
-    });
-    it('should correctly sum the seconds for multiple rows on the same day', function() {
-        makeSqliteData(multiEntry.data, sqliteFname);
-        return saveFileToS3(sqliteFname, emWaveS3Key(multiEntry.users[0].subjectId))
-        .then(function() {
-            return dbSetup.writeTestData(usersTable, multiEntry.users);
-        })
-        .then(function() {
-            return runScheduledEvent('today');
-        })
-        .then(function() {
-            const expectedMin = sumSqliteMinutes(multiEntry.data, d => d);
-            return confirmResult(multiEntry.users[0].id, todayYMD, expectedMin);
+            return confirmResult(multiDay.users[0].id, dynamoDateFormat(multiDay.data[0].PulseStartTime), expectedMin);
         })
         .catch(function(err) {
             console.log(err);
@@ -338,7 +294,7 @@ describe("Importing sqlite data", function() {
             });
         })
         .then(function() {
-            return confirmResult(basic.users[0].id, todayYMD, 0);
+            return confirmResult(basic.users[0].id, dynamoDateFormat(basic.data[0].PulseStartTime), 0);
         })
         .catch(function(err) {
             console.log(err);
@@ -358,7 +314,29 @@ describe("Importing sqlite data", function() {
             const yesterdayStart = moment().subtract(1, 'days').startOf('day').unix();
             const yesterdayEnd = moment().subtract(1, 'days').endOf('day').unix();
             const expected = sumSqliteMinutes(futureData.data, d => d.PulseStartTime >= yesterdayStart && d.PulseStartTime <= yesterdayEnd);
-            return confirmResult(futureData.users[0].id, yesterdayYMD, expected);
+            return confirmResult(futureData.users[0].id, dynamoDateFormat(futureData.data[0].PulseStartTime), expected);
+        })
+        .catch(function(err) {
+            console.log(err);
+            throw(err);
+        });
+    });
+    it('should import multiple sessions from the same day separately', function() {
+        makeSqliteData(multiEntry.data, sqliteFname);
+        return saveFileToS3(sqliteFname, emWaveS3Key(multiEntry.users[0].subjectId))
+        .then(function() {
+            return dbSetup.writeTestData(usersTable, multiEntry.users)
+        })
+        .then(function() {
+            return runScheduledEvent('today');
+        })
+        .then(function() {
+            const userId = multiEntry.users[0].id;
+            const startDate = +moment().startOf('day').format('YYYYMMDDHHmmss');
+            return getUserDataForDateRange(userId, startDate, +moment().add(1, 'day').format('YYYYMMDDHHmmss'))
+            .then(function(rows) {
+                assert.strictEqual(rows.length, multiEntry.data.length, `Expected ${multiEntry.data.length} rows for userId ${userId} and date ${startDate}, but found ${rows.length}.`);
+            });
         })
         .catch(function(err) {
             console.log(err);
@@ -374,6 +352,10 @@ function makeCsvData(data) {
     let result = csvHeader;
     data.forEach(d => result = result + `${d.subjectId},${d.sessName},${d.seconds},0,Finished,180,5,${d.date},10.0474598204924,${d.timeSpending}\n`);
     return result;
+}
+
+function dynamoDateFormat(unixDate) {
+    return +moment.unix(unixDate).format('YYYYMMDDHHmmss');
 }
 
 function emWaveS3Key(subjectId) { return `${subjectId}/emWave.emdb`; }
@@ -439,6 +421,19 @@ function getUserDataForDate(userId, date) {
         KeyConditionExpression: 'userId = :userId and #D = :theDate',
         ExpressionAttributeNames: { '#D': 'date' },
         ExpressionAttributeValues: { ':userId': userId, ':theDate': date }
+    }
+    return dynDocClient.query(queryParams).promise()
+    .then(function(result) {
+        return result.Items;
+    });
+}
+
+function getUserDataForDateRange(userId, dateStart, dateEnd) {
+    const queryParams = {
+        TableName: userDataTable,
+        KeyConditionExpression: 'userId = :userId and #D BETWEEN :start AND :end',
+        ExpressionAttributeNames: { '#D': 'date' },
+        ExpressionAttributeValues: { ':userId': userId, ':start': dateStart, ':end': dateEnd }
     }
     return dynDocClient.query(queryParams).promise()
     .then(function(result) {

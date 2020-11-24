@@ -18,10 +18,7 @@ const db = new DynUtils.HrvDb({
     userDataTable: process.env.USER_DATA_TABLE
 });
 
-
-// Data from subjects in the control group will be in logFile
-const logFile = 'log.csv';
-// ...while data for subjects in the intervention group will be in sqliteDb
+// data for subjects will be in sqliteDb
 const sqliteDb = 'emWave.emdb';
 
 exports.handler = (event, context, callback) => {
@@ -83,14 +80,13 @@ function importData(date) {
 function importForUser(user, date) {
     console.log(`importing data for subject ${user.subjectId}`);
     return getDataForUser(user, date)
-    .then(seconds => {
-        if (seconds === undefined || seconds === 0) {
+    .then(results => {
+        if (results === undefined || results.length === 0) {
             // no file was found for the user or the file had no data for 'date'. call it quits.
             console.log(`no sqlite db found (or no entries found for ${date.format('YYYY-MM-DD')}) for subject ${user.subjectId}`)
             return;
         } else {
-            const minutes = Math.round(seconds / 60);
-            return db.writeTrainingMinutes(user, date, minutes, 'software');
+            return db.writeTrainingData(user, results, 'software');
         }
     });
 }
@@ -134,10 +130,15 @@ function getSqliteDataForUser(user, date) {
                 // We credit any sessions begun on the target day to that target day,
                 // regardless of when they ended
                 const stmt = 
-                    db.prepare('select SUM(PulseEndTime-PulseStartTime) total from Session where ValidStatus = 1 and DeleteFlag is null and PulseStartTime >= ? and PulseStartTime <= ?');
-                const res = stmt.get([dateStart.format('X'), dateEnd.format('X')]);
+                    db.prepare('select PulseStartTime, (PulseEndTime-PulseStartTime) duration from Session where ValidStatus = 1 and DeleteFlag is null and PulseStartTime >= ? and PulseStartTime <= ?');
+                const res = stmt.all([dateStart.format('X'), dateEnd.format('X')]);
+                const results = res.map(row => {
+                    const date = +moment.unix(row.PulseStartTime).format('YYYYMMDDHHmmss')
+                    const minutes = Math.round(row.duration / 60)
+                    return { date, minutes }
+                });
                 db.close();
-                resolve(res && res.total > 0 ? res.total : 0);
+                resolve(results);
             } catch (err) {
                 reject(err);
             }  
