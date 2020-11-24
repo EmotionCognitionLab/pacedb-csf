@@ -187,17 +187,6 @@ functions:
           description: Reminds users who haven't yet done their training for the day to do so.
           input:
             msgType: train
-      - schedule:
-          rate: cron(4 16 * * ? *)
-          enabled: false
-          description: Reminds users who haven't reported their training minutes for yesterday to do so.
-          input:
-            msgType: report
-      - schedule:
-          rate: cron(22 15 ? * SUN *)
-          description: Sends out the weekly status report
-          input:
-            msgType: status_report
 
             
 #    Define function environment variables here
