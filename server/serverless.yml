@@ -182,9 +182,9 @@ functions:
     handler: reminders/remind.handler
     events:
       - schedule:
-          rate: cron(00 06 * * ? *)
+          rate: cron(30 15 * * ? *)
           enabled: false
-          description: Reminds users who haven't yet done their training for the day to do so.
+          description: Reminds users who are behind on training to train.
           input:
             msgType: train
 
@@ -267,8 +267,8 @@ functions:
           input:
             day: today
       - schedule:
-          rate: cron(45 15 * * ? *)
-          description: Checks for training data before the reminder to enter training data is sent out.
+          rate: cron(00 15 * * ? *)
+          description: Checks for training data before the reminder to train is sent out.
           input:
             day: yesterday
     environment:
