@@ -38,7 +38,9 @@ ses.verifyEmailIdentity({EmailAddress: 'uscemotioncognitionlab@gmail.com'}).prom
 const snsEndpoint = process.env.SNS_ENDPOINT;
 const sns = new AWS.SNS({endpoint: snsEndpoint, apiVersion: '2010-03-31', region: 'us-east-1'});
 
+const todayYMDHms = +moment().format('YYYYMMDDHHmmss');
 const todayYMD = +moment().format('YYYYMMDD');
+const yesterdayYMDHms = +moment().subtract(1, 'days').format('YYYYMMDDHHmmss');
 const yesterdayYMD = +moment().subtract(1, 'days').format('YYYYMMDD');
 
 const disabledGroup = process.env.DISABLED_GROUP;
@@ -52,6 +54,9 @@ const users = [ {id: "1a", firstName: "One", lastName: "Eh", group: "g-one", ema
                 {id: "ad8", firstName: "Ad", lastName: "Eight", group: "g-inactive-2", email: "bash@example.com"},
                 {id: "3a", firstName: "Three", lastName: "Eh", group: adminGroup, email: "baz@example.com", survey: {consent: "Y"}},
                 {id: "3b", firstName: "Three", lastName: "Bee", group: disabledGroup, email: "bad@example.com", survey: {consent: "Y"}},
+                {id: "4a", firstName: "Four", lastName: "Eh", group: "g-two", email: "4a@example.com" },
+                {id: "4b", firstName: "Four", lastName: "Bee", group: "g-two", email: "4b@example.com" },
+                {id: "4c", firstName: "Four", lastName: "See", group: "g-two", email: "4c@example.com" },
             ];
 
 const group1startDate = moment().subtract(3, 'weeks');
@@ -84,8 +89,42 @@ const reminderMsgs = [
 ];
 
 const userData = [
-    {userId: users[0].id, date: todayYMD, minutes: 10, emoji: [{emoji: '😒', from: 'One B.', fromId: users[1].id, datetime: nowMs}]},
-    {userId: users[1].id, date: todayYMD, minutes: 7}
+    {userId: users[0].id, date: todayYMDHms, minutes: 10, emoji: [{emoji: '😒', from: 'One B.', fromId: users[1].id, datetime: nowMs}]},
+    {userId: users[0].id, date: yesterdayYMDHms, minutes: 17},
+    {userId: users[1].id, date: todayYMDHms, minutes: 7},
+    {userId: users[2].id, date: +moment().subtract(3, 'days').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[2].id, date: +moment().subtract(2, 'days').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[2].id, date: todayYMDHms, minutes: 4},
+    {userId: users[2].id, date: +moment().subtract(39, 'minutes').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(3, 'days').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(2, 'days').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(1, 'minute').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(10, 'minute').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(20, 'minute').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(30, 'minute').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(40, 'minute').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(50, 'minute').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(60, 'minute').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(70, 'minute').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(80, 'minute').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[7].id, date: +moment().subtract(90, 'minute').format('YYYYMMDDHHmmss'), minutes: 4},
+    {userId: users[3].id, date: todayYMDHms, minutes: 12},
+    {userId: users[8].id, date: +moment().subtract(5, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(10, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(15, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(20, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(25, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(30, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(35, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(40, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(45, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(50, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(55, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[8].id, date: +moment().subtract(60, "minutes").format('YYYYMMDDHHmmss'), minutes: 2},
+    {userId: users[9].id, date: +moment().subtract(5, 'days').format('YYYYMMDDHHmmss'), minutes: 18},
+    {userId: users[9].id, date: +moment().subtract(4, 'days').format('YYYYMMDDHHmmss'), minutes: 6},
+    {userId: users[9].id, date: +moment().subtract(3, 'days').format('YYYYMMDDHHmmss'), minutes: 14},
+    {userId: users[9].id, date: +moment().subtract(2, 'days').format('YYYYMMDDHHmmss'), minutes: 9},
 ]
 
 const statusReportData = [
@@ -145,6 +184,34 @@ function runScheduledEvent(extraEventArgs, checkTestResults, newUsers, newUserDa
     });
 }
 
+// given a user id, checks userData to see if that user has
+// met their training data. Returns boolean.
+function userUnderTarget(uid) {
+    const sessionCount = userData.reduce((acc, cur) => cur.userId == uid ? acc + 1 : acc, 0);
+    const days = new Set();
+    userData.forEach(ud => {
+        if (ud.userId == uid) {
+            days.add(Math.round(ud.date / 1000000));
+        }
+    });
+    return !days.has(yesterdayYMD) && (sessionCount < 12 || days.size < 3);
+}
+
+// provides a summary of userData organized as {uid: {sessions: <int>, days: <Set>}}
+function sessionAndDayCountByUser() {
+    const userCountHolder = function() {
+        return {sessions: 0, days: new Set()}
+    }
+    const sessAndDayCountByUser = {};
+    userData.forEach(ud => {
+        const curCounts = sessAndDayCountByUser[ud.userId] || userCountHolder();
+        curCounts.sessions += 1;
+        curCounts.days.add(Math.round(ud.date / 1000000));
+        sessAndDayCountByUser[ud.userId] = curCounts;
+    });
+    return sessAndDayCountByUser;
+}
+
 describe('sending reminders for users who haven\'t done their training', function() {
     before(function () {
         return prepTestEnv();
@@ -162,22 +229,16 @@ describe('sending reminders for users who haven\'t done their training', functio
         })
         .catch(err => console.log(err));
     });
-    it('should reach users who have done less than the target number of practice minutes today and who are in active groups', function () {
-        const usersUnderTarget = users.reduce((acc, cur) => groupIsActive(cur.group) ? acc.concat([cur.email || cur.phone]) : acc, []);
-        userData.forEach(ud => {
-            const user = users.find(u => u.id === ud.userId);
-            if (user === undefined || !groupIsActive(user.group)) return;
-            const targetMinutes = targetMinutesByGroup[user.group];
-            if (ud.date === todayYMD && ud.minutes >= targetMinutes) {
-                usersUnderTarget.splice(usersUnderTarget.indexOf(user.email || user.phone), 1);
-            } 
-        });
+    it('should reach users who are in active groups AND who did not practice yesterday AND (who have done fewer than three days or twelve sessions of training)', function () {
+        this.timeout(10000);
+        const offTrack = users.filter(u => groupIsActive(u.group) && userUnderTarget(u.id))
+            .map(u => u.email || u.phone);
         return runScheduledEvent(null, function(body) {
             const recips = body.map(i => i.recip);
-            usersUnderTarget.forEach(contact => {
+            offTrack.forEach(contact => {
                 assert(recips.indexOf(contact) !== -1, `Expected ${contact} to be returned`);
             });
-            assert.equal(usersUnderTarget.length, recips.length);
+            assert.strictEqual(offTrack.length, recips.length);
         });
     });
     it('should exclude users who are in inactive groups', function() {
@@ -192,34 +253,62 @@ describe('sending reminders for users who haven\'t done their training', functio
             });
         });
     });
-    it('should exclude users who have done more than the target number of practice minutes today', function() {
-        const newUserData = JSON.parse(JSON.stringify(userData));
-        const maxTarget = targetMinutesByWeek.reduce((acc, cur) => Math.max(acc, cur), 0);
-        newUserData[0].minutes = maxTarget + 1;  
-        const usersOverTarget = [];
-        newUserData.forEach(ud => {
-            const user = users.find(u => u.id === ud.userId);
-            if (user === undefined || !groupIsActive(user.group)) return;
-            const targetMinutes = targetMinutesByGroup[user.group];
-            if (ud.date === todayYMD && ud.minutes > targetMinutes) {
-                usersOverTarget.push(user.email || user.phone);
-            } 
-        });     
+    it('should include users who have done 12 or more sessions but have trained for less than 3 days', function() {
+        const activeUsers = users.filter(u => groupIsActive(u.group)).map(u => u.id);
+        const userDataSummary = sessionAndDayCountByUser();
+        const matchingUsers = Object.entries(userDataSummary).filter(entry => {
+            const uid = entry[0];
+            const uds = entry[1];
+            return activeUsers.includes(uid) && uds.sessions >= 12 && uds.days.size < 3
+        }).map(entry => {
+            const user = users.find(u => u.id === entry[0]);
+            return user.email || user.phone;
+        });
+        assert(matchingUsers.length >= 1, 'Expected at least one user in test data with 12+ sessions and < 3 days of training.');
         return runScheduledEvent(null, function(body) {
             const recips = body.map(i => i.recip);
-            usersOverTarget.forEach(contact => {
-                assert(recips.indexOf(contact) === -1, `Did not expect ${contact} to be returned`);
+            matchingUsers.forEach(contact => {
+                assert(recips.includes(contact), `Expected ${contact} to be returned`)
             });
-        }, null, newUserData);
+        });
     });
-    it('should exclude users who have done exactly the target number of practice minutes today', function() {
-        const newUserData = JSON.parse(JSON.stringify(userData));
-        const target = targetMinutesByGroup[users[0].group];
-        newUserData[0].minutes = target;
+    it('should include users who have trained for more than 3 days but done fewer than 12 sessions', function() {
+        const activeUsers = users.filter(u => groupIsActive(u.group)).map(u => u.id);
+        const userDataSummary = sessionAndDayCountByUser();
+        const matchingUsers = Object.entries(userDataSummary).filter(entry => {
+            const uid = entry[0];
+            const uds = entry[1];
+            return activeUsers.includes(uid) && uds.sessions < 12 && uds.days.size >= 3;
+        }).map(entry => {
+            const user = users.find(u => u.id === entry[0]);
+            return user.email || user.phone;
+        });
+        assert(matchingUsers.length >= 1, 'Expected at least one user in test data with < 12 sessions and >= 3 days of training.');
         return runScheduledEvent(null, function(body) {
             const recips = body.map(i => i.recip);
-            assert(recips.indexOf(users[0].email) === -1, 'users[0] should NOT be included');
-        }, null, newUserData);
+            matchingUsers.forEach(contact => {
+                assert(recips.includes(contact), `Expected ${contact} to be returned`)
+            });
+        });
+    });
+    it('should exclude users who practiced yesterday', function() {
+        const activeUsers = users.filter(u => groupIsActive(u.group)).map(u => u.id);
+        const userDataSummary = sessionAndDayCountByUser();
+        const matchingUsers = Object.entries(userDataSummary).filter(entry => {
+            const uid = entry[0];
+            const uds = entry[1];
+            return activeUsers.includes(uid) && uds.days.has(yesterdayYMD)
+        }).map(entry => {
+            const user = users.find(u => u.id === entry[0]);
+            return user.email || user.phone;
+        });
+        assert(matchingUsers.length >= 1, 'Expected at least one user in test data who practiced yesterday.');
+        return runScheduledEvent(null, function(body) {
+            const recips = body.map(i => i.recip);
+            matchingUsers.forEach(contact => {
+                assert(recips.indexOf(contact) === -1, `Did not expect ${contact} to be returned`)
+            });
+        });
     });
     it('should not use inactive messages', function() {
         return runScheduledEvent(null, function(body) {
@@ -262,7 +351,7 @@ describe('sending reminders for users who haven\'t done their training', functio
             const user = users.find(u => u.id === ud.userId);
             if (user === undefined || !groupIsActive(user.group)) return;
             const targetMinutes = targetMinutesByGroup[user.group];
-            if (ud.date === todayYMD && ud.minutes >= targetMinutes) {
+            if (ud.date === todayYMDHms && ud.minutes >= targetMinutes) {
                 usersUnderTarget.splice(usersUnderTarget.indexOf(user.email || user.phone), 1);
             }
         });
@@ -289,145 +378,6 @@ describe('sending reminders for users who haven\'t done their training', functio
         }, 200);
         
     });
-});
-
-describe('sending status report', function() {
-    const chartName = 'newchart.png';
-    const validGroups = groups.filter(g => 
-        g.startDate <= todayYMD && g.endDate >= todayYMD && !isFirstDayOfWeek(g.startDate)
-    );
-
-    const validUsers = users.filter(u => validGroups.findIndex(g => g.name === u.group) !== -1);
-
-    before(function() {
-        return prepTestEnv();
-    });
-    beforeEach(function() {
-        nock('http://export.highcharts.com')
-        .post(() => true)
-        .reply(200, chartName);
-
-        nock('http://export.highcharts.com')
-        .get(`/${chartName}`)
-        .reply(200, 'in real life this would be binary png data');
-        
-        return dbSetup.dropTable(userDataTable)
-        .then(function() {
-            return dbSetup.createUserDataTable(userDataTable);
-        })
-        .then(function() {
-            return dbSetup.dropTable(statusReportsTable);
-        })
-        .then(function() {
-            return dbSetup.createStatusReportTable(statusReportsTable);
-        })
-        .then(function() {
-            return s3Setup.ensureEmptyBucketExists(chartBucket);
-        });
-    })
-    it('should generate report data and save it to db', function() {
-        
-        const ud = validUsers.map(u => {
-            return {userId: u.id, date: yesterdayYMD, minutes: 0}
-        });
-        const totalTargetMinutes = validUsers.reduce((acc, cur) => {
-            const g = validGroups.filter(vg => vg.name === cur.group)[0];
-            const weekDay = dayOfWeek(g.startDate);
-            return acc + (weekDay * getTargetMinutes(g.startDate));
-        }, 0);
-        const offTargetUsers = validUsers.map(vu => {
-            const g = validGroups.filter(vg => vg.name === vu.group)[0];
-            const weekDay = dayOfWeek(g.startDate);
-            const targetMin = weekDay * getTargetMinutes(g.startDate);
-            return {firstName: vu.firstName, lastName: vu.lastName, trained: 0, group: vu.group, target: targetMin};
-        })
-        return runScheduledEvent({msgType: 'status_report'}, function() {
-            const params = {
-                TableName: statusReportsTable,
-                Key: { reportDate: moment().format('YYYY-MM-DD')}
-            };
-            return dynDocClient.get(params).promise()
-            .then((result) => {
-                const item = result.Item;
-                const expectedDate = moment().format('YYYY-MM-DD');
-                assert(item.offTargetCount === ud.length, `Expected the status report to include ${ud.length} users off-track; found ${item.offTargetCount}`);
-                assert(item.offTargetPercent === 100, `Expected 100 percent of the users to be off-track; ${item.offTargetPercent} were`);
-                assert(item.totalMinutesTrained === 0, `Expected 0 total minutes trained; found ${item.totalMinutesTrained}`);
-                assert(item.reportDate === expectedDate, `Expected the date of the status report to be ${expectedDate}; it was ${item.date}`);
-                assert(item.totalMinutesTarget === totalTargetMinutes, `Expected the total target minutes to be ${totalTargetMinutes}; found ${item.totalMinutesTarget}`);
-                assert(offTargetUsers.length === item.offTargetUsers.length, `Expected ${offTargetUsers.length} off-target users to be returned, but ${item.offTargetUsers.length} were`)
-                
-                offTargetUsers.forEach(ot => assert(item.offTargetUsers.filter(itot => 
-                    ot.firstName === itot.firstName &&
-                    ot.lastName === itot.lastName &&
-                    ot.group === itot.group &&
-                    ot.trained === itot.trained &&
-                    ot.target === itot.target).length === 1, `Expected user ${ot.firstName} ${ot.lastName} to be returned; they weren't`));
-            })
-        }, null, ud);
-
-    });
-    it('should generate a chart and save it to s3', function() {
-        const todayStr = moment().format('YYYY-MM-DD');
-        return runScheduledEvent({msgType: 'status_report'})
-        .then(() => {
-            const params = {
-                Bucket: chartBucket,
-                Prefix: 'status-charts'
-            };
-            return s3.listObjectsV2(params).promise() 
-        })
-        .then((s3Resp) => {
-            assert(s3Resp.Contents.length === 1, `Expected one and only one chart to be saved to s3. Found ${s3Resp.Contents.length}.`);
-            const chartFile = s3Resp.Contents[0].Key;
-            assert(chartFile.endsWith('.png'), `Expected ${chartFile} to end with '.png'.`);  
-            assert(chartFile.startsWith(`status-charts/${todayStr}`), `Expected ${chartFile} to start with status-charts/${todayStr}.`)
-        });
-    });
-    it('should exclude members of the staff group from the statistics', function() {
-        const staffGroup = {
-            name: process.env.ADMIN_GROUP,
-            startDate: +moment().subtract(9, 'days').format('YYYYMMDD'),
-            endDate: +moment().add(3, 'weeks').format('YYYYMMDD')
-        };
-        return dbSetup.writeTestData(groupsTable, [staffGroup])
-        .then(() => {
-            let allUserData = [];
-            validUsers.forEach(u => {
-                const start = validGroups.filter(g => g.name === u.group)[0].startDate;
-                const targetMinutes = getTargetMinutes(start);
-                const weekDay = dayOfWeek(start);
-                allUserData.push({userId: u.id, date: yesterdayYMD, minutes: weekDay * targetMinutes})
-            });
-            const totalMinutesTrained = allUserData.reduce((acc, cur) => acc + cur.minutes, 0);
-
-            const staffUsers = validUsers.map((u, idx) => {
-                return {id: u.id+"1a", firstName: "Staff", lastName: idx.toString(), group: staffGroup.name, email: `staff-${idx}@example.com` }
-            });
-            staffUsers.forEach(su => allUserData.push({userId: su.id, date: yesterdayYMD, minutes: 0}));
-
-            return runScheduledEvent({msgType: 'status_report'}, function() {
-                const params = {
-                    TableName: statusReportsTable,
-                    Key: { reportDate: moment().format('YYYY-MM-DD')}
-                };
-                return dynDocClient.get(params).promise()
-                .then((result) => {
-                    const item = result.Item;
-                    const expectedDate = moment().format('YYYY-MM-DD');
-                    assert(item.offTargetCount === 0, `Expected the status report to include no users off-track; found ${item.offTargetCount}`);
-                    assert(item.offTargetPercent === 0, `Expected 0 percent of the users to be off-track; ${item.offTargetPercent} were`);
-                    assert(item.totalMinutesTrained === totalMinutesTrained, `Expected ${totalMinutesTrained} total minutes trained; found ${item.totalMinutesTrained}`);
-                    assert(item.reportDate === expectedDate, `Expected the date of the status report to be ${expectedDate}; it was ${item.date}`);
-                })
-            }, staffUsers, allUserData);
-
-        });
-    });
-    // testing these requires replacing moto_ses with something that allows us to examine sent emails
-    it('should have a chart in the email');
-    it('should have the off-track users in the email');
-    it('should say "All users are on track" in the email when no users are off-track')
 });
 
 function cleanDb() {

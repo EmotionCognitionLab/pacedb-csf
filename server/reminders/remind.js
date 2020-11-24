@@ -22,7 +22,6 @@ const s3 = new AWS.S3({endpoint: s3Endpoint, apiVersion: '2006-03-01', s3ForcePa
 
 const moment = require('moment');
 const http = require('http');
-const todayYMD = +moment().format('YYYYMMDD');
 
 const groupMsgsTable = process.env.GROUP_MESSAGES_TABLE;
 const usersTable = process.env.USERS_TABLE;
@@ -177,7 +176,7 @@ function sendEmail(recip, msg) {
 function getUsersToBeReminded() {
     let userMap;
     return getActiveGroupsAndUsers()
-    .then((result) => getUsersWhoHaveNotCompletedTraining(result.userMap, result.groupMap))
+    .then((result) => getUsersWhoHaveNotCompletedTraining(result.userMap))
     .then((recipientMap) => {
         userMap = recipientMap;
         return getRandomMsgForType('train');
@@ -227,23 +226,39 @@ function getDailyTargetMinutes(startDate) {
     return targetMinutesByWeek[weekNum];
 }
 
-// returns promise of map of id->user object for all users who have not
-// completed their training for today
-function getUsersWhoHaveNotCompletedTraining(userMap, groupMap) {
-    // pull training data for today
-    return db.getUserDataForDate(todayYMD)
-    .then(userData => {
-        userData.Items.forEach(ud => {
-            const activeUser = userMap.get(ud.userId);
-            if (activeUser !== undefined) { // undefined means we have training data for them today but they're not in an active group, which shouldn't happen
-                const groupObj = groupMap.get(activeUser.group);
-                if (ud.minutes >= getDailyTargetMinutes(groupObj.startDate)) {
-                    userMap.delete(ud.userId);
+// returns promise of map of id->user object for all users who 
+// are behind on their training (failed to do it yesterday and
+// have not yet completed at least 12 sessions over at least 3 days)
+function getUsersWhoHaveNotCompletedTraining(userMap) {
+    const userIds = Array.from(userMap.keys());
+    // use very wide date range to get all data for the user
+    const startDate = +moment().subtract(10, 'years').format('YYYYMMDDHHmmss');
+    const endDate = +moment().add(10, 'years').format('YYYYMMDDHHmmss');
+    const yesterdayYMD = +moment().subtract(1, 'day').format('YYYYMMDD');
+
+    // Iterate over all active users and return a list of promises.
+    // Each promise removes the user from userMap if they've met
+    // their training target (12 sessions over at lesat 3 days, or if
+    // they practiced yesterday)
+    const promises = userIds.map(uid => {
+        return db.getUserDataForUser(uid, startDate, endDate)
+            .then(userData => {
+                const sessionCount = userData.Items.length;
+                const days = new Set();
+                userData.Items.forEach(ud => {
+                    const day = Math.round(ud.date / 1000000); //ud.date is YYYYYMMDDHHmmss number; divide by 1000000 to strip HHmmss
+                    days.add(day);
+                });
+                if ((sessionCount >= 12 && days.size >= 3) || days.has(yesterdayYMD)) {
+                    userMap.delete(uid);
                 }
-            }
-        });
-        return userMap;
+                return userMap;
+            })
+            .catch(err => {
+                console.log(`Error checking to see if user ${uid} has met their training target: ${err}`);
+            });
     });
+    return Promise.all(promises).then(() =>  userMap);
 }
 
 function isFirstWeek(startDate) {
