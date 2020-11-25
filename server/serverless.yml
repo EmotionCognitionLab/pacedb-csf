@@ -276,7 +276,7 @@ functions:
         Fn::Sub: "${self:service}-${self:provider.stage}-usr-data"
       GROUPS_TABLE:
         Ref: groupsTable
-      S3_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
+      S3_ENDPOINT: "https://s3.${self:provider.region}.amazonaws.com"
       TIMEZONE: "America/Los_Angeles"
 
   logger:
