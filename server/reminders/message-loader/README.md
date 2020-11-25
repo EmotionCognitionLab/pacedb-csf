@@ -1,4 +1,4 @@
-This directory contains the raw data for the various reminder messages as well as a script to load them into the hrv-[stage]-reminder-msgs table. Note that if you want to change the data the following
+This directory contains the raw data for the various reminder messages as well as a script to load them into the pbcsf-[stage]-reminder-msgs table. Note that if you want to change the data the following
 must be true:
 
  - They must be in csv format
