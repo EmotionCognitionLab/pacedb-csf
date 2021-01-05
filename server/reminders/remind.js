@@ -176,7 +176,17 @@ function sendEmail(recip, msg) {
 function getUsersToBeReminded() {
     let userMap;
     return getActiveGroupsAndUsers()
-    .then((result) => getUsersWhoHaveNotCompletedTraining(result.userMap))
+    .then((result) => {
+        // filter out users in the admin gtroup;
+        // no need to send them reminders
+        for (let [uid, user] of result.userMap) {
+            if (user.group == process.env.ADMIN_GROUP) {
+                result.userMap.delete(uid)
+            }
+        }
+        return result.userMap
+    })
+    .then((result) => getUsersWhoHaveNotCompletedTraining(result))
     .then((recipientMap) => {
         userMap = recipientMap;
         return getRandomMsgForType('train');

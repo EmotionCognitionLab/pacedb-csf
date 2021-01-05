@@ -125,6 +125,7 @@ const userData = [
     {userId: users[9].id, date: +moment().subtract(4, 'days').format('YYYYMMDDHHmmss'), minutes: 6},
     {userId: users[9].id, date: +moment().subtract(3, 'days').format('YYYYMMDDHHmmss'), minutes: 14},
     {userId: users[9].id, date: +moment().subtract(2, 'days').format('YYYYMMDDHHmmss'), minutes: 9},
+    {userId: users[5].id, date: +moment().subtract(2, 'days').format('YYYYMMDDHHmmss'), minutes: 3},
 ]
 
 const statusReportData = [
@@ -310,6 +311,21 @@ describe('sending reminders for users who haven\'t done their training', functio
             });
         });
     });
+    it('should exclude users in the admin group', function() {
+        const usersInAdminGroup = users.reduce((acc, cur) => {
+            return cur.group == adminGroup ? acc.concat([cur.email || cur.phone]) : acc;
+        }, []);
+
+        assert(usersInAdminGroup.length > 0, 'Expected to have at least one user from the admin group in the test data.')
+
+        return runScheduledEvent(null, function(body) {
+            const recips = body.map(i => i.recip);
+            assert(recips.length > 0, 'Expected at least one user to receive a reminder')
+            usersInAdminGroup.forEach(contact => {
+                assert(recips.indexOf(contact) === -1, `Did not expect ${contact} to be returned`);
+            });
+        });
+    })
     it('should not use inactive messages', function() {
         return runScheduledEvent(null, function(body) {
             const usedMsgs = body.map(i => i.msg);
